@@ -107,6 +107,36 @@ class SyncLoopFileTest {
         assertArrayEquals(bytes, mac.uploads.single().readBytes())
     }
 
+    @Test fun silentMacFailsFetchQuicklyInsteadOfFreezingThePaste() {
+        mac.ignoreFetch = true
+        connected()
+        val started = System.currentTimeMillis()
+        try { loop.fetch("o1", tmp.newFolder("cache"), timeoutMs = 20_000, firstDataMs = 300); fail() }
+        catch (e: FileFetchException) { assertEquals("timeout", e.reason) }
+        assertTrue("took ${System.currentTimeMillis() - started} ms", System.currentTimeMillis() - started < 2_000)
+    }
+
+    @Test fun uploadThatFailsMidwayIsCancelledOnTheMac() {
+        connected()
+        val failing = object : java.io.InputStream() {
+            var n = 0
+            override fun read(): Int = if (n++ < 400_000) 1 else throw java.io.IOException("source went away")
+            override fun read(b: ByteArray, off: Int, len: Int): Int {
+                if (n >= 400_000) throw java.io.IOException("source went away")
+                val k = minOf(len, 400_000 - n); java.util.Arrays.fill(b, off, off + k, 1); n += k; return k
+            }
+        }
+        var opens = 0
+        val ok = loop.sendFile("doc.pdf", "application/pdf", 1_000_000) {
+            if (opens++ == 0) ByteArrayInputStream(ByteArray(1_000_000) { 1 }) else failing  // hash pass ok, send pass fails
+        }
+        assertFalse(ok)
+        val end = System.currentTimeMillis() + 3_000
+        while (mac.received.none { it is Message.FileError } && System.currentTimeMillis() < end) Thread.sleep(20)
+        assertEquals("cancelled", (mac.received.first { it is Message.FileError } as Message.FileError).reason)
+        assertTrue("half upload left on Mac", uploadDir.listFiles()!!.none { it.name.endsWith(".clipbridge-part") })
+    }
+
     @Test fun sendFileOverLimitIsRefused() {
         connected()
         assertFalse(loop.sendFile("big.mov", "video/quicktime", FileLimit.MAX_BYTES + 1) { ByteArrayInputStream(ByteArray(0)) })

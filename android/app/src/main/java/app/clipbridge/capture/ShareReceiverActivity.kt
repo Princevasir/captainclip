@@ -12,7 +12,7 @@ import app.clipbridge.sync.SyncService
 class ShareReceiverActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val uris = streams(intent)
+        val uris = streams(intent).filter { SharePolicy.accepts(it.scheme, it.authority) }
         val message = when {
             uris.isNotEmpty() ->
                 if (SyncService.sendFiles(this, uris)) {

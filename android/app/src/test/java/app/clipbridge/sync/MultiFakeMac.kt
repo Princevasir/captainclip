@@ -23,6 +23,8 @@ class MultiFakeMac(private val key: ByteArray, var rejectKey: Boolean = false, p
     val refused = java.util.concurrent.ConcurrentHashMap<String, String>()
     /** If set, close the phone's socket after sending this many chunks of a served file. */
     @Volatile var dropAfterChunks: Int? = null
+    /** If true, fetches are never answered (Mac asleep / half-open connection). */
+    @Volatile var ignoreFetch = false
     val uploads = CopyOnWriteArrayList<File>()
     private val receivers = java.util.concurrent.ConcurrentHashMap<String, FileReceiver>()
     val server = ServerSocket(0)
@@ -64,6 +66,8 @@ class MultiFakeMac(private val key: ByteArray, var rejectKey: Boolean = false, p
                     serveFetch(socket, challenge, message.id)
                 } else if (message is Message.FileStart && uploadDir != null) {
                     receivers[message.id] = FileReceiver(message, uploadDir)
+                } else if (message is Message.FileError) {
+                    receivers.remove(message.id)?.abort()
                 } else if (message is Message.FileChunk || message is Message.FileEnd) {
                     val id = if (message is Message.FileChunk) message.id else (message as Message.FileEnd).id
                     receivers[id]?.accept(message)?.let { uploads.add(it); receivers.remove(id) }
@@ -80,6 +84,7 @@ class MultiFakeMac(private val key: ByteArray, var rejectKey: Boolean = false, p
     }
 
     private fun serveFetch(socket: Socket, challenge: ByteArray, id: String) {
+        if (ignoreFetch) return
         refused[id]?.let { write(socket, challenge, Message.FileError(id, it)); return }
         val bytes = served[id] ?: run { write(socket, challenge, Message.FileError(id, "expired")); return }
         val sender = FileSender(id, { ByteArrayInputStream(bytes) }, "file.pdf", "application/pdf", bytes.size.toLong())

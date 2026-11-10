@@ -44,6 +44,8 @@ class SyncLoop(
 
     private class PendingFetch(val id: String, val dir: File) {
         val done = CountDownLatch(1)
+        /** Counted down when the Mac starts answering (file-start or file-error). */
+        val started = CountDownLatch(1)
         @Volatile var file: File? = null
         @Volatile var reason: String? = null
         @Volatile var receiver: FileReceiver? = null
@@ -105,7 +107,7 @@ class SyncLoop(
      * Fetches Mac offer [id] into [dir], blocking until the file has arrived and been verified.
      * Concurrent calls for the same id share one transfer. Never call on the main thread.
      */
-    fun fetch(id: String, dir: File, timeoutMs: Long = 60_000): File {
+    fun fetch(id: String, dir: File, timeoutMs: Long = 60_000, firstDataMs: Long = timeoutMs): File {
         var isNew = false
         val pending = synchronized(fetches) {
             fetches[id] ?: PendingFetch(id, dir).also { fetches[id] = it; isNew = true }
@@ -114,7 +116,11 @@ class SyncLoop(
             val conn = connection
             if (conn == null || !conn.sendControl(Message.Fetch(id))) fail(pending, "not-connected")
         }
-        if (!pending.done.await(timeoutMs, TimeUnit.MILLISECONDS)) fail(pending, "timeout")
+        val begin = System.currentTimeMillis()
+        // A Mac that never starts answering (asleep, half-open connection) fails fast, so a paste doesn't freeze.
+        if (!pending.started.await(firstDataMs, TimeUnit.MILLISECONDS) && pending.done.count > 0) fail(pending, "timeout")
+        val left = (timeoutMs - (System.currentTimeMillis() - begin)).coerceAtLeast(0)
+        if (!pending.done.await(left, TimeUnit.MILLISECONDS)) fail(pending, "timeout")
         pending.file?.let { return it }
         throw FileFetchException(pending.reason ?: "io")
     }
@@ -124,8 +130,15 @@ class SyncLoop(
         if (size < 0 || size > FileLimit.MAX_BYTES) return false
         val conn = connection ?: return false
         val sender = FileSender(UUID.randomUUID().toString(), input, name, mime, size)
-        if (!conn.sendControl(sender.start())) return false
-        for (chunk in sender.chunks()) if (!conn.sendChunk(chunk)) return false
+        val start = try { sender.start() } catch (_: Exception) { return false }
+        if (!conn.sendControl(start)) return false
+        try {
+            for (chunk in sender.chunks()) if (!conn.sendChunk(chunk)) return false
+        } catch (_: Exception) {
+            // Reading the shared file failed midway: tell the Mac to throw away the partial file.
+            conn.sendControl(Message.FileError(sender.id, "cancelled"))
+            return false
+        }
         conn.sendChunk(sender.end())  // via the chunk queue so it can't overtake the last chunks
     }
 
@@ -144,6 +157,7 @@ class SyncLoop(
             }
             is Message.OfferClear -> callbacks.onOffer(null)
             is Message.FileStart -> fetches[message.id]?.let { p ->
+                p.started.countDown()
                 try { p.receiver = FileReceiver(message, p.dir) } catch (_: Exception) { fail(p, "too-large") }
             }
             is Message.FileChunk, is Message.FileEnd -> {
@@ -160,7 +174,7 @@ class SyncLoop(
                     fail(p, "bad-data")
                 }
             }
-            is Message.FileError -> fetches[message.id]?.let { fail(it, message.reason) }
+            is Message.FileError -> fetches[message.id]?.let { it.started.countDown(); fail(it, message.reason) }
             else -> {}
         }
     }

@@ -70,7 +70,15 @@ class SyncService : Service() {
         /** Fetch (and verify) the Mac's offered file. Blocking; used by FileOfferProvider on a binder thread. */
         fun fetchOffer(id: String, dir: File): File {
             val loop = instance?.loop ?: throw java.io.FileNotFoundException("not connected to your Mac")
-            return try { loop.fetch(id, dir) } catch (e: FileFetchException) {
+            return try {
+                loop.fetch(id, dir, timeoutMs = 20_000, firstDataMs = 4_000)  // the pasting app is waiting
+            } catch (e: FileFetchException) {
+                instance?.toast(when (e.reason) {
+                    "expired" -> "That file is no longer on your Mac's clipboard"
+                    "changed" -> "The file changed on your Mac — copy it again"
+                    "timeout", "not-connected", "io" -> "Couldn't reach your Mac"
+                    else -> "Couldn't get the file from your Mac"
+                })
                 throw java.io.FileNotFoundException(e.reason)
             }
         }
@@ -151,6 +159,8 @@ class SyncService : Service() {
     }
 
     private val io = Executors.newSingleThreadExecutor()
+
+    fun toast(text: String) = main.post { android.widget.Toast.makeText(this, text, android.widget.Toast.LENGTH_SHORT).show() }
 
     /**
      * Tell Android (13+) this clip came from another device (ClipDescription.EXTRA_IS_REMOTE_DEVICE).

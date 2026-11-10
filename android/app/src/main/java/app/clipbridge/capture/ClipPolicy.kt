@@ -23,3 +23,9 @@ class OwnWriteWindow(private val windowMs: Long = 2_000, private val clock: () -
 
 /** App-wide instance: the sync service marks its writes, the accessibility service checks them. */
 val OwnWrites = OwnWriteWindow { SystemClock.elapsedRealtime() }
+
+/** Which shared URIs "Share → Send to Mac" may read: other apps' content only, never raw paths or our own files. */
+object SharePolicy {
+    fun accepts(scheme: String?, authority: String?): Boolean =
+        scheme == "content" && authority != null && authority != app.clipbridge.files.Files.AUTHORITY
+}
