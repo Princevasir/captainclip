@@ -27,10 +27,19 @@ class FileOfferProvider : ContentProvider() {
 
     private fun offerFor(uri: Uri) = Files.idFrom(uri)?.let { id -> Files.cache(context!!).current()?.takeIf { it.id == id } }
 
-    override fun getType(uri: Uri): String? = offerFor(uri)?.mime
+    override fun getType(uri: Uri): String? = offerFor(uri)?.mime.also { log("getType -> $it", uri) }
+
+    override fun getStreamTypes(uri: Uri, mimeTypeFilter: String): Array<String>? =
+        offerFor(uri)?.mime?.takeIf { PreviewGuard.matches(mimeTypeFilter, it) }?.let { arrayOf(it) }
+            .also { log("getStreamTypes($mimeTypeFilter) -> ${it?.toList()}", uri) }
+
+    override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
+        Log.i(TAG, "call($method, $arg, ${extras?.keySet()}) by ${runCatching { callingPackage }.getOrNull()}")
+        return null
+    }
 
     override fun query(uri: Uri, projection: Array<out String>?, selection: String?, args: Array<out String>?, sort: String?): Cursor {
-        log("query", uri)
+        log("query(projection=${projection?.toList()}, selection=$selection)", uri)
         val offer = offerFor(uri)
         val columns = projection ?: arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)
         return MatrixCursor(columns).apply {
