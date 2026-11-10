@@ -70,7 +70,7 @@ class BleLink private constructor(private val gatt: BluetoothGatt, private val c
         }
 
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
-            payloadSize = (mtu - 3).coerceAtLeast(20)
+            payloadSize = app.clipbridge.core.PacketSize.forMtu(mtu)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 gatt.setPreferredPhy(BluetoothDevice.PHY_LE_2M_MASK, BluetoothDevice.PHY_LE_2M_MASK, BluetoothDevice.PHY_OPTION_NO_PREFERRED)
             }

@@ -161,6 +161,7 @@ public final class Server {
             guard let self, let session else { return }
             self.pending[ObjectIdentifier(session)] = nil
             if self.active === session {
+                bleLog.info("active session closed (bluetooth=\(session.isBluetooth))")
                 self.active = nil
                 self.onStatus?(.waiting)
             }
@@ -192,6 +193,7 @@ public final class Server {
         active = session
         old?.onClose = nil
         old?.close()
+        bleLog.info("connected bluetooth=\(session.isBluetooth)")
         onStatus?(.connected(device: device))
     }
 

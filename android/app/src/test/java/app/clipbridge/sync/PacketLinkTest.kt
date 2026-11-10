@@ -60,6 +60,14 @@ class PacketStreamTest {
         try { out.write(ByteArray(50)); fail() } catch (_: java.io.IOException) {}
     }
 
+    @Test fun packetSizeNeverExceedsTheBluetoothAttributeLimit() {
+        // An attribute value is at most 512 bytes; the Mac drops longer writes even when MTU 517 was agreed.
+        assertEquals(512, app.clipbridge.core.PacketSize.forMtu(517))
+        assertEquals(512, app.clipbridge.core.PacketSize.forMtu(515))
+        assertEquals(182, app.clipbridge.core.PacketSize.forMtu(185))
+        assertEquals(20, app.clipbridge.core.PacketSize.forMtu(23))
+    }
+
     @Test fun pairingTagMatchesMac() {
         assertEquals("9f9f5111", PairingTag.hexOf("0123456789abcdef"))
         assertEquals("9f9f5111", PairingTag.localName("0123456789abcdef"))  // fits with the service UUID in 31 bytes

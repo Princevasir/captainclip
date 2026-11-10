@@ -1,5 +1,8 @@
 import CoreBluetooth
 import Foundation
+import os
+
+let bleLog = Logger(subsystem: "app.clipbridge.mac", category: "ble")
 
 /// UUIDs shared with the Android app.
 public enum BLEIds {
@@ -88,12 +91,14 @@ public final class BLEServer: NSObject, CBPeripheralManagerDelegate {
         guard characteristic.uuid == BLEIds.toPhone, toPhone != nil else { return }
         // Each device gets its own link; only one that completes the encrypted handshake replaces the phone's session.
         centrals[central.identifier] = central
+        bleLog.info("subscribe \(central.identifier, privacy: .public) max=\(central.maximumUpdateValueLength)")
         server.accept(transport: links.subscribed(central.identifier))
     }
 
     public func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral,
                                   didUnsubscribeFrom characteristic: CBCharacteristic) {
         guard characteristic.uuid == BLEIds.toPhone else { return }
+        bleLog.info("unsubscribe \(central.identifier, privacy: .public)")
         links.unsubscribed(central.identifier)
         centrals[central.identifier] = nil
     }
@@ -103,6 +108,8 @@ public final class BLEServer: NSObject, CBPeripheralManagerDelegate {
             if request.characteristic.uuid == BLEIds.toMac, let value = request.value,
                let link = links.link(for: request.central.identifier) {
                 link.received(value)
+            } else {
+                bleLog.info("write dropped from \(request.central.identifier, privacy: .public) len=\(request.value?.count ?? -1)")
             }
         }
         if let first = requests.first { peripheral.respond(to: first, withResult: .success) }
@@ -169,6 +176,7 @@ final class BLEPeripheralTransport: Transport {
     }
 
     func cancel() {
+        bleLog.info("transport cancelled")
         bleQueue.async { self.closed = true; self.outbox.removeAll() }
     }
 

@@ -66,3 +66,9 @@ object PairingTag {
     /** Advertised name = tag hex only: anything longer doesn't fit beside the service UUID and macOS drops it. */
     fun localName(macId: String) = hexOf(macId)
 }
+
+/** Bytes per Bluetooth write: MTU − 3 (ATT header), but never above 512, the largest attribute value allowed. */
+object PacketSize {
+    const val MAX_ATTRIBUTE = 512
+    fun forMtu(mtu: Int): Int = (mtu - 3).coerceIn(20, MAX_ATTRIBUTE)
+}
