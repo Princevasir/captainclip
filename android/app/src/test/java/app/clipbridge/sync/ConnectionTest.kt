@@ -27,10 +27,12 @@ private class FakeMac(key: ByteArray, private val autoAck: Boolean = true) {
     val received = LinkedBlockingQueue<Message>()
     val challenge = ByteArray(16).also { SecureRandom().nextBytes(it) }
     @Volatile lateinit var socket: Socket
+    private val accepted = java.util.concurrent.CountDownLatch(1)
     var closeAfterHello = false
 
     fun acceptInBackground() = Thread {
         socket = server.accept()
+        accepted.countDown()
         socket.getOutputStream().write(Frame.encode(challenge))
         val reader = FrameReader(socket.getInputStream())
         try {
@@ -47,6 +49,7 @@ private class FakeMac(key: ByteArray, private val autoAck: Boolean = true) {
     }.apply { isDaemon = true; start() }
 
     fun send(message: Message, direction: Direction = Direction.MAC_TO_PHONE, with: ClipCrypto = crypto) {
+        accepted.await(3, TimeUnit.SECONDS)  // tests may send before the phone has connected
         val box = with.seal(message.toJson().toByteArray(), aad = ClipCrypto.sessionAad(direction, challenge))
         synchronized(this) { socket.getOutputStream().write(Frame.encode(box)) }
     }
@@ -95,6 +98,14 @@ class ConnectionTest {
         val conn = connect()
         events.connected.await()
         assertEquals("FakeMac", conn.macName)
+    }
+
+    @Test fun silenceAfterHelloIsALostLinkNotAPairingFailure() {
+        // A slow or dropped Bluetooth link times out; that must not count towards "scan the QR again".
+        mac = FakeMac(key, autoAck = false)
+        connect(mac.also { it.acceptInBackground() }, readTimeoutMs = 300)
+        mac.received.await()
+        assertEquals(Connection.CloseReason.LOST, events.closed.await())
     }
 
     @Test fun notConnectedUntilMacProvesKey() {

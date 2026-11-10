@@ -134,6 +134,8 @@ class Connection(
             return close(CloseReason.AUTH_FAILED)
         } catch (_: IllegalArgumentException) {
             return close(CloseReason.AUTH_FAILED)
+        } catch (_: java.net.SocketTimeoutException) {
+            return close(CloseReason.LOST)  // silence (slow or dropped link) says nothing about the key
         } catch (_: IOException) {
             // The real Mac hangs up right after a hello it can't decrypt (wrong/stale key).
             return close(if (helloSent && !acked) CloseReason.AUTH_FAILED else CloseReason.LOST)
