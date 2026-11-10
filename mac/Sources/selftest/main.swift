@@ -6,6 +6,9 @@ do {
     try messageTests()
     try pairingTests()
     loopGuardTests()
+    try serverTests()
+    try wrongKeyTests()
+    try idleTimeoutTests()
 } catch {
     failures += 1
     print("FAIL: unexpected error \(error)")

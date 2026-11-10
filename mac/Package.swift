@@ -7,5 +7,6 @@ let package = Package(
     targets: [
         .target(name: "ClipBridgeCore"),
         .executableTarget(name: "selftest", dependencies: ["ClipBridgeCore"]),
+        .executableTarget(name: "probe", dependencies: ["ClipBridgeCore"]),
     ]
 )
