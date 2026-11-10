@@ -7,11 +7,12 @@
     <key>CFBundleExecutable</key><string>ClipBridge</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
-    <key>CFBundleShortVersionString</key><string>0.2.0</string>
+    <key>CFBundleShortVersionString</key><string>0.3.0</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>LSMinimumSystemVersion</key><string>13.0</string>
     <key>LSUIElement</key><true/>
     <key>NSLocalNetworkUsageDescription</key><string>ClipBridge talks to your phone on this Wi-Fi to share the clipboard.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key><string>ClipBridge uses Bluetooth to keep your phone's clipboard connected when you're not on the same Wi-Fi.</string>
     <key>NSBonjourServices</key><array><string>_clipbridge._tcp</string></array>
 </dict>
 </plist>

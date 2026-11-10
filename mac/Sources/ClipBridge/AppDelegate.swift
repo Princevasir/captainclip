@@ -10,6 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let statusLine = NSMenuItem(title: "Starting…", action: nil, keyEquivalent: "")
     private let detailLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let offerLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let bluetoothLine = NSMenuItem(title: "Bluetooth fallback: starting…", action: nil, keyEquivalent: "")
+    private var bleServer: BLEServer?
     private let pauseItem = NSMenuItem(title: "Pause syncing", action: #selector(togglePause), keyEquivalent: "")
     private let loginItem = NSMenuItem(title: "Start ClipBridge at login", action: #selector(toggleLogin), keyEquivalent: "")
     private var bridge: Bridge?
@@ -50,6 +52,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(statusLine)
         menu.addItem(detailLine)
         menu.addItem(offerLine)
+        bluetoothLine.isEnabled = false
+        menu.addItem(bluetoothLine)
         menu.addItem(.separator())
         menu.addItem(item("Pair phone…", #selector(showPairing), key: "p"))
         pauseItem.target = self
@@ -122,6 +126,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         self.server = server
         self.bridge = bridge
+        bleServer?.stop()
+        let ble = BLEServer(server: server, macId: pairing.macId)
+        ble.onState = { [weak self] state in
+            self?.bluetoothLine.title = switch state {
+            case .ready: "Bluetooth fallback: ready"
+            case .starting: "Bluetooth fallback: starting…"
+            case .poweredOff: "Bluetooth fallback: Bluetooth is off"
+            case .notAllowed: "Bluetooth fallback: not allowed (System Settings → Privacy & Security → Bluetooth)"
+            case .unsupported: "Bluetooth fallback: unavailable"
+            }
+        }
+        bleServer = ble
     }
 
     private func show(_ status: Server.Status) {
