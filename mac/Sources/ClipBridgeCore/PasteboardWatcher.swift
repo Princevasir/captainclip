@@ -12,6 +12,8 @@ public final class PasteboardWatcher {
     public var onText: ((String) -> Void)?
     /// Exactly one regular file ≤ 25 MB was copied (e.g. ⌘C in Finder).
     public var onFile: ((URL) -> Void)?
+    /// An image (not a file) was copied, e.g. a ⌃⇧⌘4 screenshot. PNG bytes.
+    public var onImage: ((Data) -> Void)?
     /// Files were copied but can't be offered (several files, a folder, or too large).
     public var onIgnoredFiles: (() -> Void)?
 
@@ -46,6 +48,14 @@ public final class PasteboardWatcher {
     public func write(_ text: String) {
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
+        lastChangeCount = pasteboard.changeCount
+    }
+
+    /// Puts an image on the pasteboard (PNG + TIFF) without reporting it back through onImage.
+    public func writeImage(_ png: Data) {
+        pasteboard.clearContents()
+        pasteboard.setData(png, forType: .png)
+        if let tiff = NSImage(data: png)?.tiffRepresentation { pasteboard.setData(tiff, forType: .tiff) }
         lastChangeCount = pasteboard.changeCount
     }
 
@@ -110,6 +120,10 @@ public final class PasteboardWatcher {
         if !files.isEmpty {
             // A Finder copy: never send the accompanying file names as text.
             if let url = Self.offerable(files) { onFile?(url) } else { onIgnoredFiles?() }
+            return
+        }
+        if ClipboardImage.isImageCopy(pasteboard) {
+            if let png = ClipboardImage.png(from: pasteboard), png.count <= FileLimit.maxBytes { onImage?(png) } else { onIgnoredFiles?() }
             return
         }
         guard let text = pasteboard.string(forType: .string), !text.isEmpty else { return }

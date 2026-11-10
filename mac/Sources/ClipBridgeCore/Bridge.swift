@@ -15,16 +15,19 @@ public final class Bridge {
     private let watcher: PasteboardWatcher
     private let offers: OfferStore
     private let downloads: URL
+    private let imageCache: URL
     private let loopGuard = LoopGuard()
     private let files = DispatchQueue(label: "clipbridge.bridge.files")
     private var receivers: [String: FileReceiver] = [:]  // on `files`
 
     public init(server: Server, watcher: PasteboardWatcher, offers: OfferStore = OfferStore(),
-                downloads: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]) {
+                downloads: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0],
+                imageCache: URL = ClipboardImage.defaultCache) {
         self.server = server
         self.watcher = watcher
         self.offers = offers
         self.downloads = downloads
+        self.imageCache = imageCache
     }
 
     public func start() throws {
@@ -40,6 +43,11 @@ public final class Bridge {
             self.server.cancelStream()  // stop sending the previous offer, if a paste was in progress
             self.server.send(message: offer)  // just name/type/size; content waits for a fetch
             self.onOfferChanged?(url.lastPathComponent)
+        }
+        watcher.onImage = { [weak self] png in
+            // Offered like a file: only name/type/size go to the phone until it pastes.
+            guard let self, !self.paused, let url = try? ClipboardImage.save(png, in: self.imageCache) else { return }
+            self.watcher.onFile?(url)
         }
         watcher.onIgnoredFiles = { [weak self] in self?.clearOffer() }
         server.onRichClip = { [weak self] text, html in
