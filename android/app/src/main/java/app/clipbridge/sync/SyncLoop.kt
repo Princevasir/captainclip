@@ -81,6 +81,9 @@ class SyncLoop(
     /** A paste/save or an upload is in progress (switching links now would break it). */
     private val busy: Boolean get() = fetches.isNotEmpty() || uploads.get() > 0
 
+    /** Woken by [wake] (a network appeared) so the Bluetooth→Wi-Fi check runs right away. */
+    private val probeSignal = Object()
+    @Volatile private var probeNow = false
     @Volatile private var bluetoothMisses = 0
     @Volatile private var bluetoothNotBefore = 0L
 
@@ -124,10 +127,13 @@ class SyncLoop(
     }
 
     /** Skip the current back-off wait (e.g. Wi-Fi came back). */
-    fun wake() = synchronized(lock) {
-        bluetoothNotBefore = 0  // the network changed: worth looking over Bluetooth again
-        wakeRequested = true
-        lock.notifyAll()
+    fun wake() {
+        synchronized(lock) {
+            bluetoothNotBefore = 0  // the network changed: worth looking over Bluetooth again
+            wakeRequested = true
+            lock.notifyAll()
+        }
+        synchronized(probeSignal) { probeNow = true; probeSignal.notifyAll() }
     }
 
     /** Send text to the Mac. False if not connected, too large, or it is an echo of what the Mac sent. */
@@ -313,7 +319,10 @@ class SyncLoop(
                     // On Bluetooth: keep checking Wi-Fi and move back as soon as it works.
                     try {
                         while (closed.count > 0 && alive(gen)) {
-                            Thread.sleep(wifiProbeIntervalMs)
+                            synchronized(probeSignal) {
+                                if (!probeNow) probeSignal.wait(wifiProbeIntervalMs)
+                                probeNow = false
+                            }
                             // Never switch mid-transfer: a Bluetooth paste or upload would fail.
                             if (closed.count > 0 && !busy && probeWifi(info)) { wifiFailures = 0; conn.close(); break }
                         }

@@ -134,6 +134,26 @@ class PathSelectionReviewTest {
         assertTrue("moves to Wi-Fi once the transfer is over", eventually { l.path == SyncLoop.Path.WIFI })
     }
 
+    @Test fun wifiComingBackIsTriedRightAway() {
+        val l = SyncLoop(
+            pairing = { PairingInfo("0123456789abcdef", key, "127.0.0.1", mac.port) },
+            locate = { null }, device = "phone",
+            callbacks = object : SyncLoop.Callbacks {
+                override fun onStatus(status: SyncLoop.Status) { statuses.add(status) }
+                override fun onClip(text: String) {}
+            },
+            backoff = Backoff(longArrayOf(50)), pingIntervalMs = 500,
+            wifiLink = { host, port -> if (wifiUp.get()) TcpLink(host, port) else DeadLink() },
+            bluetoothLink = { PacketBridgeLink(mac.port) },
+            wifiProbe = { wifiUp.get() },
+            wifiProbeIntervalMs = 60_000,  // the regular check is far away
+        ).also { loop = it; it.start() }
+        assertTrue(eventually { l.path == SyncLoop.Path.BLUETOOTH })
+        wifiUp.set(true)
+        l.wake()  // Android: a network became available
+        assertTrue("switches to Wi-Fi without waiting for the next regular check", eventually(3_000) { l.path == SyncLoop.Path.WIFI })
+    }
+
     @Test fun bluetoothDialerThrowingDoesNotKillTheLoop() {
         start({ throw IllegalStateException("BT Adapter is not turned ON") })
         assertTrue(eventually { bleDials.get() >= 1 })
