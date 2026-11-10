@@ -23,7 +23,10 @@ public final class BLEServer: NSObject, CBPeripheralManagerDelegate {
     private let queue = DispatchQueue(label: "clipbridge.ble")
     private var manager: CBPeripheralManager!
     private var toPhone: CBMutableCharacteristic?
-    private var transport: BLEPeripheralTransport?
+    private lazy var links = CentralLinks<UUID, BLEPeripheralTransport>(make: { [unowned self] id in
+        BLEPeripheralTransport(manager: self.manager, characteristic: self.toPhone!, central: self.centrals[id]!, bleQueue: self.queue)
+    }, close: { $0.remoteClosed() })
+    private var centrals: [UUID: CBCentral] = [:]
 
     public init(server: Server, macId: String) {
         self.server = server
@@ -36,8 +39,8 @@ public final class BLEServer: NSObject, CBPeripheralManagerDelegate {
         queue.async {
             self.manager.stopAdvertising()
             self.manager.removeAllServices()
-            self.transport?.remoteClosed()
-            self.transport = nil
+            self.links.closeAll()
+            self.centrals.removeAll()
         }
     }
 
@@ -51,8 +54,8 @@ public final class BLEServer: NSObject, CBPeripheralManagerDelegate {
     public func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         switch peripheral.state {
         case .poweredOn: publish()
-        case .poweredOff: set(.poweredOff)
-        case .unauthorized: set(.notAllowed)
+        case .poweredOff: links.closeAll(); centrals.removeAll(); set(.poweredOff)
+        case .unauthorized: links.closeAll(); centrals.removeAll(); set(.notAllowed)
         case .unsupported: set(.unsupported)
         default: break
         }
@@ -81,24 +84,23 @@ public final class BLEServer: NSObject, CBPeripheralManagerDelegate {
 
     public func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral,
                                   didSubscribeTo characteristic: CBCharacteristic) {
-        guard characteristic.uuid == BLEIds.toPhone, let toPhone else { return }
-        transport?.remoteClosed()  // newest phone link wins, like Wi-Fi
-        let link = BLEPeripheralTransport(manager: manager, characteristic: toPhone, central: central, bleQueue: queue)
-        transport = link
-        server.accept(transport: link)
+        guard characteristic.uuid == BLEIds.toPhone, toPhone != nil else { return }
+        // Each device gets its own link; only one that completes the encrypted handshake replaces the phone's session.
+        centrals[central.identifier] = central
+        server.accept(transport: links.subscribed(central.identifier))
     }
 
     public func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral,
                                   didUnsubscribeFrom characteristic: CBCharacteristic) {
-        guard let link = transport, link.central.identifier == central.identifier else { return }
-        link.remoteClosed()
-        transport = nil
+        guard characteristic.uuid == BLEIds.toPhone else { return }
+        links.unsubscribed(central.identifier)
+        centrals[central.identifier] = nil
     }
 
     public func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
         for request in requests {
             if request.characteristic.uuid == BLEIds.toMac, let value = request.value,
-               let link = transport, link.central.identifier == request.central.identifier {
+               let link = links.link(for: request.central.identifier) {
                 link.received(value)
             }
         }
@@ -106,7 +108,7 @@ public final class BLEServer: NSObject, CBPeripheralManagerDelegate {
     }
 
     public func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager) {
-        transport?.pump()
+        links.all.forEach { $0.pump() }
     }
 }
 
