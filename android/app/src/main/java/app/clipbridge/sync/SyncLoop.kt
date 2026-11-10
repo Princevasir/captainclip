@@ -34,7 +34,19 @@ class SyncLoop(
     private val pingIntervalMs: Long = 25_000,
     /** How to reach the Mac over Wi-Fi (tests swap in other links). */
     private val wifiLink: (host: String, port: Int) -> Link = { host, port -> TcpLink(host, port) },
+    /** Bluetooth fallback: finds and opens a BLE link to this Mac (blocking scan), or null if not found/allowed.
+     *  Null factory = no Bluetooth (no permission / no radio). */
+    private val bluetoothLink: ((PairingInfo) -> Link?)? = null,
+    /** While on Bluetooth: is the Mac reachable over Wi-Fi again? Default: quick TCP connect. */
+    private val wifiProbe: ((PairingInfo) -> Boolean)? = null,
+    private val wifiProbeIntervalMs: Long = 30_000,
 ) {
+    enum class Path { WIFI, BLUETOOTH }
+
+    /** How we're connected right now (null when not connected). */
+    @Volatile var path: Path? = null
+        private set
+
     enum class Status { STOPPED, NOT_PAIRED, SEARCHING, CONNECTED, RETRYING, PAIRING_INVALID }
 
     interface Callbacks {
@@ -193,8 +205,14 @@ class SyncLoop(
         if (alive(gen)) callbacks.onStatus(status)
     }
 
+    private fun probeWifi(info: PairingInfo): Boolean = wifiProbe?.invoke(info) ?: run {
+        val (host, port) = runCatching { locate(info) }.getOrNull() ?: (info.host to info.port)
+        runCatching { java.net.Socket().use { it.connect(java.net.InetSocketAddress(host, port), 2_000) } }.isSuccess
+    }
+
     private fun run(gen: Int) {
         var authFailures = 0
+        var wifiFailures = 0
         try {
             while (alive(gen)) {
                 val info = pairing()
@@ -204,14 +222,31 @@ class SyncLoop(
                     continue
                 }
                 status(gen, Status.SEARCHING)
-                val (host, port) = locate(info) ?: (info.host to info.port)
+                // Wi-Fi first; Bluetooth only after two Wi-Fi attempts that never connected.
+                val useBluetooth = bluetoothLink != null && wifiFailures >= WIFI_FAILURES_BEFORE_BLUETOOTH
+                val link: Link = if (useBluetooth) {
+                    bluetoothLink!!.invoke(info) ?: run {
+                        wifiFailures = 0  // Mac not found over Bluetooth either: go back to trying Wi-Fi
+                        status(gen, Status.RETRYING)
+                        pause(gen, backoff.nextDelayMs())
+                        null
+                    } ?: continue
+                } else {
+                    val (host, port) = locate(info) ?: (info.host to info.port)
+                    wifiLink(host, port)
+                }
+                if (!alive(gen)) { link.close(); return }
 
                 val closed = CountDownLatch(1)
                 var reason = Connection.CloseReason.LOST
-                val conn = Connection(wifiLink(host, port), info.key, device, object : Connection.Listener {
+                var acked = false
+                val conn = Connection(link, info.key, device, object : Connection.Listener {
                     override fun onConnected() {
+                        acked = true
                         authFailures = 0
+                        if (!link.isBluetooth) wifiFailures = 0
                         backoff.reset()
+                        path = if (link.isBluetooth) Path.BLUETOOTH else Path.WIFI
                         status(gen, Status.CONNECTED)
                     }
                     override fun onClip(text: String) = onClip(text, null)
@@ -234,15 +269,28 @@ class SyncLoop(
                     connection = conn
                 }
                 conn.start()
+                val prober = if (link.isBluetooth) Thread({
+                    // On Bluetooth: keep checking Wi-Fi and move back as soon as it works.
+                    try {
+                        while (closed.count > 0 && alive(gen)) {
+                            Thread.sleep(wifiProbeIntervalMs)
+                            if (closed.count > 0 && probeWifi(info)) { wifiFailures = 0; conn.close(); break }
+                        }
+                    } catch (_: InterruptedException) {}
+                }, "clipbridge-wifi-probe").apply { isDaemon = true; start() } else null
                 try {
                     closed.await()
                 } finally {
+                    prober?.interrupt()
                     conn.close()
+                    path = null
                     synchronized(lock) { if (connection === conn) connection = null }
                     fetches.values.toList().forEach { fail(it, "io") }  // a dropped connection ends any fetch
                 }
                 if (!alive(gen)) return
 
+                if (!link.isBluetooth && !acked && reason == Connection.CloseReason.LOST) wifiFailures++
+                if (link.isBluetooth && wifiFailures > 0) wifiFailures = WIFI_FAILURES_BEFORE_BLUETOOTH - 1
                 if (reason == Connection.CloseReason.AUTH_FAILED) authFailures++
                 if (authFailures >= AUTH_FAILURES_BEFORE_INVALID) {
                     status(gen, Status.PAIRING_INVALID)
@@ -265,5 +313,6 @@ class SyncLoop(
     private companion object {
         const val JOIN_TIMEOUT_MS = 2_000L
         const val AUTH_FAILURES_BEFORE_INVALID = 3
+        const val WIFI_FAILURES_BEFORE_BLUETOOTH = 2
     }
 }

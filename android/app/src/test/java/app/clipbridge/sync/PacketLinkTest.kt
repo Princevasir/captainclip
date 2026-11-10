@@ -67,7 +67,7 @@ class PacketStreamTest {
 }
 
 /** A Link that crosses a 182-byte packet boundary in both directions before reaching a real (fake) Mac socket. */
-private class PacketBridgeLink(private val port: Int, private val mtu: Int = 182) : Link {
+internal class PacketBridgeLink(private val port: Int, private val mtu: Int = 182) : Link {
     override val isBluetooth = true
     private val socket = Socket()
     override fun open(readTimeoutMs: Int): Pair<InputStream, OutputStream> {
