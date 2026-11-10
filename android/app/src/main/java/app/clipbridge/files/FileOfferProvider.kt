@@ -38,23 +38,28 @@ class FileOfferProvider : ContentProvider() {
         }
     }
 
-    override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor = open(uri, PreviewGuard.Method.OPEN_FILE, sizeHint = false)
+    override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
+        log("openFile", uri)
+        return open(uri, PreviewGuard.Method.OPEN_FILE, sizeHint = false, mimeFilter = null)
+    }
 
     override fun openTypedAssetFile(uri: Uri, mimeTypeFilter: String, opts: Bundle?): AssetFileDescriptor {
         log("openTypedAssetFile($mimeTypeFilter, opts=${opts?.keySet()})", uri)
-        // Thumbnail/preview-style access is refused (pull-only); paste targets use openFile/openInputStream.
-        throw FileNotFoundException("previews are not served")
+        // Gmail and My Files paste this way; previews (image of a PDF, thumbnail sizes, the keyboard) are refused.
+        val sizeHint = opts?.containsKey(android.content.ContentResolver.EXTRA_SIZE) == true
+        val pfd = open(uri, PreviewGuard.Method.OPEN_TYPED_ASSET, sizeHint, mimeTypeFilter)
+        return AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH)
     }
 
-    private fun open(uri: Uri, method: PreviewGuard.Method, sizeHint: Boolean): ParcelFileDescriptor {
-        log("openFile", uri)
+    private fun open(uri: Uri, method: PreviewGuard.Method, sizeHint: Boolean, mimeFilter: String?): ParcelFileDescriptor {
         val cache = Files.cache(context!!)
         val offer = offerFor(uri) ?: throw FileNotFoundException("offer expired")
         val since = cache.msSinceOffer() ?: 0
-        if (!PreviewGuard.allow(method, callingPackage, blockedCallers(), since, sizeHint)) {
+        if (!PreviewGuard.allow(method, callingPackage, blockedCallers(), since, sizeHint, mimeFilter, offer.mime)) {
             Log.i(TAG, "refused ${callingPackage} (${since} ms after offer)")
             throw FileNotFoundException("not a paste")
         }
+        Log.i(TAG, "serving ${offer.name} to $callingPackage")
         val file = cache.cachedFile(offer.id) ?: SyncService.fetchOffer(offer.id, cache.fetchDir).also { cache.store(offer.id, it) }
         return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
     }

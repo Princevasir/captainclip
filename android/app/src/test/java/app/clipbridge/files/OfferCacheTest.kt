@@ -98,27 +98,42 @@ class OfferCacheTest {
 
 class PreviewGuardTest {
     private val blocked = setOf("com.samsung.android.honeyboard", "com.android.systemui")
+    private val pdf = "application/pdf"
+    private fun allow(method: PreviewGuard.Method, caller: String?, ms: Long = 5_000, filter: String? = null, sizeHint: Boolean = false) =
+        PreviewGuard.allow(method, caller, blocked, ms, sizeHint, filter, pdf)
 
     @Test fun pasteIntoGmailIsAllowed() {
-        assertTrue(PreviewGuard.allow(PreviewGuard.Method.OPEN_FILE, "com.google.android.gm", blocked, 5_000, sizeHint = false))
+        assertTrue(allow(PreviewGuard.Method.OPEN_FILE, "com.google.android.gm"))
     }
 
-    @Test fun thumbnailRequestsAreRefused() {
-        assertFalse(PreviewGuard.allow(PreviewGuard.Method.OPEN_TYPED_ASSET, "com.google.android.gm", blocked, 5_000, sizeHint = false))
-        assertFalse(PreviewGuard.allow(PreviewGuard.Method.OPEN_FILE, "com.google.android.gm", blocked, 5_000, sizeHint = true))
+    @Test fun gmailAndMyFilesPasteViaTypedAssetIsAllowed() {
+        // Measured on the S25 Ultra: both paste with openTypedAssetFile("*/*").
+        assertTrue(allow(PreviewGuard.Method.OPEN_TYPED_ASSET, "com.google.android.gm", filter = "*/*"))
+        assertTrue(allow(PreviewGuard.Method.OPEN_TYPED_ASSET, "com.sec.android.app.myfiles", filter = "*/*"))
+        assertTrue(allow(PreviewGuard.Method.OPEN_TYPED_ASSET, "com.google.android.gm", filter = "application/*"))
+    }
+
+    @Test fun imagePreviewOfAPdfIsRefused() {
+        assertFalse(allow(PreviewGuard.Method.OPEN_TYPED_ASSET, "com.google.android.gm", filter = "image/*"))
+    }
+
+    @Test fun thumbnailSizedRequestsAreRefused() {
+        assertFalse(allow(PreviewGuard.Method.OPEN_TYPED_ASSET, "com.google.android.gm", filter = "*/*", sizeHint = true))
     }
 
     @Test fun keyboardAndSystemClipboardUiAreRefused() {
-        assertFalse(PreviewGuard.allow(PreviewGuard.Method.OPEN_FILE, "com.samsung.android.honeyboard", blocked, 5_000, sizeHint = false))
-        assertFalse(PreviewGuard.allow(PreviewGuard.Method.OPEN_FILE, "com.android.systemui", blocked, 5_000, sizeHint = false))
+        // Samsung Keyboard asks for image/* and */* the moment a file is copied — never a paste.
+        assertFalse(allow(PreviewGuard.Method.OPEN_TYPED_ASSET, "com.samsung.android.honeyboard", filter = "*/*"))
+        assertFalse(allow(PreviewGuard.Method.OPEN_FILE, "com.samsung.android.honeyboard"))
+        assertFalse(allow(PreviewGuard.Method.OPEN_FILE, "com.android.systemui"))
     }
 
     @Test fun opensInTheFirstSecondAfterTheOfferAreRefused() {
-        assertFalse(PreviewGuard.allow(PreviewGuard.Method.OPEN_FILE, "com.google.android.gm", blocked, 999, sizeHint = false))
-        assertTrue(PreviewGuard.allow(PreviewGuard.Method.OPEN_FILE, "com.google.android.gm", blocked, 1_000, sizeHint = false))
+        assertFalse(allow(PreviewGuard.Method.OPEN_FILE, "com.google.android.gm", ms = 999))
+        assertTrue(allow(PreviewGuard.Method.OPEN_FILE, "com.google.android.gm", ms = 1_000))
     }
 
     @Test fun unknownCallerIsAllowedAfterTheFirstSecond() {
-        assertTrue(PreviewGuard.allow(PreviewGuard.Method.OPEN_FILE, null, blocked, 2_000, sizeHint = false))
+        assertTrue(allow(PreviewGuard.Method.OPEN_FILE, null, ms = 2_000))
     }
 }
