@@ -171,7 +171,7 @@ class SyncService : Service() {
             notifications.cancel(OFFER_NOTIFICATION_ID)
             return
         }
-        cache.set(offer)
+        if (!cache.set(offer)) return  // already have it: don't overwrite newer copies made on the phone
         main.post {
             runCatching {
                 OwnWrites.markNow()

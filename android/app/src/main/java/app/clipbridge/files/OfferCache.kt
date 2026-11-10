@@ -15,10 +15,13 @@ class OfferCache(private val dir: File, private val lifetimeMs: Long = 10 * 60_0
 
     init { dir.mkdirs() }
 
-    @Synchronized fun set(newOffer: Message.Offer) {
+    /** Returns false if [newOffer] is the offer we already hold (e.g. re-sent after a reconnect). */
+    @Synchronized fun set(newOffer: Message.Offer): Boolean {
+        if (current()?.id == newOffer.id) return false
         dropCopy()
         offer = newOffer
         receivedAt = now()
+        return true
     }
 
     @Synchronized fun clear() {

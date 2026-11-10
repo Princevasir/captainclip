@@ -44,6 +44,7 @@ public final class Bridge {
         server.onClip = { [weak self] text in
             DispatchQueue.main.async {
                 guard let self, !self.paused else { return }
+                self.clearOffer()  // the Mac clipboard no longer holds the offered file
                 self.loopGuard.markReceived(text)
                 self.watcher.write(text)
                 self.onReceived?(text)
@@ -106,6 +107,7 @@ public final class Bridge {
                 if let url = try receiver.accept(message) {
                     receivers[id] = nil
                     DispatchQueue.main.async {
+                        self.clearOffer()
                         self.watcher.writeFile(url)
                         self.onFileReceived?(url)
                     }

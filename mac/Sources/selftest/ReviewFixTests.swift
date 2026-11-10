@@ -57,3 +57,34 @@ func refetchWhileStreamingTests() throws {
     check(waitUntil(15) { second.all.count == 1 }, "second fetch during a stream completes instead of hanging")
     check(second.all.first.flatMap { try? Data(contentsOf: $0) } == (try? Data(contentsOf: big)), "second fetch bytes identical")
 }
+
+/// Something arriving from the phone replaces the Mac clipboard, so the old file offer must go —
+/// otherwise a phone reconnect would re-send it and overwrite what the user copied on the phone.
+func phoneCopyClearsOfferTests() throws {
+    let (bridge, server, board, src, downloads, key, statuses) = try makeBridge("clear")
+    defer { bridge.stop(); board.releaseGlobally(); [src, downloads].forEach { try? FileManager.default.removeItem(at: $0) } }
+    let (phone, _, _) = makeClient(server, key: key)
+    let messages = Recorder<Message>()
+    phone.onMessage = { messages.add($0) }
+    _ = waitUntil { statuses.all.last == .connected(device: "probe") }
+
+    finderCopy([randomFile(src, name: "a.pdf", bytes: 1000)], on: board)
+    _ = waitUntil { messages.all.contains { if case .offer = $0 { return true } else { return false } } }
+    phone.send(text: "copied on phone")
+    check(waitUntil { messages.all.contains(.offerClear) }, "text from the phone clears the Mac's file offer")
+    phone.stop()
+    _ = waitUntil { statuses.all.last == .waiting }
+
+    let (phone2, _, _) = makeClient(server, key: key)
+    defer { phone2.stop() }
+    let after = Recorder<Message>()
+    phone2.onMessage = { after.add($0) }
+    _ = waitUntil { statuses.all.last == .connected(device: "probe") }
+    RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+    check(!after.all.contains { if case .offer = $0 { return true } else { return false } }, "reconnect does not re-send the old offer")
+
+    finderCopy([randomFile(src, name: "b.pdf", bytes: 1000)], on: board)
+    _ = waitUntil { after.all.contains { if case .offer = $0 { return true } else { return false } } }
+    phone2.sendFile(url: randomFile(src, name: "from-phone.pdf", bytes: 1000))
+    check(waitUntil(5) { after.all.contains(.offerClear) }, "a file from the phone also clears the offer")
+}

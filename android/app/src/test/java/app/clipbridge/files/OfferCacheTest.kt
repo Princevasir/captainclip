@@ -82,6 +82,13 @@ class OfferCacheTest {
         assertNull(cache.cachedFile("o1"))
     }
 
+    @Test fun sameOfferAgainIsNotNew() {
+        // A reconnect re-sends the current offer; the phone must not re-place it over newer phone copies.
+        assertTrue(cache.set(offer))
+        assertFalse(cache.set(offer))
+        assertTrue(cache.set(Message.Offer("o2", "b.pdf", "application/pdf", 3, 2)))
+    }
+
     @Test fun reportsTimeSinceOffer() {
         cache.set(offer)
         now += 1_500

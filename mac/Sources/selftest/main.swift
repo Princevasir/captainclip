@@ -23,6 +23,7 @@ do {
     try bridgeUploadAbortTests()
     try reconnectMidUploadTests()
     try refetchWhileStreamingTests()
+    try phoneCopyClearsOfferTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()
