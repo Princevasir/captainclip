@@ -29,6 +29,8 @@ do {
     brandIconTests()
     menuTextTests()
     try richMessageTests()
+    packetizerTests()
+    try sessionOverBluetoothTests()
     try richTextTests()
     try bridgeRichTextTests()
     richTextSafetyTests()
