@@ -1,7 +1,7 @@
 import ClipBridgeCore
 import Foundation
 
-// Usage: probe "<clipbridge://pair?...>" [send "<text>"]
+// Usage: probe "<clipbridge://pair?...>" [send "<text>" ["<html>"]]
 // Acts like a phone: connects, prints every clip from the Mac, optionally sends one.
 let args = CommandLine.arguments
 guard args.count >= 2, let info = PairingInfo(uri: args[1]) else {
@@ -15,7 +15,7 @@ client.onState = { state in
     print("state: \(state)"); fflush(stdout)
     if state == .closed { exit(1) }
     if state == .connected, args.count >= 4, args[2] == "send" {
-        client.send(text: args[3])
+        client.send(text: args[3], html: args.count >= 5 ? args[4] : nil)
         print("sent: \(args[3])"); fflush(stdout)
     }
 }

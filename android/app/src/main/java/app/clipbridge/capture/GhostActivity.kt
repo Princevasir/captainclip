@@ -67,7 +67,9 @@ class GhostActivity : Activity() {
         val sensitive = clip?.description?.extras?.getBoolean(ClipPolicy.EXTRA_IS_SENSITIVE, false) ?: false
         val hasUri = clip?.getItemAt(0)?.uri != null
         if (ClipPolicy.shouldSend(text, sensitive, hasUri)) {
-            val sent = SyncService.send(text!!, clip?.getItemAt(0)?.htmlText)
+            val html = ClipHtml.of(clip?.getItemAt(0))
+            val sent = SyncService.send(text!!, html)
+            android.util.Log.i("ClipBridgeFiles", "phone copy → Mac: text ${text.length} chars, html ${html?.length ?: 0} chars, sent=$sent")
             if (intent.getBooleanExtra(EXTRA_ANNOUNCE, false)) {
                 Toast.makeText(this, if (sent) "Sent to Mac" else "Not connected to your Mac", Toast.LENGTH_SHORT).show()
             }

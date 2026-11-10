@@ -228,7 +228,7 @@ class MainActivity : Activity() {
         }
         toast(when {
             !ClipPolicy.shouldSend(text, sensitive) -> if (sensitive) "Passwords aren't sent" else "Your clipboard is empty"
-            SyncService.send(text!!, item?.htmlText) -> "Sent to Mac"
+            SyncService.send(text!!, app.clipbridge.capture.ClipHtml.of(item)) -> "Sent to Mac"
             else -> "Not connected to your Mac (or already sent)"
         })
     }

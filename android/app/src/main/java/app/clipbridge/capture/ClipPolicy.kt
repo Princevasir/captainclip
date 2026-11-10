@@ -24,6 +24,21 @@ class OwnWriteWindow(private val windowMs: Long = 2_000, private val clock: () -
 /** App-wide instance: the sync service marks its writes, the accessibility service checks them. */
 val OwnWrites = OwnWriteWindow { SystemClock.elapsedRealtime() }
 
+/**
+ * HTML for a copied clip item: the app's own HTML version if it put one, otherwise HTML converted from
+ * styled text (bold/italic/links copied out of an editable field arrive as styled text, not HTML).
+ */
+object ClipHtml {
+    fun of(item: android.content.ClipData.Item?): String? {
+        item ?: return null
+        item.htmlText?.takeIf { it.isNotBlank() }?.let { return it }
+        val styled = item.text as? android.text.Spanned ?: return null
+        val formatting = styled.getSpans(0, styled.length, android.text.style.CharacterStyle::class.java)
+        if (formatting.isEmpty()) return null
+        return android.text.Html.toHtml(styled, android.text.Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE)
+    }
+}
+
 /** Which shared URIs "Share → Send to Mac" may read: other apps' content only, never raw paths or our own files. */
 object SharePolicy {
     fun accepts(scheme: String?, authority: String?): Boolean =
