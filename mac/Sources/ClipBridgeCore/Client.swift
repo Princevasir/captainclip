@@ -39,7 +39,12 @@ public final class Client {
             host: NWEndpoint.Host(info.host),
             port: NWEndpoint.Port(rawValue: UInt16(info.port))!,
             using: .tcp)
-        let session = Session(connection: connection, crypto: try! ClipCrypto(key: info.key), queue: queue, role: .client)
+        start(transport: TCPTransport(connection))
+    }
+
+    /// Starts over any transport (tests use an in-memory Bluetooth-like link).
+    public func start(transport: Transport) {
+        let session = Session(transport: transport, crypto: try! ClipCrypto(key: info.key), queue: queue, role: .client)
         session.onChallenge = { [weak self, weak session] in
             guard let self, let session else { return }
             session.send(.hello(device: self.device))

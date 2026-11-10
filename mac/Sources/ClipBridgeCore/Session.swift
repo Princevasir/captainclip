@@ -10,7 +10,8 @@ final class Session {
 
     static let challengeBytes = 16
 
-    let connection: NWConnection
+    let transport: Transport
+    var isBluetooth: Bool { transport.isBluetooth }
     private let crypto: ClipCrypto
     private let queue: DispatchQueue
     private let role: Role
@@ -35,22 +36,18 @@ final class Session {
     private var inbound: Direction { role == .server ? .phoneToMac : .macToPhone }
     private var outbound: Direction { role == .server ? .macToPhone : .phoneToMac }
 
-    init(connection: NWConnection, crypto: ClipCrypto, queue: DispatchQueue, role: Role) {
-        self.connection = connection
+    init(transport: Transport, crypto: ClipCrypto, queue: DispatchQueue, role: Role) {
+        self.transport = transport
         self.crypto = crypto
         self.queue = queue
         self.role = role
     }
 
     func start() {
-        connection.stateUpdateHandler = { [weak self] state in
-            switch state {
-            case .ready: self?.onReady?()
-            case .failed, .cancelled: self?.close()
-            default: break
-            }
-        }
-        connection.start(queue: queue)
+        transport.onReady = { [weak self] in self?.onReady?() }
+        transport.onClose = { [weak self] in self?.close() }
+        transport.onData = { [weak self] data in self?.receive(data) }
+        transport.start(queue: queue)
         if role == .server {
             var bytes = [UInt8](repeating: 0, count: Self.challengeBytes)
             _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
@@ -58,28 +55,17 @@ final class Session {
             self.challenge = challenge
             if let frame = try? FrameCodec.encode(challenge) { sendRaw(frame) }
         }
-        receive()
     }
 
-    private func receive() {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
-            guard let self, !self.closed else { return }
-            if let data, !data.isEmpty {
-                do {
-                    for payload in try self.decoder.append(data) {
-                        try self.handle(payload)
-                        if self.closed { return }
-                    }
-                } catch {
-                    self.close()
-                    return
-                }
+    private func receive(_ data: Data) {
+        guard !closed else { return }
+        do {
+            for payload in try decoder.append(data) {
+                try handle(payload)
+                if closed { return }
             }
-            if isComplete || error != nil {
-                self.close()
-                return
-            }
-            self.receive()
+        } catch {
+            close()
         }
     }
 
@@ -137,7 +123,7 @@ final class Session {
                   let frame = try? FrameCodec.encode(box)
             else { finishChunks(false); return }
             chunksInFlight += 1
-            connection.send(content: frame, completion: .contentProcessed { [weak self] error in
+            transport.send(frame) { [weak self] error in
                 guard let self else { return }
                 self.chunksInFlight -= 1
                 if error != nil { self.finishChunks(false); self.close(); return }
@@ -146,7 +132,7 @@ final class Session {
                 } else {
                     self.pumpChunks()
                 }
-            })
+            }
         }
     }
 
@@ -158,16 +144,16 @@ final class Session {
     }
 
     private func sendRaw(_ frame: Data) {
-        connection.send(content: frame, completion: .contentProcessed { [weak self] error in
+        transport.send(frame) { [weak self] error in
             if error != nil { self?.close() }
-        })
+        }
     }
 
     func close() {
         guard !closed else { return }
         closed = true
         finishChunks(false)
-        connection.cancel()
+        transport.cancel()
         onClose?()
     }
 }

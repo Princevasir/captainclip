@@ -66,7 +66,7 @@ public final class Server {
                 break
             }
         }
-        listener.newConnectionHandler = { [weak self] connection in self?.accept(connection) }
+        listener.newConnectionHandler = { [weak self] connection in self?.accept(transport: TCPTransport(connection)) }
         listener.start(queue: queue)
         self.listener = listener
     }
@@ -120,8 +120,13 @@ public final class Server {
         queue.async { [weak self] in self?.active?.cancelChunked() }
     }
 
-    private func accept(_ connection: NWConnection) {
-        let session = Session(connection: connection, crypto: crypto, queue: queue, role: .server)
+    /// Accepts a phone over any transport (TCP from the listener, or a Bluetooth link). Newest phone wins.
+    public func accept(transport: Transport) {
+        queue.async { [weak self] in self?.acceptOnQueue(transport) }
+    }
+
+    private func acceptOnQueue(_ transport: Transport) {
+        let session = Session(transport: transport, crypto: crypto, queue: queue, role: .server)
         let id = ObjectIdentifier(session)
         pending[id] = session
         session.onMessage = { [weak self, weak session] message in
