@@ -117,7 +117,7 @@ class MessageTest {
         assertEquals(Message.Hello("Pixel"), Message.parse("""{"t":"hello","device":"Pixel"}"""))
     }
 
-    @Test fun rejectsUnknownType() { assertThrows { Message.parse("""{"t":"nope"}""") } }
+    @Test fun toleratesUnknownType() { assertEquals(Message.Unknown("nope"), Message.parse("""{"t":"nope"}""")) }
 
     @Test fun rejectsGarbage() { assertThrows { Message.parse("not json") } }
 }

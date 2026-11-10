@@ -96,6 +96,15 @@ class ConnectionTest {
         assertTrue(events.connected.await() != null)
     }
 
+    @Test fun unknownMessageFromMacIsIgnored() {
+        connect()
+        events.connected.await()
+        mac.send(Message.Unknown("future"))
+        mac.send(Message.Clip("1", "after unknown", 1))
+        assertEquals("after unknown", events.clips.await())
+        assertNull(events.closed.poll(100, TimeUnit.MILLISECONDS))
+    }
+
     @Test fun deliversClipFromMac() {
         connect()
         events.connected.await()
