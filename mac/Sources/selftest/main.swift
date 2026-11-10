@@ -21,6 +21,8 @@ do {
     try offerStoreTests()
     try bridgeFileTests()
     try bridgeUploadAbortTests()
+    try reconnectMidUploadTests()
+    try refetchWhileStreamingTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()

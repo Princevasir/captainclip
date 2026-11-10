@@ -36,6 +36,7 @@ public final class Bridge {
         }
         watcher.onFile = { [weak self] url in
             guard let self, !self.paused, let offer = try? self.offers.make(url: url) else { return }
+            self.server.cancelStream()  // stop sending the previous offer, if a paste was in progress
             self.server.send(message: offer)  // just name/type/size; content waits for a fetch
             self.onOfferChanged?(url.lastPathComponent)
         }
@@ -52,7 +53,8 @@ public final class Bridge {
             self?.files.async { self?.handleFileMessage(message) }
         }
         server.onStatus = { [weak self] status in
-            if case .waiting = status { self?.files.async { self?.abortIncoming() } }
+            // A new connection (or none) means any half upload from the previous one is dead.
+            self?.files.async { self?.abortIncoming() }
             DispatchQueue.main.async {
                 guard let self else { return }
                 if case .connected = status { self.sendCurrentClipboard() }
@@ -72,6 +74,7 @@ public final class Bridge {
     private func clearOffer() {
         guard offers.current != nil else { return }
         offers.clear()
+        server.cancelStream()
         server.send(message: .offerClear)
         onOfferChanged?(nil)
     }
@@ -120,15 +123,13 @@ public final class Bridge {
 
     private func serve(id: String) {
         guard !paused else { server.send(message: .fileError(id: id, reason: "expired")); return }
-        switch offers.lookup(id: id) {
+        switch offers.entry(id: id) {
         case .failure(let error):
             server.send(message: .fileError(id: id, reason: error == .changed ? "changed" : "expired"))
-        case .success(let url):
-            guard case .offer(_, let name, let mime, _, _)? = offers.current,
-                  let sender = try? FileSender(id: id, url: url, name: name, mime: mime)
+        case .success(let entry):
+            guard let sender = try? FileSender(id: id, url: entry.url, name: entry.name, mime: entry.mime)
             else { server.send(message: .fileError(id: id, reason: "io")); return }
-            server.send(message: sender.start)
-            server.sendStream(sender.stream()) { _ in }
+            server.sendFile(start: sender.start, stream: sender.stream())
         }
     }
 

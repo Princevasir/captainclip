@@ -103,6 +103,21 @@ public final class Server {
         }
     }
 
+    /// Sends a file to the phone: cancels any stream still running, then file-start + paced chunks + end.
+    public func sendFile(start: Message, stream: AnySequence<Message>, completion: @escaping (Bool) -> Void = { _ in }) {
+        queue.async { [weak self] in
+            guard let active = self?.active else { completion(false); return }
+            active.cancelChunked()
+            active.send(start)
+            active.sendChunked(stream, completion: completion)
+        }
+    }
+
+    /// Stops any file stream to the phone (e.g. the offer was replaced or cleared).
+    public func cancelStream() {
+        queue.async { [weak self] in self?.active?.cancelChunked() }
+    }
+
     private func accept(_ connection: NWConnection) {
         let session = Session(connection: connection, crypto: crypto, queue: queue, role: .server)
         let id = ObjectIdentifier(session)

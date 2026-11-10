@@ -118,6 +118,12 @@ final class Session {
         pumpChunks()
     }
 
+    /// Stops a running chunk stream (frames already handed to the network still go out).
+    func cancelChunked() {
+        guard chunkIterator != nil || chunkCompletion != nil else { return }
+        finishChunks(false)
+    }
+
     private func pumpChunks() {
         while chunksInFlight < Self.maxChunksInFlight, let iterator = chunkIterator {
             guard let message = iterator.next() else {

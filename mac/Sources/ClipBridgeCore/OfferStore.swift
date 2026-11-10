@@ -43,6 +43,17 @@ public final class OfferStore {
 
     public func clear() { lock.withLock { entry = nil } }
 
+    /// Everything needed to serve offer `id`, read under one lock (so a new ⌘C can't mix two offers).
+    public func entry(id: String) -> Result<(url: URL, name: String, mime: String), OfferError> {
+        lock.withLock {
+            guard let entry, entry.id == id, isLive(entry) else { return .failure(.expired) }
+            guard let (size, modified) = try? Self.stat(entry.url), size == entry.size, modified == entry.modified
+            else { return .failure(.changed) }
+            guard case .offer(_, let name, let mime, _, _) = entry.message else { return .failure(.expired) }
+            return .success((entry.url, name, mime))
+        }
+    }
+
     public func lookup(id: String) -> Result<URL, OfferError> {
         lock.withLock {
             guard let entry, entry.id == id, isLive(entry) else { return .failure(.expired) }
