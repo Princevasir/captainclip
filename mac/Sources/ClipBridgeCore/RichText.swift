@@ -21,7 +21,9 @@ public enum RichText {
     public static func write(text: String, html: String, to pasteboard: NSPasteboard) {
         var rtf: Data?
         // Apps (Notes reads HTML first) get the same cleaned HTML the RTF is made from.
-        let pasteHTML = withoutColors(normalizedWeights(importable(html)))
+        // Neutral sans-serif default (source fonts were removed; without this, importers fall back to Times).
+        let pasteHTML = #"<meta charset="utf-8"><div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">"#
+            + withoutColors(normalizedWeights(importable(html))) + "</div>"
         if let data = pasteHTML.data(using: .utf8),
            let attributed = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html,
                                                                           .characterEncoding: String.Encoding.utf8.rawValue],

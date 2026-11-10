@@ -141,12 +141,14 @@ func richTextSystemFontBoldTests() {
     if let written = board.string(forType: .html),
        let imported = try? NSAttributedString(data: Data(written.utf8), options: [.documentType: NSAttributedString.DocumentType.html,
                                                                                   .characterEncoding: String.Encoding.utf8.rawValue], documentAttributes: nil) {
-        var bold = 0, background = 0
+        var bold = 0, background = 0, serif = 0
         imported.enumerateAttributes(in: NSRange(location: 0, length: imported.length)) { attrs, range, _ in
+            if ((attrs[.font] as? NSFont)?.familyName ?? "").hasPrefix("Times") { serif += range.length }
             if (attrs[.font] as? NSFont)?.fontDescriptor.symbolicTraits.contains(.bold) == true { bold += range.length }
             if attrs[.backgroundColor] != nil { background += range.length }
         }
         check(bold >= 9, "HTML written for Notes imports with bold (\(bold) chars)")
         check(background == 0, "HTML written for Notes has no white background boxes")
+        check(serif == 0, "HTML written for Notes uses a sans-serif default, not Times")
     } else { check(false, "HTML written") }
 }
