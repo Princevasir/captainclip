@@ -50,12 +50,13 @@ class GhostActivity : Activity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (!hasFocus || done || intent.action != ACTION_READ) return
-        val text = clipboard().primaryClip?.takeIf { it.itemCount > 0 }
-            ?.getItemAt(0)?.coerceToText(this)?.toString()
-        if (!text.isNullOrEmpty()) {
-            SyncService.send(this, text)
+        val clip = clipboard().primaryClip?.takeIf { it.itemCount > 0 }
+        val text = clip?.getItemAt(0)?.coerceToText(this)?.toString()
+        val sensitive = clip?.description?.extras?.getBoolean(ClipPolicy.EXTRA_IS_SENSITIVE, false) ?: false
+        if (ClipPolicy.shouldSend(text, sensitive)) {
+            val sent = SyncService.send(text!!)
             if (intent.getBooleanExtra(EXTRA_ANNOUNCE, false)) {
-                Toast.makeText(this, "Sent to Mac", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, if (sent) "Sent to Mac" else "Not connected to your Mac", Toast.LENGTH_SHORT).show()
             }
         }
         finishQuietly()

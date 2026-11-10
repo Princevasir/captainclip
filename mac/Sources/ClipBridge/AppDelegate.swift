@@ -99,7 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func notifyReceived(_ text: String) {
         let content = UNMutableNotificationContent()
         content.title = "Copied from phone"
-        content.body = String(text.prefix(120))
+        content.body = ReceivedNotice.body(for: text)
         let request = UNNotificationRequest(identifier: "clip", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
     }

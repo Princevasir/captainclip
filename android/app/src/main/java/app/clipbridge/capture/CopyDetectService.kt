@@ -17,7 +17,7 @@ class CopyDetectService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         val trigger = CopyDetect.isCopyTrigger(
             event.eventType, event.className, event.packageName, event.text, event.contentDescription)
-        if (!trigger) return
+        if (!trigger || OwnWrites.isRecent()) return  // ignore the "Copied" overlay our own Mac→phone write causes
         val now = SystemClock.elapsedRealtime()
         if (now - lastLaunch < DEBOUNCE_MS) return
         lastLaunch = now

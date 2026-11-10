@@ -104,8 +104,7 @@ class MainActivity : Activity() {
         }
         Prefs.savePairing(this, info)
         Prefs.setSyncEnabled(this, true)
-        SyncService.stop(this)
-        SyncService.start(this)
+        SyncService.reconnect(this)
         Toast.makeText(this, "Paired with Mac", Toast.LENGTH_SHORT).show()
         refresh()
     }

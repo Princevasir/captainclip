@@ -18,49 +18,47 @@ import android.os.IBinder
 import android.os.Looper
 import app.clipbridge.MainActivity
 import app.clipbridge.capture.GhostActivity
-import app.clipbridge.core.LoopGuard
-import java.util.concurrent.CountDownLatch
+import app.clipbridge.capture.OwnWrites
 
 /**
- * Foreground service that keeps one connection to the Mac:
- * find Mac (NSD, else QR address) → connect → wait until closed → back off → repeat.
- * Clips from the Mac go straight onto the phone clipboard.
+ * Foreground service hosting the [SyncLoop]. Clips from the Mac go straight onto the phone clipboard.
+ * Only START (when sync is enabled and paired) or RECONNECT bring it up; sending never does.
  */
 class SyncService : Service() {
     companion object {
-        const val ACTION_START = "app.clipbridge.START"
-        const val ACTION_STOP = "app.clipbridge.STOP"
-        const val ACTION_SEND = "app.clipbridge.SEND"
-        const val EXTRA_TEXT = "text"
+        private const val ACTION_START = "app.clipbridge.START"
+        private const val ACTION_STOP = "app.clipbridge.STOP"
+        private const val ACTION_RECONNECT = "app.clipbridge.RECONNECT"
         private const val CHANNEL = "sync"
         private const val NOTIFICATION_ID = 1
+
+        @Volatile private var instance: SyncService? = null
 
         /** Human-readable status for the main screen. */
         @Volatile var status: String = "Stopped"
             private set
         var onStatusChanged: (() -> Unit)? = null
 
-        fun start(ctx: Context) {
-            ctx.startForegroundService(Intent(ctx, SyncService::class.java).setAction(ACTION_START))
-        }
+        fun start(ctx: Context) = command(ctx, ACTION_START, foreground = true)
+        fun stop(ctx: Context) { if (instance != null) command(ctx, ACTION_STOP, foreground = false) }
 
-        fun stop(ctx: Context) {
-            ctx.startService(Intent(ctx, SyncService::class.java).setAction(ACTION_STOP))
-        }
+        /** After re-pairing: (re)start and connect with the new pairing right away. */
+        fun reconnect(ctx: Context) = command(ctx, ACTION_RECONNECT, foreground = true)
 
-        /** Send text to the Mac (used by the ghost screen, tile, notification and share target). */
-        fun send(ctx: Context, text: String) {
-            ctx.startService(Intent(ctx, SyncService::class.java).setAction(ACTION_SEND).putExtra(EXTRA_TEXT, text))
+        /**
+         * Send text to the Mac, in-process (no Intent, so no Binder size limit). Never starts the
+         * service: if sync is stopped, nothing is sent. Returns true if queued for the Mac.
+         */
+        fun send(text: String): Boolean = instance?.loop?.send(text) ?: false
+
+        private fun command(ctx: Context, action: String, foreground: Boolean) {
+            val intent = Intent(ctx, SyncService::class.java).setAction(action)
+            runCatching { if (foreground) ctx.startForegroundService(intent) else ctx.startService(intent) }
         }
     }
 
     private val main = Handler(Looper.getMainLooper())
-    private val loopGuard = LoopGuard()
-    private val backoff = Backoff()
-    private val wake = Object()
-    @Volatile private var running = false
-    @Volatile private var connection: Connection? = null
-    private var worker: Thread? = null
+    private var loop: SyncLoop? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -68,9 +66,12 @@ class SyncService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> { shutdown(); return START_NOT_STICKY }
-            ACTION_SEND -> intent.getStringExtra(EXTRA_TEXT)?.let(::sendToMac)
+            ACTION_RECONNECT -> if (ensureRunning()) loop?.reconnect()
+            else -> {  // START, or a sticky restart with a null intent
+                if (!Prefs.syncEnabled(this) || Prefs.pairing(this) == null) { shutdown(); return START_NOT_STICKY }
+                ensureRunning()
+            }
         }
-        ensureRunning()
         return START_STICKY
     }
 
@@ -79,80 +80,70 @@ class SyncService : Service() {
         super.onDestroy()
     }
 
-    private fun ensureRunning() {
-        if (running) return
-        running = true
+    /** Returns false if Android refused to let us run in the foreground. */
+    private fun ensureRunning(): Boolean {
+        if (loop != null) return true
         createChannel()
-        val notification = buildNotification("Looking for your Mac…")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
+        val started = runCatching {
+            val notification = buildNotification("Looking for your Mac…")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        }.isSuccess
+        if (!started) { stopSelf(); return false }
+
+        val newLoop = SyncLoop(
+            pairing = { Prefs.pairing(this) },
+            locate = { MacLocator(this).find(it) },
+            device = Build.MODEL,
+            callbacks = object : SyncLoop.Callbacks {
+                override fun onStatus(status: SyncLoop.Status) = setStatus(describe(status))
+                override fun onClip(text: String) = writeClipboard(text)
+            },
+        )
+        loop = newLoop
+        instance = this
         watchNetwork()
-        worker = Thread(::loop, "clipbridge-sync").apply { isDaemon = true; start() }
+        newLoop.start()
+        return true
     }
 
-    private fun loop() {
-        val locator = MacLocator(this)
-        while (running) {
-            val info = Prefs.pairing(this)
-            if (info == null) { setStatus("Not paired — scan the Mac's QR code"); sleepOrWake(30_000); continue }
-            setStatus("Looking for your Mac…")
-            val (host, port) = locator.find(info) ?: (info.host to info.port)
-            val closed = CountDownLatch(1)
-            val conn = Connection(host, port, info.key, Build.MODEL, object : Connection.Listener {
-                override fun onConnected() { backoff.reset(); setStatus("Connected to Mac") }
-                override fun onClip(text: String) = receivedFromMac(text)
-                override fun onClosed(reason: Connection.CloseReason) = closed.countDown()
-            })
-            connection = conn
-            conn.start()
-            closed.await()
-            connection = null
-            if (!running) break
-            setStatus("Mac not reachable — retrying")
-            sleepOrWake(backoff.nextDelayMs())
-        }
-    }
-
-    private fun receivedFromMac(text: String) {
-        loopGuard.markReceived(text)
+    private fun writeClipboard(text: String) {
         main.post {
-            val clipboard = getSystemService(ClipboardManager::class.java)
-            clipboard.setPrimaryClip(ClipData.newPlainText("ClipBridge", text))
-        }
-    }
-
-    private fun sendToMac(text: String) {
-        if (!Prefs.syncEnabled(this) || !loopGuard.shouldSend(text)) return
-        val conn = connection
-        if (conn != null && conn.send(text)) loopGuard.markSent(text)
-    }
-
-    /** Wake the reconnect loop early when Wi-Fi comes back. */
-    private fun watchNetwork() {
-        val cm = getSystemService(ConnectivityManager::class.java)
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                backoff.reset()
-                synchronized(wake) { wake.notifyAll() }
+            runCatching {
+                OwnWrites.markNow()  // so copy detection ignores the system "Copied" overlay this causes
+                getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("ClipBridge", text))
             }
         }
-        cm.registerDefaultNetworkCallback(callback)
+    }
+
+    private fun describe(status: SyncLoop.Status) = when (status) {
+        SyncLoop.Status.STOPPED -> "Stopped"
+        SyncLoop.Status.NOT_PAIRED -> "Not paired — scan the Mac's QR code"
+        SyncLoop.Status.SEARCHING -> "Looking for your Mac…"
+        SyncLoop.Status.CONNECTED -> "Connected to Mac"
+        SyncLoop.Status.RETRYING -> "Mac not reachable — retrying"
+        SyncLoop.Status.PAIRING_INVALID -> "Mac rejected this phone — scan the Mac's QR code again"
+    }
+
+    /** Wake the reconnect loop early when the network comes back. */
+    private fun watchNetwork() {
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) { loop?.wake() }
+        }
+        runCatching { getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(callback) }
         networkCallback = callback
     }
 
-    private fun sleepOrWake(ms: Long) {
-        synchronized(wake) { try { wake.wait(ms) } catch (_: InterruptedException) {} }
-    }
-
     private fun shutdown() {
-        running = false
-        connection?.close()
-        synchronized(wake) { wake.notifyAll() }
+        instance = null
+        val old = loop
+        loop = null
         networkCallback?.let { runCatching { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(it) } }
         networkCallback = null
+        if (old != null) Thread { old.stop() }.start()  // stop() joins the worker; keep it off the main thread
         setStatus("Stopped")
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -160,7 +151,9 @@ class SyncService : Service() {
 
     private fun setStatus(text: String) {
         status = text
-        if (running) getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification(text))
+        if (loop != null) {
+            runCatching { getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification(text)) }
+        }
         main.post { onStatusChanged?.invoke() }
     }
 

@@ -11,6 +11,7 @@ do {
     try idleTimeoutTests()
     try fixedPortTests()
     try handshakeTests()
+    noticeTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()

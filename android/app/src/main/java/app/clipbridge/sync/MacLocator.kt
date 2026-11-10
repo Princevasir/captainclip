@@ -6,6 +6,8 @@ import android.net.nsd.NsdServiceInfo
 import app.clipbridge.core.PairingInfo
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /** Finds the paired Mac's current address via Bonjour/NSD (`_clipbridge._tcp`). Blocking. */
 class MacLocator(context: Context) {
@@ -15,17 +17,16 @@ class MacLocator(context: Context) {
     @Suppress("DEPRECATION") // resolveService is fine for one-shot lookups on all supported versions
     fun find(info: PairingInfo, timeoutMs: Long = 3_000): Pair<String, Int>? {
         val done = CountDownLatch(1)
-        var result: Pair<String, Int>? = null
-        var resolving = false
+        val result = AtomicReference<Pair<String, Int>?>(null)
+        val resolving = AtomicBoolean(false)
 
         val discovery = object : NsdManager.DiscoveryListener {
             override fun onServiceFound(service: NsdServiceInfo) {
-                if (service.serviceName != info.serviceName || resolving) return
-                resolving = true
+                if (service.serviceName != info.serviceName || !resolving.compareAndSet(false, true)) return
                 nsd.resolveService(service, object : NsdManager.ResolveListener {
                     override fun onServiceResolved(resolved: NsdServiceInfo) {
                         val host = resolved.host?.hostAddress
-                        if (host != null) result = host to resolved.port
+                        if (host != null) result.set(host to resolved.port)
                         done.countDown()
                     }
                     override fun onResolveFailed(s: NsdServiceInfo, error: Int) { done.countDown() }
@@ -39,9 +40,12 @@ class MacLocator(context: Context) {
         }
 
         nsd.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discovery)
-        done.await(timeoutMs, TimeUnit.MILLISECONDS)
-        runCatching { nsd.stopServiceDiscovery(discovery) }
-        return result
+        try {
+            done.await(timeoutMs, TimeUnit.MILLISECONDS)  // InterruptedException propagates to SyncLoop.stop()
+        } finally {
+            runCatching { nsd.stopServiceDiscovery(discovery) }
+        }
+        return result.get()
     }
 
     private companion object {

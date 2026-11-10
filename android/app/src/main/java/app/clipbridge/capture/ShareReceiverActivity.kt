@@ -12,8 +12,8 @@ class ShareReceiverActivity : Activity() {
         super.onCreate(savedInstanceState)
         val text = intent.takeIf { it.action == Intent.ACTION_SEND }?.getStringExtra(Intent.EXTRA_TEXT)
         if (!text.isNullOrEmpty()) {
-            SyncService.send(this, text)
-            Toast.makeText(this, "Sent to Mac", Toast.LENGTH_SHORT).show()
+            val sent = SyncService.send(text)
+            Toast.makeText(this, if (sent) "Sent to Mac" else "Not connected to your Mac", Toast.LENGTH_SHORT).show()
         }
         finish()
     }
