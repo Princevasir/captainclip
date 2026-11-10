@@ -118,3 +118,22 @@ func richTextCleanRTFTests() {
     check(r.color == 0 || r.color == r.link, "source text colours are dropped (links may keep theirs)")
     check(!r.fonts.contains("Mona Sans VF"), "source web fonts are replaced by the system font")
 }
+
+func richTextSystemFontBoldTests() {
+    // Exact style shape seen on device (GitHub in Chrome): system-font stack + numeric weight 600.
+    let style = #"font-weight: 600; color: rgb(31, 35, 40); font-family: &quot;Mona Sans VF&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, &quot;Noto Sans&quot;, Helvetica, Arial, sans-serif; font-size: 16px; background-color: rgb(255, 255, 255);"#
+    let html = #"<ul><li><strong style=""# + style + #"">Bold item</strong><span style="font-weight: 400; font-family: -apple-system, sans-serif;"> rest</span></li><li>Second</li></ul>"#
+    let board = NSPasteboard(name: NSPasteboard.Name("clipbridge.sysbold.\(UUID().uuidString)"))
+    defer { board.releaseGlobally() }
+    RichText.write(text: "Bold item rest\nSecond", html: html, to: board)
+    guard let rtf = board.data(forType: .rtf) else { check(false, "RTF written"); return }
+    let r = runs(rtf)
+    check(r.bold >= 9, "weight-600 text in the Apple system-font stack becomes bold (\(r.bold) chars)")
+    check(r.bold < 14, "regular text stays regular")
+    let a = NSAttributedString(rtf: rtf, documentAttributes: nil)!
+    var listed = false
+    a.enumerateAttribute(.paragraphStyle, in: NSRange(location: 0, length: a.length)) { v, _, _ in
+        if let p = v as? NSParagraphStyle, !p.textLists.isEmpty { listed = true }
+    }
+    check(listed, "bullet list survives")
+}

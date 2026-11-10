@@ -33,6 +33,7 @@ do {
     try bridgeRichTextTests()
     richTextSafetyTests()
     richTextCleanRTFTests()
+    richTextSystemFontBoldTests()
     try clipboardImageTests()
     watcherImageTests()
     try bridgeImageOfferTests()

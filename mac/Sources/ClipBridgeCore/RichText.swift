@@ -20,7 +20,7 @@ public enum RichText {
     /// The RTF is built first (from HTML with remote resources removed), then all three are written together.
     public static func write(text: String, html: String, to pasteboard: NSPasteboard) {
         var rtf: Data?
-        if let data = importable(html).data(using: .utf8),
+        if let data = normalizedWeights(importable(html)).data(using: .utf8),
            let attributed = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html,
                                                                           .characterEncoding: String.Encoding.utf8.rawValue],
                                                     documentAttributes: nil) {
@@ -53,6 +53,21 @@ public enum RichText {
                 replacement = NSFontManager.shared.convert(replacement, toHaveTrait: .italicFontMask)
             }
             out.addAttribute(.font, value: replacement, range: range)
+        }
+        return out
+    }
+
+    /// Web pages name fonts the importer can't embolden (e.g. the Apple system-font stack at weight 600), which
+    /// silently turns bold into regular. Drop font-family declarations and map weights ≥ 600 to plain bold.
+    static func normalizedWeights(_ html: String) -> String {
+        var out = html
+        let rules: [(String, String)] = [
+            (#"font-family\s*:\s*(?:[^;"]|&quot;)*;?"#, ""),
+            (#"font-weight\s*:\s*(?:[6-9]00|bold|bolder)\b"#, "font-weight: bold"),
+        ]
+        for (pattern, template) in rules {
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { continue }
+            out = regex.stringByReplacingMatches(in: out, range: NSRange(out.startIndex..., in: out), withTemplate: template)
         }
         return out
     }
