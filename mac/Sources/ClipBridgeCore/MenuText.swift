@@ -10,6 +10,15 @@ public enum MenuText {
         }
     }
 
+    /// The grey line under the status: how the phone is connected, or how to connect it.
+    public static func detail(_ status: Server.Status, paused: Bool, bluetooth: Bool) -> String? {
+        if paused { return nil }
+        switch status {
+        case .connected: return bluetooth ? "Via Bluetooth · end-to-end encrypted" : "Same Wi-Fi · end-to-end encrypted"
+        case .waiting: return "Open ClipBridge on your phone — same Wi-Fi, or nearby with Bluetooth"
+        }
+    }
+
     public static func offer(_ name: String) -> String {
         let prefix = "Ready to paste on phone: "
         let room = 64 - prefix.count

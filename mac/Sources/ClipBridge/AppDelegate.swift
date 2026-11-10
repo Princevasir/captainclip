@@ -92,11 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         title.append(NSAttributedString(string: MenuText.status(lastStatus, paused: paused),
                                         attributes: [.font: NSFont.menuFont(ofSize: 0), .foregroundColor: NSColor.labelColor]))
         statusLine.attributedTitle = title
-        let detail: String?
-        switch lastStatus {
-        case .connected: detail = paused ? nil : "Same Wi-Fi · end-to-end encrypted"
-        case .waiting: detail = paused ? nil : "Open ClipBridge on your phone, on the same Wi-Fi"
-        }
+        let detail = MenuText.detail(lastStatus, paused: paused, bluetooth: server?.activeIsBluetooth ?? false)
         detailLine.isHidden = detail == nil
         if let detail {
             detailLine.attributedTitle = NSAttributedString(string: "     " + detail, attributes: [
