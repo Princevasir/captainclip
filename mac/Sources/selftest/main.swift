@@ -9,6 +9,10 @@ do {
     try serverTests()
     try wrongKeyTests()
     try idleTimeoutTests()
+    watcherTests()
+    keyStoreTests()
+    networkInfoTests()
+    try bridgeTests()
 } catch {
     failures += 1
     print("FAIL: unexpected error \(error)")
