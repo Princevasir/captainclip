@@ -32,6 +32,6 @@ func messageTests() throws {
     check(try Message.decode(Data(#"{"t":"ping"}"#.utf8)) == .ping, "ping decodes")
     check(try Message.decode(Data(#"{"t":"hello","device":"Pixel"}"#.utf8)) == .hello(device: "Pixel"),
           "hello decodes")
-    checkThrows("unknown type rejected") { _ = try Message.decode(Data(#"{"t":"nope"}"#.utf8)) }
+    check(try Message.decode(Data(#"{"t":"nope"}"#.utf8)) == .unknown(type: "nope"), "unknown type is tolerated (v2)")
     checkThrows("garbage rejected") { _ = try Message.decode(Data("not json".utf8)) }
 }

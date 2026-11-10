@@ -13,6 +13,7 @@ do {
     try handshakeTests()
     noticeTests()
     try resendOnConnectTests()
+    try fileMessageTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()

@@ -49,8 +49,8 @@ public final class Client {
                 }
             case .clip(_, let text, _):
                 self.onClip?(text)
-            case .ping:
-                break
+            default:
+                break  // ping, unknown, and file messages handled elsewhere
             }
         }
         session.onClose = { [weak self] in
