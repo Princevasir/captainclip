@@ -170,6 +170,7 @@ public final class Bridge {
         guard !paused else { server.send(message: .fileError(id: id, reason: "expired")); return }
         switch offers.entry(id: id) {
         case .failure(let error):
+            bleLog.info("serve \(id.prefix(8), privacy: .public) refused \(error == .changed ? "changed" : "expired", privacy: .public)")
             server.send(message: .fileError(id: id, reason: error == .changed ? "changed" : "expired"))
         case .success(let entry):
             let size = (try? entry.url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
@@ -179,7 +180,10 @@ public final class Bridge {
             }
             guard let sender = try? FileSender(id: id, url: entry.url, name: entry.name, mime: entry.mime)
             else { server.send(message: .fileError(id: id, reason: "io")); return }
-            server.sendFile(start: sender.start, stream: sender.stream())
+            bleLog.info("serve \(id.prefix(8), privacy: .public) size=\(size)")
+            server.sendFile(start: sender.start, stream: sender.stream()) { ok in
+                bleLog.info("served \(id.prefix(8), privacy: .public) ok=\(ok)")
+            }
         }
     }
 
