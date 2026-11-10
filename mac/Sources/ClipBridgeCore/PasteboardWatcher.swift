@@ -10,6 +10,10 @@ public final class PasteboardWatcher {
     ]
 
     public var onText: ((String) -> Void)?
+    /// Exactly one regular file ≤ 25 MB was copied (e.g. ⌘C in Finder).
+    public var onFile: ((URL) -> Void)?
+    /// Files were copied but can't be offered (several files, a folder, or too large).
+    public var onIgnoredFiles: (() -> Void)?
 
     private let pasteboard: NSPasteboard
     private let interval: TimeInterval
@@ -45,12 +49,35 @@ public final class PasteboardWatcher {
         lastChangeCount = pasteboard.changeCount
     }
 
-    /// The pasteboard's current plain text, or nil if empty or marked concealed/transient.
+    /// The pasteboard's current plain text, or nil if empty, marked concealed/transient, or a file copy.
     public func currentText() -> String? {
         let types = (pasteboard.types ?? []).map(\.rawValue)
-        guard !Self.shouldSkip(types: types), let text = pasteboard.string(forType: .string), !text.isEmpty
+        guard !Self.shouldSkip(types: types), fileURLs().isEmpty,
+              let text = pasteboard.string(forType: .string), !text.isEmpty
         else { return nil }
         return text
+    }
+
+    /// The single offerable file on the pasteboard, if any.
+    public func currentFile() -> URL? {
+        let types = (pasteboard.types ?? []).map(\.rawValue)
+        guard !Self.shouldSkip(types: types) else { return nil }
+        return Self.offerable(fileURLs())
+    }
+
+    private func fileURLs() -> [URL] {
+        (pasteboard.pasteboardItems ?? []).compactMap { item in
+            item.string(forType: .fileURL).flatMap(URL.init(string:)).flatMap { $0.isFileURL ? $0 : nil }
+        }
+    }
+
+    /// One regular file within the size limit, else nil.
+    static func offerable(_ urls: [URL]) -> URL? {
+        guard urls.count == 1, let url = urls.first,
+              let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+              values.isRegularFile == true, (values.fileSize ?? Int.max) <= FileLimit.maxBytes
+        else { return nil }
+        return url
     }
 
     private func poll() {
@@ -58,9 +85,14 @@ public final class PasteboardWatcher {
         guard count != lastChangeCount else { return }
         lastChangeCount = count
         let types = (pasteboard.types ?? []).map(\.rawValue)
-        guard !Self.shouldSkip(types: types),
-              let text = pasteboard.string(forType: .string), !text.isEmpty
-        else { return }
+        guard !Self.shouldSkip(types: types) else { return }
+        let files = fileURLs()
+        if !files.isEmpty {
+            // A Finder copy: never send the accompanying file names as text.
+            if let url = Self.offerable(files) { onFile?(url) } else { onIgnoredFiles?() }
+            return
+        }
+        guard let text = pasteboard.string(forType: .string), !text.isEmpty else { return }
         onText?(text)
     }
 }

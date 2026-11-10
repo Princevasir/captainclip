@@ -16,6 +16,8 @@ do {
     try fileMessageTests()
     try fileTransferTests()
     try priorityTests()
+    watcherFileTests()
+    try offerStoreTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()
