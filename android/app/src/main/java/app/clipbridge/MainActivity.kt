@@ -43,6 +43,7 @@ class MainActivity : Activity() {
     private lateinit var setupTitle: TextView
     private lateinit var setupHelp: TextView
     private lateinit var setupButton: Button
+    private lateinit var setupNotNow: Button
     private lateinit var pauseButton: Button
 
     /** Result of the last in-app save, shown on the offer card until the offer changes. */
@@ -107,6 +108,8 @@ class MainActivity : Activity() {
         setupTitle = findViewById(R.id.setupTitle)
         setupHelp = findViewById(R.id.setupHelp)
         setupButton = findViewById(R.id.setupButton)
+        setupNotNow = findViewById(R.id.setupNotNow)
+        setupNotNow.setOnClickListener { Prefs.setBluetoothDismissed(this); refresh() }
         pauseButton = findViewById(R.id.pauseButton)
 
         saveButton.setOnClickListener { saveOffer() }
@@ -139,7 +142,8 @@ class MainActivity : Activity() {
             else -> when (SyncService.state) {
                 SyncLoop.Status.CONNECTED -> Triple(R.color.ok,
                     SyncService.macName?.let { "Connected to $it" } ?: "Connected to your Mac",
-                    "Same Wi-Fi · end-to-end encrypted")
+                    if (SyncService.onBluetooth) "Via Bluetooth · end-to-end encrypted · files up to 5 MB"
+                    else "Same Wi-Fi · end-to-end encrypted")
                 SyncLoop.Status.SEARCHING, SyncLoop.Status.RETRYING -> Triple(R.color.busy,
                     "Looking for your Mac…", "Make sure ClipBridge is running on the Mac and both are on the same Wi-Fi")
                 SyncLoop.Status.PAIRING_INVALID -> Triple(R.color.bad,
@@ -175,23 +179,47 @@ class MainActivity : Activity() {
     }
 
     private fun renderSetup() {
-        val step = SetupStep.next(paired = Prefs.pairing(this) != null, autoCopyOn = isAutoCopyOn())
+        val step = currentStep()
         setupCard.visibility = if (step == SetupStep.DONE) View.GONE else View.VISIBLE
         setupTitle.text = step.title
         setupHelp.text = step.help
         setupButton.text = when (step) {
             SetupStep.PAIR -> "Scan QR code"
             SetupStep.AUTO_COPY -> "Open Accessibility settings"
+            SetupStep.BLUETOOTH -> "Allow Bluetooth"
             SetupStep.DONE -> ""
         }
+        setupNotNow.visibility = if (step == SetupStep.BLUETOOTH) View.VISIBLE else View.GONE
+    }
+
+    private fun currentStep() = SetupStep.next(
+        paired = Prefs.pairing(this) != null,
+        autoCopyOn = isAutoCopyOn(),
+        bluetoothAllowed = bluetoothPermissionGranted(),
+        bluetoothDismissed = Prefs.bluetoothDismissed(this),
+    )
+
+    private fun bluetoothPermissionGranted(): Boolean {
+        val needed = if (android.os.Build.VERSION.SDK_INT >= 31)
+            arrayOf(android.Manifest.permission.BLUETOOTH_SCAN, android.Manifest.permission.BLUETOOTH_CONNECT)
+        else arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        return needed.all { checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED }
     }
 
     private fun onSetupAction() {
-        when (SetupStep.next(paired = Prefs.pairing(this) != null, autoCopyOn = isAutoCopyOn())) {
+        when (currentStep()) {
             SetupStep.PAIR -> scanQr()
             SetupStep.AUTO_COPY -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            SetupStep.BLUETOOTH -> requestPermissions(
+                if (android.os.Build.VERSION.SDK_INT >= 31)
+                    arrayOf(android.Manifest.permission.BLUETOOTH_SCAN, android.Manifest.permission.BLUETOOTH_CONNECT)
+                else arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION), 7)
             SetupStep.DONE -> {}
         }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        refresh()
     }
 
     private fun saveOffer() {

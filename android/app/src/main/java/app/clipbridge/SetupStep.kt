@@ -7,12 +7,16 @@ enum class SetupStep(val title: String, val help: String) {
     AUTO_COPY("Turn on automatic copy",
         "Settings → Accessibility → Installed apps → ClipBridge automatic copy. " +
             "Greyed out? App info → ⋮ → Allow restricted settings first."),
+    BLUETOOTH("Allow Bluetooth fallback",
+        "Keeps ClipBridge connected when your phone and Mac aren't on the same Wi-Fi. " +
+            "Android asks for \"Nearby devices\" — ClipBridge only uses it to find your own Mac."),
     DONE("All set", "Copy on one device, paste on the other.");
 
     companion object {
-        fun next(paired: Boolean, autoCopyOn: Boolean): SetupStep = when {
+        fun next(paired: Boolean, autoCopyOn: Boolean, bluetoothAllowed: Boolean = true, bluetoothDismissed: Boolean = false): SetupStep = when {
             !paired -> PAIR
             !autoCopyOn -> AUTO_COPY
+            !bluetoothAllowed && !bluetoothDismissed -> BLUETOOTH
             else -> DONE
         }
     }

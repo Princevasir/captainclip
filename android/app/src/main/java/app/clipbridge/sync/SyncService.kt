@@ -63,6 +63,9 @@ class SyncService : Service() {
         /** True while connected to the Mac (not just running). */
         val isConnected: Boolean get() = instance?.loop != null && state == SyncLoop.Status.CONNECTED
 
+        /** True while the Mac link is Bluetooth. */
+        val onBluetooth: Boolean get() = instance?.loop?.path == SyncLoop.Path.BLUETOOTH
+
         /** The connected Mac's name, if any. */
         val macName: String? get() = instance?.loop?.macName
 
@@ -178,6 +181,7 @@ class SyncService : Service() {
             // The phone's own name from Settings → About phone (e.g. "Alex's Galaxy S25"), else the model.
             device = runCatching { android.provider.Settings.Global.getString(contentResolver, "device_name") }
                 .getOrNull()?.takeIf { it.isNotBlank() } ?: Build.MODEL,
+            bluetoothLink = { info -> BleLink.find(this, info) },
             callbacks = object : SyncLoop.Callbacks {
                 override fun onStatus(status: SyncLoop.Status) {
                     state = status
@@ -338,7 +342,7 @@ class SyncService : Service() {
         SyncLoop.Status.STOPPED -> "Stopped"
         SyncLoop.Status.NOT_PAIRED -> "Not paired — scan the Mac's QR code"
         SyncLoop.Status.SEARCHING -> "Looking for your Mac…"
-        SyncLoop.Status.CONNECTED -> "Connected to Mac"
+        SyncLoop.Status.CONNECTED -> if (loop?.path == SyncLoop.Path.BLUETOOTH) "Connected to Mac via Bluetooth" else "Connected to Mac"
         SyncLoop.Status.RETRYING -> "Mac not reachable — retrying"
         SyncLoop.Status.PAIRING_INVALID -> "Mac rejected this phone — scan the Mac's QR code again"
     }

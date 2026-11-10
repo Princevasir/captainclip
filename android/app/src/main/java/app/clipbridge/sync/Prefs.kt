@@ -14,4 +14,8 @@ object Prefs {
     fun syncEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean("enabled", true)
 
     fun setSyncEnabled(ctx: Context, enabled: Boolean) = prefs(ctx).edit().putBoolean("enabled", enabled).apply()
+
+    fun bluetoothDismissed(ctx: Context): Boolean = prefs(ctx).getBoolean("bluetoothDismissed", false)
+
+    fun setBluetoothDismissed(ctx: Context) = prefs(ctx).edit().putBoolean("bluetoothDismissed", true).apply()
 }
