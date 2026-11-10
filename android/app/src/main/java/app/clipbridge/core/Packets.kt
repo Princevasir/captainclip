@@ -31,7 +31,8 @@ class PacketInputStream : InputStream() {
     private var pos = 0
     @Volatile private var ended = false
 
-    fun offer(packet: ByteArray) { if (!ended) packets.put(packet) }
+    /** An empty packet is the Mac saying the session is over (a peripheral can't disconnect the phone). */
+    fun offer(packet: ByteArray) { if (packet.isEmpty()) closeFromRemote() else if (!ended) packets.put(packet) }
 
     fun closeFromRemote() { ended = true; packets.put(END) }
 

@@ -33,6 +33,15 @@ class PacketStreamTest {
         assertArrayEquals(data, packets.fold(ByteArray(0)) { acc, p -> acc + p })
     }
 
+    @Test fun emptyPacketFromTheMacEndsTheStream() {
+        // The Mac can't disconnect a phone over Bluetooth; it sends an empty packet when it ends the session.
+        val input = PacketInputStream().apply { readTimeoutMs = 2_000 }
+        input.offer(byteArrayOf(7))
+        input.offer(ByteArray(0))
+        assertEquals(7, input.read())
+        assertEquals(-1, input.read())
+    }
+
     @Test fun packetsReassembleIntoTheStream() {
         val input = PacketInputStream()
         input.offer(byteArrayOf(1, 2, 3)); input.offer(byteArrayOf(4, 5))

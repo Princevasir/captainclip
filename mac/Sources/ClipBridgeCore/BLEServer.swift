@@ -66,7 +66,7 @@ public final class BLEServer: NSObject, CBPeripheralManagerDelegate {
     }
 
     private func publish() {
-        let toMac = CBMutableCharacteristic(type: BLEIds.toMac, properties: [.writeWithoutResponse, .write],
+        let toMac = CBMutableCharacteristic(type: BLEIds.toMac, properties: [.writeWithoutResponse],
                                             value: nil, permissions: [.writeable])
         let toPhone = CBMutableCharacteristic(type: BLEIds.toPhone, properties: [.notify], value: nil, permissions: [.readable])
         let service = CBMutableService(type: BLEIds.service, primary: true)
@@ -112,7 +112,8 @@ public final class BLEServer: NSObject, CBPeripheralManagerDelegate {
                 bleLog.info("write dropped from \(request.central.identifier, privacy: .public) len=\(request.value?.count ?? -1)")
             }
         }
-        if let first = requests.first { peripheral.respond(to: first, withResult: .success) }
+        // Only acknowledged writes expect an answer; ours are all write-without-response.
+        if let first = requests.first { peripheral.respond(to: first, withResult: .requestNotSupported) }
     }
 
     public func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager) {
@@ -144,7 +145,7 @@ final class BLEPeripheralTransport: Transport {
     }
 
     func start(queue: DispatchQueue) {
-        sessionQueue = queue
+        bleQueue.sync { sessionQueue = queue }
         queue.async { self.onReady?() }
     }
 
@@ -171,13 +172,21 @@ final class BLEPeripheralTransport: Transport {
         }
     }
 
+    /** Called on bleQueue. */
     func received(_ value: Data) {
-        sessionQueue?.async { if !self.closed { self.onData?(value) } }
+        guard !closed, let sessionQueue else { return }
+        sessionQueue.async { self.onData?(value) }
     }
 
+    /** The Mac ended this session: drop queued data and tell the phone with an empty packet (end of stream). */
     func cancel() {
         bleLog.info("transport cancelled")
-        bleQueue.async { self.closed = true; self.outbox.removeAll() }
+        bleQueue.async {
+            guard !self.closed else { return }
+            self.closed = true
+            self.outbox.removeAll()
+            _ = self.manager.updateValue(Data(), for: self.characteristic, onSubscribedCentrals: [self.central])
+        }
     }
 
     func remoteClosed() {
