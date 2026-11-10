@@ -2,6 +2,9 @@ import Foundation
 import ClipBridgeCore
 
 /// Shared with Android (docs/test-vector.txt): key 00..1f, nonce 00..0b, plaintext {"t":"ping"}.
+/// Shared with Android: same inputs plus AAD = "clipbridge-v1" ‖ "P" ‖ challenge 00..0f.
+let sessionVectorHex = "000102030405060708090a0b3c20a239ffc7b272e326b5f68821eabb40f176140df4f1cc1d9c2a80"
+
 let knownVectorHex = "000102030405060708090a0b3c20a239ffc7b272e326b5f68f06b385001a35d68d5681074ae47dc3"
 
 func cryptoTests() throws {

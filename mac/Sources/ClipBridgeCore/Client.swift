@@ -33,15 +33,25 @@ public final class Client {
             host: NWEndpoint.Host(info.host),
             port: NWEndpoint.Port(rawValue: UInt16(info.port))!,
             using: .tcp)
-        let session = Session(connection: connection, crypto: try! ClipCrypto(key: info.key), queue: queue)
-        session.onReady = { [weak self, weak session] in
+        let session = Session(connection: connection, crypto: try! ClipCrypto(key: info.key), queue: queue, role: .client)
+        session.onChallenge = { [weak self, weak session] in
             guard let self, let session else { return }
             session.send(.hello(device: self.device))
-            self.setState(.connected)
-            self.startPing()
         }
         session.onMessage = { [weak self] message in
-            if case .clip(_, let text, _) = message { self?.onClip?(text) }
+            guard let self else { return }
+            switch message {
+            case .hello:
+                // The Mac proved it has the key: now we're really connected.
+                if self.state != .connected {
+                    self.setState(.connected)
+                    self.startPing()
+                }
+            case .clip(_, let text, _):
+                self.onClip?(text)
+            case .ping:
+                break
+            }
         }
         session.onClose = { [weak self] in
             self?.pingTimer?.cancel()

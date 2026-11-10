@@ -10,6 +10,7 @@ do {
     try wrongKeyTests()
     try idleTimeoutTests()
     try fixedPortTests()
+    try handshakeTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()

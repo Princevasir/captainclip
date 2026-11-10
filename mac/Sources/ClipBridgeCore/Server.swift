@@ -10,6 +10,7 @@ public final class Server {
     }
 
     public static let serviceType = "_clipbridge._tcp"
+    private let macName = Host.current().localizedName ?? "Mac"
 
     public var onClip: ((String) -> Void)?
     public var onStatus: ((Status) -> Void)?
@@ -87,7 +88,7 @@ public final class Server {
     }
 
     private func accept(_ connection: NWConnection) {
-        let session = Session(connection: connection, crypto: crypto, queue: queue)
+        let session = Session(connection: connection, crypto: crypto, queue: queue, role: .server)
         let id = ObjectIdentifier(session)
         pending[id] = session
         session.onMessage = { [weak self, weak session] message in
@@ -107,7 +108,11 @@ public final class Server {
 
     private func handle(_ message: Message, from session: Session) {
         if active === session {
-            if case .clip(_, let text, _) = message, TextLimit.fits(text) { onClip?(text) }
+            switch message {
+            case .clip(_, let text, _) where TextLimit.fits(text): onClip?(text)
+            case .ping: session.send(.ping)  // lets the phone know the Mac is alive
+            default: break
+            }
             return
         }
         // First message from a new connection must be hello.
@@ -116,6 +121,8 @@ public final class Server {
             return
         }
         pending[ObjectIdentifier(session)] = nil
+        // Prove we hold the key too, so the phone only shows "Connected" for the real Mac.
+        session.send(.hello(device: macName))
         let old = active
         active = session
         old?.onClose = nil
