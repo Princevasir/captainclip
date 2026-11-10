@@ -100,7 +100,16 @@ class ConnectionTest {
     @Test fun refusesOversizedText() {
         connection.start()
         events.connected.await()
-        assertFalse(connection.send("a".repeat(1_100_000)))
+        assertFalse(connection.send("a".repeat(300_000)))
+    }
+
+    @Test fun dropsOversizedClipFromMacButStaysConnected() {
+        connection.start()
+        mac.received.await()
+        mac.send(Message.Clip("1", "b".repeat(300_000), 1))
+        mac.send(Message.Clip("2", "small after big", 2))
+        assertEquals("small after big", events.clips.await())
+        assertEquals(null, events.closed.poll(100, TimeUnit.MILLISECONDS))
     }
 
     @Test fun sendsPings() {

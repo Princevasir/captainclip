@@ -18,7 +18,7 @@ public final class Bridge {
 
     public func start() throws {
         watcher.onText = { [weak self] text in
-            guard let self, !self.paused, self.loopGuard.shouldSend(text) else { return }
+            guard let self, !self.paused, TextLimit.fits(text), self.loopGuard.shouldSend(text) else { return }
             if self.server.send(text: text) { self.loopGuard.markSent(text) }
         }
         server.onClip = { [weak self] text in

@@ -4,6 +4,7 @@ import app.clipbridge.core.ClipCrypto
 import app.clipbridge.core.Frame
 import app.clipbridge.core.FrameReader
 import app.clipbridge.core.Message
+import app.clipbridge.core.TextLimit
 import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -44,7 +45,7 @@ class Connection(
 
     /** Queues [text] for the Mac. False if not connected, too large, or the outbox is full. Never blocks. */
     fun send(text: String): Boolean {
-        if (!Frame.fits(text)) return false
+        if (!TextLimit.fits(text)) return false
         return enqueue(Message.Clip(UUID.randomUUID().toString(), text, System.currentTimeMillis()))
     }
 
@@ -69,7 +70,7 @@ class Connection(
             val reader = FrameReader(socket.getInputStream())
             while (!closed.get()) {
                 val message = Message.parse(String(crypto.open(reader.next())))
-                if (message is Message.Clip) listener.onClip(message.text)
+                if (message is Message.Clip && TextLimit.fits(message.text)) listener.onClip(message.text)
             }
         } catch (_: Exception) {
             // IO error, wrong key, bad frame or bad JSON: drop the connection.

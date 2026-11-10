@@ -78,7 +78,8 @@ public final class Server {
     /// Sends text to the connected phone. False if none is connected or the text is too large.
     @discardableResult
     public func send(text: String) -> Bool {
-        queue.sync {
+        guard TextLimit.fits(text) else { return false }
+        return queue.sync {
             guard let active else { return false }
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
             return active.send(.clip(id: UUID().uuidString, text: text, ts: ts))
@@ -106,7 +107,7 @@ public final class Server {
 
     private func handle(_ message: Message, from session: Session) {
         if active === session {
-            if case .clip(_, let text, _) = message { onClip?(text) }
+            if case .clip(_, let text, _) = message, TextLimit.fits(text) { onClip?(text) }
             return
         }
         // First message from a new connection must be hello.

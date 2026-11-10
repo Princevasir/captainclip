@@ -77,11 +77,6 @@ class FrameTest {
     @Test fun encodeRejectsOversizePayload() {
         assertThrows { Frame.encode(ByteArray(Frame.MAX_PAYLOAD + 1)) }
     }
-
-    @Test fun fitsReportsWhetherTextCanBeSent() {
-        assertTrue(Frame.fits("hello"))
-        assertFalse(Frame.fits("a".repeat(1_100_000)))
-    }
 }
 
 class MessageTest {

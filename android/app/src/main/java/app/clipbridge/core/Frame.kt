@@ -8,17 +8,10 @@ import java.nio.ByteBuffer
 /** Frame = 4-byte big-endian length N (1..MAX_PAYLOAD) then N bytes. */
 object Frame {
     const val MAX_PAYLOAD = 1_048_576
-    private const val CRYPTO_OVERHEAD = 12 + 16
 
     fun encode(payload: ByteArray): ByteArray {
         require(payload.isNotEmpty() && payload.size <= MAX_PAYLOAD) { "bad payload size ${payload.size}" }
         return ByteBuffer.allocate(4 + payload.size).putInt(payload.size).put(payload).array()
-    }
-
-    /** True if a clip carrying [text] fits in one encrypted frame. */
-    fun fits(text: String): Boolean {
-        val json = Message.Clip("00000000-0000-0000-0000-000000000000", text, Long.MAX_VALUE).toJson()
-        return json.toByteArray().size + CRYPTO_OVERHEAD <= MAX_PAYLOAD
     }
 }
 
