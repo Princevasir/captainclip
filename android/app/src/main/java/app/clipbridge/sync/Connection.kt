@@ -43,12 +43,17 @@ class Connection(
         fun onConnected()
         fun onClip(text: String)
         fun onClosed(reason: CloseReason)
+        /** File messages from the Mac (offer, offer-clear, file-start/chunk/end/error). Background thread. */
+        fun onMessage(message: Message) {}
     }
 
     private val crypto = ClipCrypto(key)
     private val socket = Socket()
     private val closed = AtomicBoolean(false)
+    /** Text, pings and file control messages: always written before any queued file chunk. */
     private val outbox = LinkedBlockingQueue<Message>(OUTBOX_CAPACITY)
+    /** File chunks: small bound so a waiting text never sits behind more than a few chunks. */
+    private val chunks = LinkedBlockingQueue<Message.FileChunk>(CHUNK_CAPACITY)
     @Volatile private var output: OutputStream? = null
     @Volatile private var challenge: ByteArray? = null
     @Volatile private var acked = false
@@ -61,6 +66,20 @@ class Connection(
     fun send(text: String): Boolean {
         if (!TextLimit.fits(text)) return false
         return enqueue(Message.Clip(UUID.randomUUID().toString(), text, System.currentTimeMillis()))
+    }
+
+    /** Queues a file control message (fetch, file-start, file-end, file-error). Never blocks. */
+    fun sendControl(message: Message): Boolean = enqueue(message)
+
+    /**
+     * Queues one file chunk, waiting for room if needed. Call from a worker thread, never the main thread.
+     * Returns false if the connection closes (or isn't up).
+     */
+    fun sendChunk(chunk: Message.FileChunk): Boolean {
+        while (acked && !closed.get()) {
+            if (chunks.offer(chunk, 200, TimeUnit.MILLISECONDS)) return true
+        }
+        return false
     }
 
     fun close() = close(CloseReason.LOST)
@@ -95,6 +114,9 @@ class Connection(
                         startPinger()
                     }
                     message is Message.Clip && acked && TextLimit.fits(message.text) -> listener.onClip(message.text)
+                    acked && (message is Message.Offer || message is Message.OfferClear || message is Message.FileStart ||
+                        message is Message.FileChunk || message is Message.FileEnd || message is Message.FileError) ->
+                        listener.onMessage(message)
                 }
             }
         } catch (_: GeneralSecurityException) {
@@ -126,7 +148,8 @@ class Connection(
     private fun startWriter() {
         Thread({
             while (!closed.get()) {
-                val message = outbox.poll(200, TimeUnit.MILLISECONDS) ?: continue
+                // Control/text first; a chunk only when nothing else is waiting.
+                val message: Message = outbox.poll() ?: chunks.poll() ?: outbox.poll(20, TimeUnit.MILLISECONDS) ?: continue
                 if (!write(message)) break
             }
         }, "clipbridge-writer").apply { isDaemon = true; start() }
@@ -147,5 +170,6 @@ class Connection(
         const val CONNECT_TIMEOUT_MS = 5_000
         const val CHALLENGE_BYTES = 16
         const val OUTBOX_CAPACITY = 16
+        const val CHUNK_CAPACITY = 4
     }
 }

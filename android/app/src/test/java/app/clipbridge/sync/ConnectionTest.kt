@@ -55,6 +55,8 @@ private class FakeMac(key: ByteArray, private val autoAck: Boolean = true) {
 }
 
 private class Events : Connection.Listener {
+    val messages = LinkedBlockingQueue<Message>()
+    override fun onMessage(message: Message) { messages.put(message) }
     val connected = LinkedBlockingQueue<Unit>()
     val clips = LinkedBlockingQueue<String>()
     val closed = LinkedBlockingQueue<Connection.CloseReason>()
@@ -94,6 +96,43 @@ class ConnectionTest {
         assertNull("connected before Mac answered", events.connected.poll(500, TimeUnit.MILLISECONDS))
         mac.send(Message.Hello("FakeMac"))
         assertTrue(events.connected.await() != null)
+    }
+
+    @Test fun fileOfferFromMacReachesListener() {
+        connect()
+        events.connected.await()
+        val offer = Message.Offer("o1", "report.pdf", "application/pdf", 1234, 1)
+        mac.send(offer)
+        assertEquals(offer, events.messages.await())
+    }
+
+    @Test fun controlMessagesReachMac() {
+        val conn = connect()
+        events.connected.await()
+        assertTrue(conn.sendControl(Message.Fetch("o1")))
+        assertEquals(Message.Fetch("o1"), generateSequence { mac.received.await() }.first { it is Message.Fetch })
+    }
+
+    @Test fun clipboardTextOvertakesFileChunks() {
+        val conn = connect(pingIntervalMs = 60_000)
+        events.connected.await()
+        val chunk = ByteArray(196_608)
+        val uploader = Thread {
+            for (seq in 0L until 26L) conn.sendChunk(Message.FileChunk("up", seq, chunk))  // ~5 MB
+        }.apply { start() }
+        Thread.sleep(50)  // upload under way
+        assertTrue(conn.send("urgent text"))
+        uploader.join(20_000)
+        val seen = generateSequence { mac.received.poll(5, TimeUnit.SECONDS) }
+            .takeWhile { !(it is Message.FileChunk && it.seq == 25L) }.toList()
+        assertTrue("text should arrive before the last chunk", seen.any { it is Message.Clip && it.text == "urgent text" })
+    }
+
+    @Test fun sendChunkFailsOnceClosed() {
+        val conn = connect()
+        events.connected.await()
+        conn.close()
+        assertFalse(conn.sendChunk(Message.FileChunk("x", 0, ByteArray(10))))
     }
 
     @Test fun unknownMessageFromMacIsIgnored() {
