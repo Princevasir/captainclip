@@ -260,22 +260,33 @@ class MainActivity : Activity() {
         }
     }
 
+    private val saveProgress = app.clipbridge.files.SaveProgress()
+    private var firstSavedUri: Uri? = null
+
     private fun saveOffer() {
         val offers = Files.cache(this).currentAll()
         if (offers.isEmpty()) return refresh()
+        val todo = saveProgress.remaining(offers.map { it.id })
+        if (todo.size == offers.size) firstSavedUri = null
         saveButton.isEnabled = false
         saveButton.text = "Saving…"
-        var firstUri: Uri? = null
         fun saveNext(i: Int) {
-            if (i >= offers.size) {
+            if (i >= todo.size) {
                 saveButton.isEnabled = true
-                firstUri?.let { saved = offers.first().id to it }
+                firstSavedUri?.let { saved = offers.first().id to it }
                 refresh()
                 return
             }
-            SyncService.saveOffer(offers[i].id) { uri, error ->
-                if (uri != null) { if (firstUri == null) firstUri = uri; saveNext(i + 1) }
-                else { saveButton.isEnabled = true; toast(error ?: "Couldn't save ${offers[i].name}"); refresh() }
+            SyncService.saveOffer(todo[i]) { uri, error ->
+                if (uri != null) {
+                    saveProgress.saved(todo[i])
+                    if (todo[i] == offers.first().id) firstSavedUri = uri
+                    saveNext(i + 1)
+                } else {
+                    saveButton.isEnabled = true
+                    toast(error ?: "Couldn't save ${offers.first { it.id == todo[i] }.name}")
+                    refresh()
+                }
             }
         }
         saveNext(0)
