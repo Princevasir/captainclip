@@ -166,6 +166,7 @@ class BleLink private constructor(private val gatt: BluetoothGatt, private val c
             val found = CountDownLatch(1)
             var device: BluetoothDevice? = null
             val scan = object : ScanCallback() {
+                override fun onScanFailed(errorCode: Int) { Log.i(TAG, "Bluetooth scan failed: $errorCode") }
                 override fun onScanResult(callbackType: Int, result: ScanResult) {
                     val name = result.scanRecord?.deviceName ?: return
                     if (name == wanted && device == null) { device = result.device; found.countDown() }
@@ -175,7 +176,7 @@ class BleLink private constructor(private val gatt: BluetoothGatt, private val c
             val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
             try {
                 scanner.startScan(listOf(filter), settings, scan)
-                found.await(scanMs, TimeUnit.MILLISECONDS)
+                if (!found.await(scanMs, TimeUnit.MILLISECONDS)) Log.i(TAG, "Bluetooth scan: Mac $wanted not found")
             } finally {
                 runCatching { scanner.stopScan(scan) }
             }

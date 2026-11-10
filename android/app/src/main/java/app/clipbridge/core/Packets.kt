@@ -63,5 +63,6 @@ object PairingTag {
     fun hexOf(macId: String): String =
         MessageDigest.getInstance("SHA-256").digest(macId.toByteArray()).take(4).joinToString("") { "%02x".format(it) }
 
-    fun localName(macId: String) = "CB-" + hexOf(macId)
+    /** Advertised name = tag hex only: anything longer doesn't fit beside the service UUID and macOS drops it. */
+    fun localName(macId: String) = hexOf(macId)
 }

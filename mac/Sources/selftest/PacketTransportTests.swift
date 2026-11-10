@@ -62,7 +62,9 @@ func packetizerTests() {
     check(tag.count == 4, "pairing tag is 4 bytes")
     check(tag.hex == pairingTagVector, "pairing tag matches recorded vector")
     check(PairingTag.of(macId: "fedcba9876543210") != tag, "different Macs have different tags")
-    check(BLEIds.localName(macId: "0123456789abcdef") == "CB-9f9f5111", "Bluetooth advertised name carries the pairing tag")
+    check(BLEIds.localName(macId: "0123456789abcdef") == "9f9f5111", "Bluetooth advertised name carries the pairing tag")
+    // macOS drops the name unless flags (3) + 128-bit service UUID (18) + name (2 + n) fit in 31 bytes.
+    check(3 + 18 + 2 + BLEIds.localName(macId: "0123456789abcdef").utf8.count <= 31, "advertised name fits in one Bluetooth advertisement")
 }
 
 let pairingTagVector = "9f9f5111"

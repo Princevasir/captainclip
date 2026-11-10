@@ -6,8 +6,9 @@ public enum BLEIds {
     public static let service = CBUUID(string: "6C1B0001-8C4F-4E5A-9B8E-5A1D3C2B7F10")
     public static let toMac = CBUUID(string: "6C1B0002-8C4F-4E5A-9B8E-5A1D3C2B7F10")
     public static let toPhone = CBUUID(string: "6C1B0003-8C4F-4E5A-9B8E-5A1D3C2B7F10")
-    /// Advertised local name: "CB-" + pairing tag hex, so the phone can pick its own Mac.
-    public static func localName(macId: String) -> String { "CB-" + PairingTag.of(macId: macId).hexString }
+    /// Advertised local name: the pairing tag hex (8 chars), so the phone can pick its own Mac. Kept short: macOS
+    /// drops the name unless it fits beside the 128-bit service UUID in one 31-byte advertisement.
+    public static func localName(macId: String) -> String { PairingTag.of(macId: macId).hexString }
 }
 
 /// Bluetooth fallback, Mac side: a BLE peripheral exposing one GATT service. When the paired phone subscribes,

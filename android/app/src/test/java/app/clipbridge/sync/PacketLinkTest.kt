@@ -62,7 +62,7 @@ class PacketStreamTest {
 
     @Test fun pairingTagMatchesMac() {
         assertEquals("9f9f5111", PairingTag.hexOf("0123456789abcdef"))
-        assertEquals("CB-9f9f5111", PairingTag.localName("0123456789abcdef"))
+        assertEquals("9f9f5111", PairingTag.localName("0123456789abcdef"))  // fits with the service UUID in 31 bytes
     }
 }
 
