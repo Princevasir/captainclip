@@ -47,6 +47,15 @@ func offerSetTests() throws {
     check(got.all.sorted { $0.lastPathComponent < $1.lastPathComponent }.enumerated().allSatisfy { i, u in
         (try? Data(contentsOf: u)) == (try? Data(contentsOf: files[i])) }, "fetched files are identical")
 
+    // Apps like Gmail open every file of a set at once: all must arrive, none cancelled by the next fetch.
+    let parallel = Recorder<URL>()
+    let parallelDir = tempDir("set-par"); defer { try? FileManager.default.removeItem(at: parallelDir) }
+    for item in items {
+        phone.expectFile(id: item.id, into: parallelDir) { if case .success(let u) = $0 { parallel.add(u) } }
+    }
+    for item in items { phone.send(message: .fetch(id: item.id)) }
+    check(waitUntil(10) { parallel.all.count == 3 }, "fetching all files of a set at once delivers every file")
+
     let before = messages.all.count
     let many = (1...25).map { randomFile(src, name: "m\($0).txt", bytes: 10) }
     finderCopy(many, on: board)

@@ -108,19 +108,40 @@ public final class Server {
         }
     }
 
-    /// Sends a file to the phone: cancels any stream still running, then file-start + paced chunks + end.
+    /// Sends a file to the phone: file-start + paced chunks + end. Files are sent one at a time in the order asked
+    /// (apps open every file of a set at once); `cancelStream` drops the running one and the queue.
     public func sendFile(start: Message, stream: AnySequence<Message>, completion: @escaping (Bool) -> Void = { _ in }) {
         queue.async { [weak self] in
-            guard let active = self?.active else { completion(false); return }
-            active.cancelChunked()
-            active.send(start)
-            active.sendChunked(stream, completion: completion)
+            guard let self, let active = self.active else { completion(false); return }
+            self.fileQueue.append((ObjectIdentifier(active), start, stream, completion))
+            if !self.fileSending { self.sendNextFile() }
         }
     }
 
-    /// Stops any file stream to the phone (e.g. the offer was replaced or cleared).
+    private var fileQueue: [(session: ObjectIdentifier, start: Message, stream: AnySequence<Message>, done: (Bool) -> Void)] = []
+    private var fileSending = false
+
+    private func sendNextFile() {
+        guard !fileQueue.isEmpty else { fileSending = false; return }
+        let next = fileQueue.removeFirst()
+        guard let active, ObjectIdentifier(active) == next.session else { next.done(false); sendNextFile(); return }
+        fileSending = true
+        active.send(next.start)
+        active.sendChunked(next.stream) { [weak self] ok in
+            next.done(ok)
+            self?.sendNextFile()
+        }
+    }
+
+    /// Stops any file stream to the phone and drops queued ones (e.g. the offer was replaced or cleared).
     public func cancelStream() {
-        queue.async { [weak self] in self?.active?.cancelChunked() }
+        queue.async { [weak self] in
+            guard let self else { return }
+            let dropped = self.fileQueue
+            self.fileQueue.removeAll()
+            dropped.forEach { $0.done(false) }
+            self.active?.cancelChunked()
+        }
     }
 
     /// Accepts a phone over any transport (TCP from the listener, or a Bluetooth link). Newest phone wins.
