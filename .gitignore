@@ -8,3 +8,4 @@ local.properties
 .DS_Store
 android/app/build/
 android/build/
+android/.kotlin/
