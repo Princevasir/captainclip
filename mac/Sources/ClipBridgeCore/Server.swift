@@ -91,6 +91,9 @@ public final class Server {
         }
     }
 
+    /// True when the connected phone is on the Bluetooth link.
+    public var activeIsBluetooth: Bool { queue.sync { active?.isBluetooth ?? false } }
+
     /// Sends any message to the connected phone. False if none is connected.
     @discardableResult
     public func send(message: Message) -> Bool {

@@ -31,6 +31,7 @@ do {
     try richMessageTests()
     packetizerTests()
     try sessionOverBluetoothTests()
+    try bluetoothSizeCapTests()
     try richTextTests()
     try bridgeRichTextTests()
     richTextSafetyTests()

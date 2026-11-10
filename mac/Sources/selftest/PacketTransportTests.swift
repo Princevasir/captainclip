@@ -97,3 +97,54 @@ func sessionOverBluetoothTests() throws {
     check(waitUntil(20) { arrived.all.count == 1 }, "2 MB file crosses the Bluetooth-like link")
     check(arrived.all.first.flatMap { try? Data(contentsOf: $0) } == (try? Data(contentsOf: file)), "file intact over Bluetooth")
 }
+
+func bluetoothSizeCapTests() throws {
+    check(FileLimit.bluetoothMaxBytes == 5_242_880, "Bluetooth file cap is 5 MB")
+    let key = ClipCrypto.randomKey()
+    let board = NSPasteboard(name: NSPasteboard.Name("clipbridge.blecap.\(UUID().uuidString)"))
+    defer { board.releaseGlobally() }
+    let downloads = tempDir("blecap-dl"), src = tempDir("blecap-src"), into = tempDir("blecap-in")
+    defer { [downloads, src, into].forEach { try? FileManager.default.removeItem(at: $0) } }
+    let server = Server(key: key, macId: "0123456789abcdef", advertise: false)
+    let bridge = Bridge(server: server, watcher: PasteboardWatcher(pasteboard: board, interval: 0.05), downloads: downloads)
+    let statuses = Recorder<Server.Status>()
+    bridge.onStatus = { statuses.add($0) }
+    try bridge.start(); defer { bridge.stop() }
+    let pipe = PacketPipe(mtu: 512)
+    server.accept(transport: pipe.mac)
+    let phone = Client(info: PairingInfo(macId: "0123456789abcdef", key: key, host: "ble", port: 1), device: "ble-phone")
+    let messages = Recorder<Message>()
+    phone.onMessage = { messages.add($0) }
+    phone.start(transport: pipe.phone); defer { phone.stop() }
+    _ = waitUntil(5) { statuses.all.last == .connected(device: "ble-phone") }
+
+    func offerId(for url: URL) -> String? {
+        let before = messages.all.count
+        finderCopy([url], on: board)
+        _ = waitUntil(5) { messages.all.dropFirst(before).contains { if case .offer = $0 { return true } else { return false } } }
+        for m in messages.all.dropFirst(before).reversed() { if case .offer(let id, _, _, _, _) = m { return id } }
+        return nil
+    }
+
+    let big = randomFile(src, name: "big.zip", bytes: 6_000_000)
+    guard let bigId = offerId(for: big) else { check(false, "big file offered"); return }
+    let failed = Recorder<String>()
+    phone.expectFile(id: bigId, into: into) { if case .failure(let e) = $0 { failed.add(e.localizedDescription) } }
+    phone.send(message: .fetch(id: bigId))
+    check(waitUntil(5) { failed.all == ["too-large-bluetooth"] }, "6 MB file over Bluetooth is refused with too-large-bluetooth")
+
+    let small = randomFile(src, name: "small.pdf", bytes: 300_000)
+    guard let smallId = offerId(for: small) else { check(false, "small file offered"); return }
+    let got = Recorder<URL>()
+    phone.expectFile(id: smallId, into: into) { if case .success(let u) = $0 { got.add(u) } }
+    phone.send(message: .fetch(id: smallId))
+    check(waitUntil(10) { got.all.count == 1 }, "small file is still served over Bluetooth")
+
+    let upload = randomFile(src, name: "upload.bin", bytes: 6_000_000)
+    phone.sendFile(url: upload)
+    check(waitUntil(10) { messages.all.contains { if case .fileError(_, "too-large-bluetooth") = $0 { return true } else { return false } } },
+          "6 MB upload over Bluetooth is refused")
+    RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+    check(((try? FileManager.default.contentsOfDirectory(atPath: downloads.path)) ?? []).filter { $0.hasPrefix("upload") }.isEmpty,
+          "refused upload leaves nothing in Downloads")
+}

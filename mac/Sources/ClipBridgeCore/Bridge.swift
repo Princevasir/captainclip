@@ -111,8 +111,12 @@ public final class Bridge {
         switch message {
         case .fetch(let id):
             serve(id: id)
-        case .fileStart(let id, _, let mime, _, _, let purpose):
+        case .fileStart(let id, _, let mime, let size, _, let purpose):
             receivers[id]?.abort()
+            if size > FileLimit.bluetoothMaxBytes, server.activeIsBluetooth {
+                server.send(message: .fileError(id: id, reason: "too-large-bluetooth"))
+                return
+            }
             let toClipboard = purpose == "clipboard" && mime.hasPrefix("image/")
             if toClipboard { clipboardImageIds.insert(id); imageMimes[id] = mime } else { clipboardImageIds.remove(id) }
             let dir = toClipboard ? imageCache.appendingPathComponent("incoming", isDirectory: true) : downloads
@@ -162,6 +166,11 @@ public final class Bridge {
         case .failure(let error):
             server.send(message: .fileError(id: id, reason: error == .changed ? "changed" : "expired"))
         case .success(let entry):
+            let size = (try? entry.url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            if size > FileLimit.bluetoothMaxBytes, server.activeIsBluetooth {
+                server.send(message: .fileError(id: id, reason: "too-large-bluetooth"))
+                return
+            }
             guard let sender = try? FileSender(id: id, url: entry.url, name: entry.name, mime: entry.mime)
             else { server.send(message: .fileError(id: id, reason: "io")); return }
             server.sendFile(start: sender.start, stream: sender.stream())
