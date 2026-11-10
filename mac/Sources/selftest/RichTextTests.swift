@@ -86,3 +86,35 @@ func richTextSafetyTests() {
     check(board.string(forType: .html) == html, "the original HTML is still offered to apps as-is")
     check(board.data(forType: .rtf) != nil && board.string(forType: .string) == "Hi there", "RTF and text written too")
 }
+
+private func runs(_ rtf: Data) -> (bold: Int, italic: Int, link: Int, background: Int, color: Int, fonts: Set<String>) {
+    let a = NSAttributedString(rtf: rtf, documentAttributes: nil) ?? NSAttributedString()
+    var r = (bold: 0, italic: 0, link: 0, background: 0, color: 0, fonts: Set<String>())
+    a.enumerateAttributes(in: NSRange(location: 0, length: a.length)) { attrs, range, _ in
+        if let f = attrs[.font] as? NSFont {
+            r.fonts.insert(f.familyName ?? "?")
+            if f.fontDescriptor.symbolicTraits.contains(.bold) { r.bold += range.length }
+            if f.fontDescriptor.symbolicTraits.contains(.italic) { r.italic += range.length }
+        }
+        if attrs[.link] != nil { r.link += range.length }
+        if attrs[.backgroundColor] != nil { r.background += range.length }
+        if attrs[.foregroundColor] != nil { r.color += range.length }
+    }
+    return r
+}
+
+func richTextCleanRTFTests() {
+    // Shape of a copy from GitHub in Chrome: semi-bold in a web font, colours, white background, a link.
+    let html = #"<strong style="font-weight: 600; color: rgb(31,35,40); font-family: 'Mona Sans VF', sans-serif; background-color: rgb(255,255,255);">Usage:</strong><span style="color: rgb(31,35,40); background-color: rgb(255,255,255);"> run </span><em>quickly</em> <a href="https://example.com">docs</a>"#
+    let board = NSPasteboard(name: NSPasteboard.Name("clipbridge.clean.\(UUID().uuidString)"))
+    defer { board.releaseGlobally() }
+    RichText.write(text: "Usage: run quickly docs", html: html, to: board)
+    guard let rtf = board.data(forType: .rtf) else { check(false, "RTF written"); return }
+    let r = runs(rtf)
+    check(r.bold >= 6, "semi-bold (600) text becomes real bold in RTF (\(r.bold) chars)")
+    check(r.italic >= 7, "italics kept (\(r.italic) chars)")
+    check(r.link >= 4, "links kept")
+    check(r.background == 0, "source background colours are dropped (no white boxes in dark mode)")
+    check(r.color == 0 || r.color == r.link, "source text colours are dropped (links may keep theirs)")
+    check(!r.fonts.contains("Mona Sans VF"), "source web fonts are replaced by the system font")
+}

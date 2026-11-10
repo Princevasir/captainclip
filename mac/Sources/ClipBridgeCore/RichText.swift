@@ -24,13 +24,37 @@ public enum RichText {
            let attributed = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html,
                                                                           .characterEncoding: String.Encoding.utf8.rawValue],
                                                     documentAttributes: nil) {
-            rtf = try? attributed.data(from: NSRange(location: 0, length: attributed.length),
-                                       documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
+            let clean = cleaned(attributed)
+            rtf = try? clean.data(from: NSRange(location: 0, length: clean.length),
+                                  documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
         }
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
         pasteboard.setString(html, forType: .html)
         if let rtf { pasteboard.setData(rtf, forType: .rtf) }
+    }
+
+    /// Keeps what reads as formatting in Notes/Mail/Pages — bold, italic, underline, strikethrough, links, size —
+    /// and drops the source page's colours, background boxes and web fonts (which look wrong, esp. in dark mode).
+    static func cleaned(_ source: NSAttributedString) -> NSAttributedString {
+        let out = NSMutableAttributedString(attributedString: source)
+        let all = NSRange(location: 0, length: out.length)
+        out.removeAttribute(.backgroundColor, range: all)
+        out.enumerateAttribute(.link, in: all) { link, range, _ in
+            if link == nil { out.removeAttribute(.foregroundColor, range: range) }
+        }
+        out.enumerateAttribute(.font, in: all) { value, range, _ in
+            guard let font = value as? NSFont else { return }
+            let traits = font.fontDescriptor.symbolicTraits
+            let weight = (font.fontDescriptor.object(forKey: .traits) as? [NSFontDescriptor.TraitKey: Any])?[.weight] as? CGFloat ?? 0
+            var replacement = NSFont.systemFont(ofSize: font.pointSize,
+                                                weight: (traits.contains(.bold) || weight >= NSFont.Weight.semibold.rawValue) ? .bold : .regular)
+            if traits.contains(.italic) {
+                replacement = NSFontManager.shared.convert(replacement, toHaveTrait: .italicFontMask)
+            }
+            out.addAttribute(.font, value: replacement, range: range)
+        }
+        return out
     }
 
     /// HTML safe to hand to the WebKit importer: no remote images, stylesheets, scripts, frames or media,
