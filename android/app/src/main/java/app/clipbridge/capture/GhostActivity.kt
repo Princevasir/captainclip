@@ -51,6 +51,18 @@ class GhostActivity : Activity() {
         super.onWindowFocusChanged(hasFocus)
         if (!hasFocus || done || intent.action != ACTION_READ) return
         val clip = clipboard().primaryClip?.takeIf { it.itemCount > 0 }
+        if (clip?.getItemAt(0)?.uri != null) {
+            // A copied image (screenshot "Copy", Chrome "Copy image") → Mac clipboard. Read it before closing.
+            val announce = intent.getBooleanExtra(EXTRA_ANNOUNCE, false)
+            Thread {
+                val sent = ClipImages.sendIfImage(applicationContext, clip)
+                if (announce) runOnUiThread {
+                    Toast.makeText(applicationContext, if (sent) "Image sent to Mac" else "Couldn't send that to your Mac", Toast.LENGTH_SHORT).show()
+                }
+            }.start()
+            finishQuietly()
+            return
+        }
         val text = clip?.getItemAt(0)?.coerceToText(this)?.toString()
         val sensitive = clip?.description?.extras?.getBoolean(ClipPolicy.EXTRA_IS_SENSITIVE, false) ?: false
         val hasUri = clip?.getItemAt(0)?.uri != null

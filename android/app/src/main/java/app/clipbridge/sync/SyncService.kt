@@ -31,7 +31,7 @@ import java.io.File
 import java.util.concurrent.Executors
 
 /** A shared file already copied into ClipBridge's cache by the Share screen. */
-data class OutgoingFile(val file: File, val name: String, val mime: String)
+data class OutgoingFile(val file: File, val name: String, val mime: String, val purpose: String = "file")
 
 /**
  * Foreground service hosting the [SyncLoop]. Clips from the Mac go straight onto the phone clipboard.
@@ -101,6 +101,21 @@ class SyncService : Service() {
         val isRunning: Boolean get() = instance?.loop != null
 
         /** Share → Send to Mac: send already-copied files (deleted afterwards). In-process, no URI grants. */
+        /**
+         * A copied image (already copied into our cache) → the Mac's clipboard. Duplicate triggers for the same
+         * image within a few seconds (copy button + "Copied" toast) are sent once. Returns true if queued.
+         */
+        fun sendClipboardImage(file: OutgoingFile, key: String): Boolean {
+            val service = instance ?: return false.also { file.file.delete() }
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (key == lastImageKey && now - lastImageAt < 5_000) { file.file.delete(); return true }
+            lastImageKey = key; lastImageAt = now
+            service.uploadFiles(listOf(file))
+            return true
+        }
+        @Volatile private var lastImageKey: String? = null
+        @Volatile private var lastImageAt = 0L
+
         fun sendLocalFiles(files: List<OutgoingFile>): Boolean {
             val service = instance ?: return false
             service.uploadFiles(files)
@@ -266,8 +281,8 @@ class SyncService : Service() {
             for (f in files) {
                 try {
                     if (f.file.length() > FileLimit.MAX_BYTES) { toast("${f.name} is too large (max 25 MB)"); continue }
-                    transferNotice("Sending ${f.name} to Mac…", null, ongoing = true)
-                    val ok = runCatching { loop?.sendFile(f.name, f.mime, f.file.length()) { f.file.inputStream() } ?: false }
+                    if (f.purpose != "clipboard") transferNotice("Sending ${f.name} to Mac…", null, ongoing = true)
+                    val ok = runCatching { loop?.sendFile(f.name, f.mime, f.file.length(), f.purpose) { f.file.inputStream() } ?: false }
                         .onFailure { android.util.Log.w("ClipBridgeFiles", "upload of ${f.name} failed", it) }
                         .getOrDefault(false)
                     android.util.Log.i("ClipBridgeFiles", "upload of ${f.name} ok=$ok")
@@ -277,7 +292,7 @@ class SyncService : Service() {
                 }
             }
             val done = if (sent == 1) "Sent to Mac" else "Sent $sent files to Mac"
-            if (sent > 0) { toast(done); transferNotice(done, null) }
+            if (sent > 0 && files.any { it.purpose != "clipboard" }) { toast(done); transferNotice(done, null) }
         }
     }
 

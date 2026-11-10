@@ -137,6 +137,15 @@ class SyncLoopFileTest {
         assertTrue("half upload left on Mac", uploadDir.listFiles()!!.none { it.name.endsWith(".clipbridge-part") })
     }
 
+    @Test fun clipboardImageIsMarkedForTheMacClipboard() {
+        val png = Random(7).nextBytes(50_000)
+        connected()
+        assertTrue(loop.sendFile("Screenshot.png", "image/png", png.size.toLong(), purpose = "clipboard") { ByteArrayInputStream(png) })
+        val end = System.currentTimeMillis() + 3_000
+        while (mac.received.none { it is Message.FileStart } && System.currentTimeMillis() < end) Thread.sleep(20)
+        assertEquals("clipboard", (mac.received.first { it is Message.FileStart } as Message.FileStart).purpose)
+    }
+
     @Test fun sendFileOverLimitIsRefused() {
         connected()
         assertFalse(loop.sendFile("big.mov", "video/quicktime", FileLimit.MAX_BYTES + 1) { ByteArrayInputStream(ByteArray(0)) })

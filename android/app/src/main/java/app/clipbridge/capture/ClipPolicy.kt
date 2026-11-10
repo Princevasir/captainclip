@@ -29,3 +29,12 @@ object SharePolicy {
     fun accepts(scheme: String?, authority: String?): Boolean =
         scheme == "content" && authority != null && authority != app.clipbridge.files.Files.AUTHORITY
 }
+
+/** Which clipboard images are sent to the Mac (copied screenshots, "Copy image"). */
+object ClipImagePolicy {
+    fun accepts(scheme: String?, authority: String?, mime: String?, sensitive: Boolean, size: Long): Boolean =
+        SharePolicy.accepts(scheme, authority) &&
+            mime != null && mime.startsWith("image/") &&
+            !sensitive &&
+            size in 1..app.clipbridge.core.FileLimit.MAX_BYTES
+}

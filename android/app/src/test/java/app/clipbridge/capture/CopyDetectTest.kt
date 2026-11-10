@@ -14,6 +14,7 @@ class CopyDetectTest {
         assertTrue(CopyDetect.matches("  copy link "))
         assertTrue(CopyDetect.matches("Copy text"))
         assertTrue(CopyDetect.matches("कॉपी करें"))
+        assertTrue(CopyDetect.matches("Copy image"))
     }
 
     @Test fun matchesCopiedToasts() {

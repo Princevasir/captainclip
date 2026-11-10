@@ -27,6 +27,7 @@ class FileSender(
     val name: String,
     val mime: String,
     val size: Long,
+    val purpose: String = "file",
 ) {
     init {
         if (size < 0 || size > FileLimit.MAX_BYTES) throw FileTransferException("too-large")
@@ -42,7 +43,7 @@ class FileSender(
                 digest.update(buf, 0, n)
             }
         }
-        return Message.FileStart(id, name, mime, size, digest.digest().hex())
+        return Message.FileStart(id, name, mime, size, digest.digest().hex(), purpose)
     }
 
     fun chunks(): Sequence<Message.FileChunk> = sequence {

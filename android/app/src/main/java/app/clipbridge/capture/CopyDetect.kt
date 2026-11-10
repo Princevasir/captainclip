@@ -14,7 +14,7 @@ object CopyDetect {
     /** Exact labels of copy buttons/menu items (after lowercasing and trimming). */
     private val copyLabels = setOf(
         "copy", "copy text", "copy link", "copy link address", "copy to clipboard",
-        "copy message", "copy code", "copy url",
+        "copy message", "copy code", "copy url", "copy image", "copy photo",
         "कॉपी", "कॉपी करें", "लिंक कॉपी करें",
     )
 

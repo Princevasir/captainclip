@@ -131,10 +131,11 @@ class SyncLoop(
     }
 
     /** Sends one file to the Mac (one at a time). Blocks while streaming; never call on the main thread. */
-    fun sendFile(name: String, mime: String, size: Long, input: () -> InputStream): Boolean = synchronized(sendLock) {
+    /** [purpose] "clipboard" asks the Mac to put the file (an image) on its clipboard instead of Downloads. */
+    fun sendFile(name: String, mime: String, size: Long, purpose: String = "file", input: () -> InputStream): Boolean = synchronized(sendLock) {
         if (size < 0 || size > FileLimit.MAX_BYTES) return false
         val conn = connection ?: return false
-        val sender = FileSender(UUID.randomUUID().toString(), input, name, mime, size)
+        val sender = FileSender(UUID.randomUUID().toString(), input, name, mime, size, purpose)
         val start = try { sender.start() } catch (_: Exception) { return false }
         if (!conn.sendControl(start)) return false
         try {
