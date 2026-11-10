@@ -30,6 +30,9 @@ import app.clipbridge.files.Files
 import java.io.File
 import java.util.concurrent.Executors
 
+/** A shared file already copied into ClipBridge's cache by the Share screen. */
+data class OutgoingFile(val file: File, val name: String, val mime: String)
+
 /**
  * Foreground service hosting the [SyncLoop]. Clips from the Mac go straight onto the phone clipboard.
  * Only START (when sync is enabled and paired) or RECONNECT bring it up; sending never does.
@@ -45,7 +48,6 @@ class SyncService : Service() {
         private const val TRANSFER_NOTIFICATION_ID = 3
         private const val FILES_CHANNEL = "files"
         private const val ACTION_SAVE_OFFER = "app.clipbridge.SAVE_OFFER"
-        private const val ACTION_SEND_FILES = "app.clipbridge.SEND_FILES"
         private const val EXTRA_OFFER_ID = "offer_id"
 
         @Volatile private var instance: SyncService? = null
@@ -83,15 +85,13 @@ class SyncService : Service() {
             }
         }
 
-        /** Share → Send to Mac with files. False if sync isn't running. */
-        fun sendFiles(ctx: Context, uris: List<Uri>): Boolean {
-            if (instance == null || uris.isEmpty()) return false
-            val intent = Intent(ctx, SyncService::class.java).setAction(ACTION_SEND_FILES)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            val clip = ClipData.newRawUri("files", uris.first())
-            uris.drop(1).forEach { clip.addItem(ClipData.Item(it)) }
-            intent.clipData = clip
-            return runCatching { ctx.startService(intent) }.isSuccess
+        val isRunning: Boolean get() = instance?.loop != null
+
+        /** Share → Send to Mac: send already-copied files (deleted afterwards). In-process, no URI grants. */
+        fun sendLocalFiles(files: List<OutgoingFile>): Boolean {
+            val service = instance ?: return false
+            service.uploadFiles(files)
+            return true
         }
 
         private fun command(ctx: Context, action: String, foreground: Boolean) {
@@ -111,9 +111,6 @@ class SyncService : Service() {
             ACTION_STOP -> { shutdown(); return START_NOT_STICKY }
             ACTION_RECONNECT -> if (ensureRunning()) loop?.reconnect()
             ACTION_SAVE_OFFER -> intent.getStringExtra(EXTRA_OFFER_ID)?.let { if (loop != null) saveOffer(it) }
-            ACTION_SEND_FILES -> intent.clipData?.let { clip ->
-                if (loop != null) uploadFiles((0 until clip.itemCount).mapNotNull { clip.getItemAt(it).uri })
-            }
             else -> {  // START, or a sticky restart with a null intent
                 if (!Prefs.syncEnabled(this) || Prefs.pairing(this) == null) { shutdown(); return START_NOT_STICKY }
                 ensureRunning()
@@ -232,35 +229,26 @@ class SyncService : Service() {
         }
     }
 
-    /** Share → Send to Mac with files: send each (≤ 25 MB), one after another. */
-    private fun uploadFiles(uris: List<Uri>) {
+    /** Share → Send to Mac with files: send each (≤ 25 MB), one after another, then delete the copies. */
+    private fun uploadFiles(files: List<OutgoingFile>) {
         io.execute {
             var sent = 0
-            for (uri in uris) {
-                val (name, size) = describe(uri)
-                if (size == null || size > FileLimit.MAX_BYTES) { transferNotice("$name is too large (max 25 MB)", null); continue }
-                transferNotice("Sending $name to Mac…", null, ongoing = true)
-                val mime = contentResolver.getType(uri) ?: "application/octet-stream"
-                val ok = runCatching { loop?.sendFile(name, mime, size) { contentResolver.openInputStream(uri)!! } ?: false }.getOrDefault(false)
-                if (ok) sent++ else transferNotice("Couldn't send $name — not connected to your Mac", null)
-            }
-            if (sent > 0) transferNotice(if (sent == 1) "Sent to Mac" else "Sent $sent files to Mac", null)
-        }
-    }
-
-    private fun describe(uri: Uri): Pair<String, Long?> {
-        var name = uri.lastPathSegment ?: "file"
-        var size: Long? = null
-        runCatching {
-            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { c ->
-                if (c.moveToFirst()) {
-                    c.getString(0)?.let { name = it }
-                    if (!c.isNull(1)) size = c.getLong(1)
+            for (f in files) {
+                try {
+                    if (f.file.length() > FileLimit.MAX_BYTES) { toast("${f.name} is too large (max 25 MB)"); continue }
+                    transferNotice("Sending ${f.name} to Mac…", null, ongoing = true)
+                    val ok = runCatching { loop?.sendFile(f.name, f.mime, f.file.length()) { f.file.inputStream() } ?: false }
+                        .onFailure { android.util.Log.w("ClipBridgeFiles", "upload of ${f.name} failed", it) }
+                        .getOrDefault(false)
+                    android.util.Log.i("ClipBridgeFiles", "upload of ${f.name} ok=$ok")
+                    if (ok) sent++ else toast("Couldn't send ${f.name} — not connected to your Mac")
+                } finally {
+                    f.file.delete()
                 }
             }
+            val done = if (sent == 1) "Sent to Mac" else "Sent $sent files to Mac"
+            if (sent > 0) { toast(done); transferNotice(done, null) }
         }
-        if (size == null) size = runCatching { contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } }.getOrNull()?.takeIf { it >= 0 }
-        return name to size
     }
 
     private fun transferNotice(text: String, tap: PendingIntent?, ongoing: Boolean = false) {
