@@ -58,7 +58,7 @@ class Connection(
     @Volatile private var challenge: ByteArray? = null
     @Volatile private var acked = false
 
-    /** The Mac's name, from its hello (e.g. "Balveer's MacBook Pro"). Null until connected. */
+    /** The Mac's name, from its hello (e.g. "Alex's MacBook Pro"). Null until connected. */
     @Volatile var macName: String? = null
         private set
 

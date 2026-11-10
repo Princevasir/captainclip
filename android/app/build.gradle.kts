@@ -1,7 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+// Release signing key lives OUTSIDE the repo (never committed). Path can be overridden with
+// -Pclipbridge.signing=/path/keystore.properties. Without it, release builds are unsigned.
+val signingFile = file(
+    (project.findProperty("clipbridge.signing") as String?)
+        ?: "${System.getProperty("user.home")}/.config/clipbridge-release/keystore.properties"
+)
+val signingProps = Properties().apply { if (signingFile.exists()) signingFile.inputStream().use { load(it) } }
 
 android {
     namespace = "app.clipbridge"
@@ -11,8 +21,26 @@ android {
         applicationId = "app.clipbridge"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
+    }
+
+    signingConfigs {
+        if (signingProps.isNotEmpty()) {
+            create("release") {
+                storeFile = file(signingProps.getProperty("storeFile"))
+                storePassword = signingProps.getProperty("storePassword")
+                keyAlias = signingProps.getProperty("keyAlias")
+                keyPassword = signingProps.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            if (signingProps.isNotEmpty()) signingConfig = signingConfigs.getByName("release")
+        }
     }
 
     compileOptions {
