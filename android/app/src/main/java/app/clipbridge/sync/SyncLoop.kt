@@ -38,6 +38,8 @@ class SyncLoop(
     interface Callbacks {
         fun onStatus(status: Status)
         fun onClip(text: String)
+        /** Same clip with its HTML (formatted text), when present. Defaults to the plain callback. */
+        fun onClip(text: String, html: String?) = onClip(text)
         /** The Mac offered a file (or null: the offer was cleared). */
         fun onOffer(offer: Message.Offer?) {}
     }
@@ -100,10 +102,10 @@ class SyncLoop(
     }
 
     /** Send text to the Mac. False if not connected, too large, or it is an echo of what the Mac sent. */
-    fun send(text: String): Boolean {
+    fun send(text: String, html: String? = null): Boolean {
         if (!loopGuard.shouldSend(text)) return false
         val conn = connection ?: return false
-        return conn.send(text).also { if (it) loopGuard.markSent(text) }
+        return conn.send(text, html).also { if (it) loopGuard.markSent(text) }
     }
 
     /**
@@ -209,10 +211,11 @@ class SyncLoop(
                         backoff.reset()
                         status(gen, Status.CONNECTED)
                     }
-                    override fun onClip(text: String) {
+                    override fun onClip(text: String) = onClip(text, null)
+                    override fun onClip(text: String, html: String?) {
                         if (!alive(gen)) return
                         loopGuard.markReceived(text)
-                        callbacks.onClip(text)
+                        callbacks.onClip(text, html)
                     }
                     override fun onMessage(message: Message) {
                         if (alive(gen)) onFileMessage(message)

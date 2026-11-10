@@ -104,9 +104,9 @@ class MultiFakeMac(private val key: ByteArray, var rejectKey: Boolean = false, p
     }
 
     /** Send a clip to the current (newest live) phone. */
-    fun sendClip(text: String) {
+    fun sendClip(text: String, html: String? = null) {
         val (socket, challenge) = sessions.last { !it.first.isClosed }
-        write(socket, challenge, Message.Clip("id", text, 1))
+        write(socket, challenge, Message.Clip("id", text, 1, html))
     }
 
     fun close() { server.close(); sessions.forEach { runCatching { it.first.close() } } }

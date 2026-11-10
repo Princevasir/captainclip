@@ -15,6 +15,7 @@ class SyncLoopTest {
     private val pairing = PairingInfo("0123456789abcdef", key, "127.0.0.1", mac.port)
     private val statuses = CopyOnWriteArrayList<SyncLoop.Status>()
     private val clips = CopyOnWriteArrayList<String>()
+    private val htmls = CopyOnWriteArrayList<String?>()
     @Volatile private var locateDelayMs = 0L
 
     private val loop = SyncLoop(
@@ -24,6 +25,7 @@ class SyncLoopTest {
         callbacks = object : SyncLoop.Callbacks {
             override fun onStatus(status: SyncLoop.Status) { statuses.add(status) }
             override fun onClip(text: String) { clips.add(text) }
+            override fun onClip(text: String, html: String?) { onClip(text); htmls.add(html) }
         },
         backoff = Backoff(longArrayOf(50, 50, 50)),
         pingIntervalMs = 200,
@@ -42,6 +44,15 @@ class SyncLoopTest {
         assertTrue(eventually { statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
         mac.sendClip("from mac")
         assertTrue(eventually { clips == listOf("from mac") })
+    }
+
+    @Test fun formattedClipsPassThroughBothWays() {
+        loop.start()
+        assertTrue(eventually { statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
+        mac.sendClip("bold", "<b>bold</b>")
+        assertTrue(eventually { htmls.contains("<b>bold</b>") })
+        assertTrue(loop.send("from phone", "<u>from phone</u>"))
+        assertTrue(eventually { mac.received.any { it is app.clipbridge.core.Message.Clip && it.html == "<u>from phone</u>" } })
     }
 
     @Test fun sendGoesToMacButEchoOfReceivedTextDoesNot() {

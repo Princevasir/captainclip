@@ -222,7 +222,7 @@ class MainActivity : Activity() {
         toast(when {
             hasUri -> "That's a file — use Share → Send to Mac"
             !ClipPolicy.shouldSend(text, sensitive) -> if (sensitive) "Passwords aren't sent" else "Your clipboard is empty"
-            SyncService.send(text!!) -> "Sent to Mac"
+            SyncService.send(text!!, item?.htmlText) -> "Sent to Mac"
             else -> "Not connected to your Mac (or already sent)"
         })
     }

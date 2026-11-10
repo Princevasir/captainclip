@@ -59,6 +59,8 @@ private class Events : Connection.Listener {
     override fun onMessage(message: Message) { messages.put(message) }
     val connected = LinkedBlockingQueue<Unit>()
     val clips = LinkedBlockingQueue<String>()
+    val htmls = LinkedBlockingQueue<String>()
+    override fun onClip(text: String, html: String?) { onClip(text); html?.let { htmls.put(it) } }
     val closed = LinkedBlockingQueue<Connection.CloseReason>()
     override fun onConnected() { connected.put(Unit) }
     override fun onClip(text: String) { clips.put(text) }
@@ -139,6 +141,30 @@ class ConnectionTest {
         events.connected.await()
         conn.close()
         assertFalse(conn.sendChunk(Message.FileChunk("x", 0, ByteArray(10))))
+    }
+
+    @Test fun sendsHtmlToMac() {
+        val conn = connect()
+        events.connected.await()
+        assertTrue(conn.send("Hi", "<b>Hi</b>"))
+        val clip = generateSequence { mac.received.await() }.first { it is Message.Clip } as Message.Clip
+        assertEquals("<b>Hi</b>", clip.html)
+    }
+
+    @Test fun htmlFromMacReachesListener() {
+        connect()
+        events.connected.await()
+        mac.send(Message.Clip("1", "Hi", 1, html = "<i>Hi</i>"))
+        assertEquals("<i>Hi</i>", events.htmls.await())
+    }
+
+    @Test fun oversizedHtmlIsDroppedButTextSent() {
+        val conn = connect()
+        events.connected.await()
+        assertTrue(conn.send("plain", "y".repeat(300_000)))
+        val clip = generateSequence { mac.received.await() }.first { it is Message.Clip } as Message.Clip
+        assertEquals("plain", clip.text)
+        assertNull(clip.html)
     }
 
     @Test fun unknownMessageFromMacIsIgnored() {

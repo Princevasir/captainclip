@@ -27,7 +27,7 @@ class ShareReceiverActivity : Activity() {
             uris.isNotEmpty() -> sendFiles(uris)
             intent.action == Intent.ACTION_SEND -> {
                 intent.getStringExtra(Intent.EXTRA_TEXT)?.takeIf { it.isNotEmpty() }?.let {
-                    toast(if (SyncService.send(it)) "Sent to Mac" else "Not connected to your Mac")
+                    toast(if (SyncService.send(it, intent.getStringExtra(Intent.EXTRA_HTML_TEXT))) "Sent to Mac" else "Not connected to your Mac")
                 }
                 finish()
             }

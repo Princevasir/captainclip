@@ -80,7 +80,7 @@ class SyncService : Service() {
          * Send text to the Mac, in-process (no Intent, so no Binder size limit). Never starts the
          * service: if sync is stopped, nothing is sent. Returns true if queued for the Mac.
          */
-        fun send(text: String): Boolean = instance?.loop?.send(text) ?: false
+        fun send(text: String, html: String? = null): Boolean = instance?.loop?.send(text, html) ?: false
 
         /** Fetch (and verify) the Mac's offered file. Blocking; used by FileOfferProvider on a binder thread. */
         fun fetchOffer(id: String, dir: File): File {
@@ -162,7 +162,8 @@ class SyncService : Service() {
                     state = status
                     setStatus(describe(status))
                 }
-                override fun onClip(text: String) = writeClipboard(text)
+                override fun onClip(text: String) = writeClipboard(text, null)
+                override fun onClip(text: String, html: String?) = writeClipboard(text, html)
                 override fun onOffer(offer: Message.Offer?) = handleOffer(offer)
             },
         )
@@ -294,11 +295,11 @@ class SyncService : Service() {
         }
     }
 
-    private fun writeClipboard(text: String) {
+    private fun writeClipboard(text: String, html: String?) {
         main.post {
             runCatching {
                 OwnWrites.markNow()  // so copy detection ignores the system "Copied" overlay this causes
-                val clip = ClipData.newPlainText("ClipBridge", text)
+                val clip = if (html != null) ClipData.newHtmlText("ClipBridge", text, html) else ClipData.newPlainText("ClipBridge", text)
                 markFromMac(clip.description)
                 getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
             }

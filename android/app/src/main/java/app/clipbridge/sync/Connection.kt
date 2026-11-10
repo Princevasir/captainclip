@@ -5,6 +5,7 @@ import app.clipbridge.core.Direction
 import app.clipbridge.core.Frame
 import app.clipbridge.core.FrameReader
 import app.clipbridge.core.Message
+import app.clipbridge.core.RichClip
 import app.clipbridge.core.TextLimit
 import java.io.IOException
 import java.io.OutputStream
@@ -42,6 +43,8 @@ class Connection(
     interface Listener {
         fun onConnected()
         fun onClip(text: String)
+        /** Same clip with its HTML (formatted text), when the Mac sent one. Defaults to the plain callback. */
+        fun onClip(text: String, html: String?) = onClip(text)
         fun onClosed(reason: CloseReason)
         /** File messages from the Mac (offer, offer-clear, file-start/chunk/end/error). Background thread. */
         fun onMessage(message: Message) {}
@@ -67,9 +70,9 @@ class Connection(
     }
 
     /** Queues [text] for the Mac. False if not connected, too large, or the outbox is full. Never blocks. */
-    fun send(text: String): Boolean {
+    fun send(text: String, html: String? = null): Boolean {
         if (!TextLimit.fits(text)) return false
-        return enqueue(Message.Clip(UUID.randomUUID().toString(), text, System.currentTimeMillis()))
+        return enqueue(Message.Clip(UUID.randomUUID().toString(), text, System.currentTimeMillis(), RichClip.fitting(text, html)))
     }
 
     /** Queues a file control message (fetch, file-start, file-end, file-error). Never blocks. */
@@ -118,7 +121,8 @@ class Connection(
                         startWriter()
                         startPinger()
                     }
-                    message is Message.Clip && acked && TextLimit.fits(message.text) -> listener.onClip(message.text)
+                    message is Message.Clip && acked && TextLimit.fits(message.text) ->
+                        listener.onClip(message.text, RichClip.fitting(message.text, message.html))
                     acked && (message is Message.Offer || message is Message.OfferClear || message is Message.FileStart ||
                         message is Message.FileChunk || message is Message.FileEnd || message is Message.FileError) ->
                         listener.onMessage(message)
