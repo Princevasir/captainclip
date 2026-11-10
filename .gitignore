@@ -6,3 +6,5 @@ local.properties
 .idea/
 .superpowers/
 .DS_Store
+android/app/build/
+android/build/
