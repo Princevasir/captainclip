@@ -152,6 +152,16 @@ class SyncService : Service() {
 
     private val io = Executors.newSingleThreadExecutor()
 
+    /**
+     * Tell Android (13+) this clip came from another device (ClipDescription.EXTRA_IS_REMOTE_DEVICE).
+     * The system clipboard UI can then treat it as a cross-device copy instead of a normal local "Copied".
+     */
+    private fun markFromMac(description: ClipDescription) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            description.extras = android.os.PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_REMOTE_DEVICE, true) }
+        }
+    }
+
     /** Mac offered a file: put a placeholder on the clipboard (no download yet) and offer "Save". */
     private fun handleOffer(offer: Message.Offer?) {
         val cache = Files.cache(this)
@@ -166,6 +176,7 @@ class SyncService : Service() {
             runCatching {
                 OwnWrites.markNow()
                 val clip = ClipData(ClipDescription(offer.name, arrayOf(offer.mime)), ClipData.Item(Files.uriFor(offer.id, offer.name)))
+                markFromMac(clip.description)
                 getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
             }
         }
@@ -260,7 +271,9 @@ class SyncService : Service() {
         main.post {
             runCatching {
                 OwnWrites.markNow()  // so copy detection ignores the system "Copied" overlay this causes
-                getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("ClipBridge", text))
+                val clip = ClipData.newPlainText("ClipBridge", text)
+                markFromMac(clip.description)
+                getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
             }
         }
     }
