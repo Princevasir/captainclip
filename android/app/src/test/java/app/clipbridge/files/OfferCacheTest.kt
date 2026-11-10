@@ -32,6 +32,24 @@ class OfferCacheTest {
         assertNull(cache.cachedFile("other"))
     }
 
+    @Test fun fileFetchedIntoCacheFolderSurvivesBeingStored() {
+        // The provider and Save fetch straight into fetchDir, then store — the file must still exist.
+        cache.set(offer)
+        val f = java.io.File(cache.fetchDir, "report.pdf").also { it.writeText("pdf") }
+        assertTrue(cache.store("o1", f))
+        assertTrue("stored file was deleted", f.exists())
+        assertEquals(f, cache.cachedFile("o1"))
+    }
+
+    @Test fun storingANewCopyDeletesOnlyThePreviousOne() {
+        cache.set(offer)
+        val first = java.io.File(cache.fetchDir, "a.pdf").also { it.writeText("1") }
+        cache.store("o1", first)
+        val second = java.io.File(cache.fetchDir, "b.pdf").also { it.writeText("2") }
+        cache.store("o1", second)
+        assertFalse(first.exists()); assertTrue(second.exists())
+    }
+
     @Test fun cachedCopyDeletedWhenOfferCleared() {
         cache.set(offer); val f = fetched(); cache.store("o1", f)
         cache.clear()

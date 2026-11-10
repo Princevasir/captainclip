@@ -38,7 +38,7 @@ class OfferCache(private val dir: File, private val lifetimeMs: Long = 10 * 60_0
     /** Keep [file] as the fetched copy of offer [id]. If [id] is no longer current, the file is deleted. */
     @Synchronized fun store(id: String, file: File): Boolean {
         if (current()?.id != id) { file.delete(); return false }
-        if (cached != file) dropCopy()
+        if (cached != file) cached?.delete()  // only the previous copy — never the file being stored
         cached = file
         return true
     }
