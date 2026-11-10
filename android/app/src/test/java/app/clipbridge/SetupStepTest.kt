@@ -33,4 +33,14 @@ class SetupStepTest {
     @Test fun everyStepHasTitleAndHelp() {
         SetupStep.entries.forEach { assertTrue(it.title.isNotBlank() && it.help.isNotBlank()) }
     }
+
+    @Test fun allowBluetoothAsksAndroidTheFirstTime() {
+        assertEquals(SetupStep.PermissionAction.ASK, SetupStep.bluetoothAction(askedBefore = false, canShowPrompt = false))
+        assertEquals(SetupStep.PermissionAction.ASK, SetupStep.bluetoothAction(askedBefore = true, canShowPrompt = true))
+    }
+
+    @Test fun afterDontAskAgainItOpensAppInfo() {
+        // Android silently ignores the request once the user chose "Don't allow" twice / "Don't ask again".
+        assertEquals(SetupStep.PermissionAction.OPEN_APP_INFO, SetupStep.bluetoothAction(askedBefore = true, canShowPrompt = false))
+    }
 }

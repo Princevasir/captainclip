@@ -12,7 +12,13 @@ enum class SetupStep(val title: String, val help: String) {
             "Android asks for \"Nearby devices\" — ClipBridge only uses it to find your own Mac."),
     DONE("All set", "Copy on one device, paste on the other.");
 
+    enum class PermissionAction { ASK, OPEN_APP_INFO }
+
     companion object {
+        /** "Allow Bluetooth": ask Android, unless it will no longer show the prompt ("Don't ask again"). */
+        fun bluetoothAction(askedBefore: Boolean, canShowPrompt: Boolean): PermissionAction =
+            if (askedBefore && !canShowPrompt) PermissionAction.OPEN_APP_INFO else PermissionAction.ASK
+
         fun next(paired: Boolean, autoCopyOn: Boolean, bluetoothAllowed: Boolean = true, bluetoothDismissed: Boolean = false): SetupStep = when {
             !paired -> PAIR
             !autoCopyOn -> AUTO_COPY

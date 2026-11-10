@@ -18,4 +18,8 @@ object Prefs {
     fun bluetoothDismissed(ctx: Context): Boolean = prefs(ctx).getBoolean("bluetoothDismissed", false)
 
     fun setBluetoothDismissed(ctx: Context) = prefs(ctx).edit().putBoolean("bluetoothDismissed", true).apply()
+
+    fun bluetoothAsked(ctx: Context): Boolean = prefs(ctx).getBoolean("bluetoothAsked", false)
+
+    fun setBluetoothAsked(ctx: Context) = prefs(ctx).edit().putBoolean("bluetoothAsked", true).apply()
 }

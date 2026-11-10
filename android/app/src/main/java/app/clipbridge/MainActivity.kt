@@ -222,10 +222,18 @@ class MainActivity : Activity() {
         when (currentStep()) {
             SetupStep.PAIR -> scanQr()
             SetupStep.AUTO_COPY -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            SetupStep.BLUETOOTH -> requestPermissions(
-                if (android.os.Build.VERSION.SDK_INT >= 31)
+            SetupStep.BLUETOOTH -> {
+                val perms = if (android.os.Build.VERSION.SDK_INT >= 31)
                     arrayOf(android.Manifest.permission.BLUETOOTH_SCAN, android.Manifest.permission.BLUETOOTH_CONNECT)
-                else arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION), 7)
+                else arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                when (SetupStep.bluetoothAction(Prefs.bluetoothAsked(this), perms.any { shouldShowRequestPermissionRationale(it) })) {
+                    SetupStep.PermissionAction.ASK -> { Prefs.setBluetoothAsked(this); requestPermissions(perms, 7) }
+                    SetupStep.PermissionAction.OPEN_APP_INFO -> {
+                        toast("Tap Permissions → Nearby devices → Allow")
+                        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
+                    }
+                }
+            }
             SetupStep.DONE -> {}
         }
     }

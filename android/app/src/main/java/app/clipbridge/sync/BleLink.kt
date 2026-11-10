@@ -48,6 +48,7 @@ class BleLink private constructor(private val gatt: BluetoothGatt, private val c
         runCatching { gatt.disconnect() }
         runCatching { gatt.close() }
         callback.input.closeFromRemote()
+        callback.fail()  // wake a writer waiting for the radio
     }
 
     class Callback : BluetoothGattCallback() {
@@ -57,27 +58,36 @@ class BleLink private constructor(private val gatt: BluetoothGatt, private val c
         @Volatile var payloadSize = 20
         @Volatile var toMac: BluetoothGattCharacteristic? = null
         private val writeDone = Semaphore(0)
+        private val setupStarted = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val servicesFound = java.util.concurrent.atomic.AtomicBoolean(false)
+
+        fun fail() {
+            failed = true
+            ready.countDown()
+            writeDone.release()
+        }
 
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                gatt.requestMtu(517)
+                if (!gatt.requestMtu(517)) fail()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                failed = true
-                ready.countDown()
                 input.closeFromRemote()
-                writeDone.release()
+                fail()
             }
         }
 
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
+            // Only the first MTU change sets the link up; a repeat would re-subscribe and reset the Mac's session.
+            if (!setupStarted.compareAndSet(false, true)) return
             payloadSize = app.clipbridge.core.PacketSize.forMtu(mtu)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 gatt.setPreferredPhy(BluetoothDevice.PHY_LE_2M_MASK, BluetoothDevice.PHY_LE_2M_MASK, BluetoothDevice.PHY_OPTION_NO_PREFERRED)
             }
-            gatt.discoverServices()
+            if (!gatt.discoverServices()) fail()
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            if (!servicesFound.compareAndSet(false, true)) return
             val service = gatt.getService(SERVICE)
             val toPhone = service?.getCharacteristic(TO_PHONE)
             toMac = service?.getCharacteristic(TO_MAC)
@@ -107,6 +117,7 @@ class BleLink private constructor(private val gatt: BluetoothGatt, private val c
         }
 
         override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+            if (status != BluetoothGatt.GATT_SUCCESS) failed = true
             writeDone.release()
         }
 
