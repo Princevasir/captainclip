@@ -7,6 +7,11 @@ import org.junit.Test
 class ClipPolicyTest {
     @Test fun normalTextIsSent() { assertTrue(ClipPolicy.shouldSend("hello", sensitive = false)) }
 
+    @Test fun uriClipsAreNeverSentAsText() {
+        // e.g. ClipBridge's own content://app.clipbridge.files/... placeholder, or an image copied in Chrome
+        assertFalse(ClipPolicy.shouldSend("content://app.clipbridge.files/offer/o1/report.pdf", sensitive = false, hasUri = true))
+    }
+
     @Test fun passwordManagerCopiesAreNotSent() {
         // Android 13+ password managers flag clips with ClipDescription.EXTRA_IS_SENSITIVE.
         assertFalse(ClipPolicy.shouldSend("hunter2", sensitive = true))

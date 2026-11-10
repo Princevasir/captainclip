@@ -7,7 +7,9 @@ object ClipPolicy {
     /** Extra password managers set on Android 13+ (ClipDescription.EXTRA_IS_SENSITIVE). */
     const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
 
-    fun shouldSend(text: String?, sensitive: Boolean): Boolean = !text.isNullOrEmpty() && !sensitive
+    /** [hasUri]: the clip carries a content URI (a file, an image, or ClipBridge's own placeholder) — never sent as text. */
+    fun shouldSend(text: String?, sensitive: Boolean, hasUri: Boolean = false): Boolean =
+        !text.isNullOrEmpty() && !sensitive && !hasUri
 }
 
 /** Remembers when ClipBridge itself last wrote the clipboard, so copy detection can ignore it. */

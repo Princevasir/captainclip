@@ -19,6 +19,16 @@ import android.os.Looper
 import app.clipbridge.MainActivity
 import app.clipbridge.capture.GhostActivity
 import app.clipbridge.capture.OwnWrites
+import android.content.ClipDescription
+import android.content.ContentValues
+import android.net.Uri
+import android.provider.MediaStore
+import android.provider.OpenableColumns
+import app.clipbridge.core.FileLimit
+import app.clipbridge.core.Message
+import app.clipbridge.files.Files
+import java.io.File
+import java.util.concurrent.Executors
 
 /**
  * Foreground service hosting the [SyncLoop]. Clips from the Mac go straight onto the phone clipboard.
@@ -31,6 +41,12 @@ class SyncService : Service() {
         private const val ACTION_RECONNECT = "app.clipbridge.RECONNECT"
         private const val CHANNEL = "sync"
         private const val NOTIFICATION_ID = 1
+        private const val OFFER_NOTIFICATION_ID = 2
+        private const val TRANSFER_NOTIFICATION_ID = 3
+        private const val FILES_CHANNEL = "files"
+        private const val ACTION_SAVE_OFFER = "app.clipbridge.SAVE_OFFER"
+        private const val ACTION_SEND_FILES = "app.clipbridge.SEND_FILES"
+        private const val EXTRA_OFFER_ID = "offer_id"
 
         @Volatile private var instance: SyncService? = null
 
@@ -51,6 +67,25 @@ class SyncService : Service() {
          */
         fun send(text: String): Boolean = instance?.loop?.send(text) ?: false
 
+        /** Fetch (and verify) the Mac's offered file. Blocking; used by FileOfferProvider on a binder thread. */
+        fun fetchOffer(id: String, dir: File): File {
+            val loop = instance?.loop ?: throw java.io.FileNotFoundException("not connected to your Mac")
+            return try { loop.fetch(id, dir) } catch (e: FileFetchException) {
+                throw java.io.FileNotFoundException(e.reason)
+            }
+        }
+
+        /** Share → Send to Mac with files. False if sync isn't running. */
+        fun sendFiles(ctx: Context, uris: List<Uri>): Boolean {
+            if (instance == null || uris.isEmpty()) return false
+            val intent = Intent(ctx, SyncService::class.java).setAction(ACTION_SEND_FILES)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            val clip = ClipData.newRawUri("files", uris.first())
+            uris.drop(1).forEach { clip.addItem(ClipData.Item(it)) }
+            intent.clipData = clip
+            return runCatching { ctx.startService(intent) }.isSuccess
+        }
+
         private fun command(ctx: Context, action: String, foreground: Boolean) {
             val intent = Intent(ctx, SyncService::class.java).setAction(action)
             runCatching { if (foreground) ctx.startForegroundService(intent) else ctx.startService(intent) }
@@ -67,6 +102,10 @@ class SyncService : Service() {
         when (intent?.action) {
             ACTION_STOP -> { shutdown(); return START_NOT_STICKY }
             ACTION_RECONNECT -> if (ensureRunning()) loop?.reconnect()
+            ACTION_SAVE_OFFER -> intent.getStringExtra(EXTRA_OFFER_ID)?.let { if (loop != null) saveOffer(it) }
+            ACTION_SEND_FILES -> intent.clipData?.let { clip ->
+                if (loop != null) uploadFiles((0 until clip.itemCount).mapNotNull { clip.getItemAt(it).uri })
+            }
             else -> {  // START, or a sticky restart with a null intent
                 if (!Prefs.syncEnabled(this) || Prefs.pairing(this) == null) { shutdown(); return START_NOT_STICKY }
                 ensureRunning()
@@ -101,6 +140,7 @@ class SyncService : Service() {
             callbacks = object : SyncLoop.Callbacks {
                 override fun onStatus(status: SyncLoop.Status) = setStatus(describe(status))
                 override fun onClip(text: String) = writeClipboard(text)
+                override fun onOffer(offer: Message.Offer?) = handleOffer(offer)
             },
         )
         loop = newLoop
@@ -108,6 +148,112 @@ class SyncService : Service() {
         watchNetwork()
         newLoop.start()
         return true
+    }
+
+    private val io = Executors.newSingleThreadExecutor()
+
+    /** Mac offered a file: put a placeholder on the clipboard (no download yet) and offer "Save". */
+    private fun handleOffer(offer: Message.Offer?) {
+        val cache = Files.cache(this)
+        val notifications = getSystemService(NotificationManager::class.java)
+        if (offer == null) {
+            cache.clear()
+            notifications.cancel(OFFER_NOTIFICATION_ID)
+            return
+        }
+        cache.set(offer)
+        main.post {
+            runCatching {
+                OwnWrites.markNow()
+                val clip = ClipData(ClipDescription(offer.name, arrayOf(offer.mime)), ClipData.Item(Files.uriFor(offer.id, offer.name)))
+                getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+            }
+        }
+        val save = PendingIntent.getService(
+            this, 3, Intent(this, SyncService::class.java).setAction(ACTION_SAVE_OFFER).putExtra(EXTRA_OFFER_ID, offer.id),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        runCatching {
+            notifications.notify(OFFER_NOTIFICATION_ID, Notification.Builder(this, FILES_CHANNEL)
+                .setSmallIcon(android.R.drawable.ic_menu_save)
+                .setContentTitle("${offer.name} is on your Mac")
+                .setContentText("Paste it into an app, or save it to Downloads")
+                .setTimeoutAfter(10 * 60_000L)
+                .setAutoCancel(true)
+                .addAction(Notification.Action.Builder(null, "Save", save).build())
+                .build())
+        }
+    }
+
+    /** Notification "Save": fetch the offer and copy it into Downloads/ClipBridge. */
+    private fun saveOffer(id: String) {
+        val offer = Files.cache(this).current()?.takeIf { it.id == id } ?: return transferNotice("File offer expired", null)
+        transferNotice("Saving ${offer.name}…", null, ongoing = true)
+        io.execute {
+            val cache = Files.cache(this)
+            val result = runCatching {
+                val file = cache.cachedFile(id) ?: loop!!.fetch(id, cache.fetchDir).also { cache.store(id, it) }
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, offer.name)
+                    put(MediaStore.Downloads.MIME_TYPE, offer.mime)
+                    put(MediaStore.Downloads.RELATIVE_PATH, "Download/ClipBridge")
+                }
+                val target = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)!!
+                contentResolver.openOutputStream(target)!!.use { out -> file.inputStream().use { it.copyTo(out) } }
+                target
+            }
+            result.onSuccess { uri ->
+                val open = PendingIntent.getActivity(this, 4,
+                    Intent(Intent.ACTION_VIEW).setDataAndType(uri, offer.mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                    PendingIntent.FLAG_IMMUTABLE)
+                transferNotice("Saved ${offer.name} to Downloads/ClipBridge", open)
+                getSystemService(NotificationManager::class.java).cancel(OFFER_NOTIFICATION_ID)
+            }.onFailure { transferNotice("Couldn't save ${offer.name}: ${(it as? FileFetchException)?.reason ?: it.message}", null) }
+        }
+    }
+
+    /** Share → Send to Mac with files: send each (≤ 25 MB), one after another. */
+    private fun uploadFiles(uris: List<Uri>) {
+        io.execute {
+            var sent = 0
+            for (uri in uris) {
+                val (name, size) = describe(uri)
+                if (size == null || size > FileLimit.MAX_BYTES) { transferNotice("$name is too large (max 25 MB)", null); continue }
+                transferNotice("Sending $name to Mac…", null, ongoing = true)
+                val mime = contentResolver.getType(uri) ?: "application/octet-stream"
+                val ok = runCatching { loop?.sendFile(name, mime, size) { contentResolver.openInputStream(uri)!! } ?: false }.getOrDefault(false)
+                if (ok) sent++ else transferNotice("Couldn't send $name — not connected to your Mac", null)
+            }
+            if (sent > 0) transferNotice(if (sent == 1) "Sent to Mac" else "Sent $sent files to Mac", null)
+        }
+    }
+
+    private fun describe(uri: Uri): Pair<String, Long?> {
+        var name = uri.lastPathSegment ?: "file"
+        var size: Long? = null
+        runCatching {
+            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { c ->
+                if (c.moveToFirst()) {
+                    c.getString(0)?.let { name = it }
+                    if (!c.isNull(1)) size = c.getLong(1)
+                }
+            }
+        }
+        if (size == null) size = runCatching { contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } }.getOrNull()?.takeIf { it >= 0 }
+        return name to size
+    }
+
+    private fun transferNotice(text: String, tap: PendingIntent?, ongoing: Boolean = false) {
+        runCatching {
+            getSystemService(NotificationManager::class.java).notify(TRANSFER_NOTIFICATION_ID,
+                Notification.Builder(this, FILES_CHANNEL)
+                    .setSmallIcon(android.R.drawable.ic_menu_upload)
+                    .setContentTitle("ClipBridge")
+                    .setContentText(text)
+                    .setOngoing(ongoing)
+                    .setAutoCancel(!ongoing)
+                    .apply { tap?.let { setContentIntent(it) } }
+                    .build())
+        }
     }
 
     private fun writeClipboard(text: String) {
@@ -138,6 +284,8 @@ class SyncService : Service() {
     }
 
     private fun shutdown() {
+        Files.cache(this).clear()
+        runCatching { getSystemService(NotificationManager::class.java).cancel(OFFER_NOTIFICATION_ID) }
         instance = null
         val old = loop
         loop = null
@@ -158,8 +306,9 @@ class SyncService : Service() {
     }
 
     private fun createChannel() {
-        val channel = NotificationChannel(CHANNEL, "Clipboard sync", NotificationManager.IMPORTANCE_LOW)
-        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel(CHANNEL, "Clipboard sync", NotificationManager.IMPORTANCE_LOW))
+        nm.createNotificationChannel(NotificationChannel(FILES_CHANNEL, "Files from your Mac", NotificationManager.IMPORTANCE_DEFAULT))
     }
 
     private fun buildNotification(text: String): Notification {

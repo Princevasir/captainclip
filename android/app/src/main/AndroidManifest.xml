@@ -22,6 +22,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <provider
+            android:name=".files.FileOfferProvider"
+            android:authorities="app.clipbridge.files"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
         <receiver
             android:name=".sync.BootReceiver"
             android:exported="false">
@@ -54,7 +60,12 @@
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
 
