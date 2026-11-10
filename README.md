@@ -1,8 +1,8 @@
 # ClipBridge
 
 **Copy on your Mac, paste on your Android phone — and back.** Text and small files (PDFs, docs, images)
-move between a Mac and an Android phone on the same Wi-Fi, directly and end-to-end encrypted.
-No account, no cloud, no server.
+move between a Mac and an Android phone on the same Wi-Fi — or over Bluetooth when there's no shared Wi-Fi —
+directly and end-to-end encrypted. No account, no cloud, no server.
 
 | | |
 |---|---|
@@ -18,9 +18,13 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
 - **Text, Mac → phone:** copy on the Mac, paste on the phone. Automatic.
 - **Text, phone → Mac:** copy in most Android apps and it's on the Mac clipboard. Where an app copies
   silently, use the **Send to Mac** Quick Settings tile, **Share → Send to Mac**, or **Send clipboard to Mac** in the app.
-- **Files, Mac → phone (up to 25 MB):** ⌘C a file in Finder. The phone only learns its name and size; the file
-  itself moves **only when you paste it** (into Gmail, chat apps, Drive…) or tap **Save to Downloads** in ClipBridge.
+- **Files, Mac → phone (up to 25 MB each, up to 20 at once):** ⌘C one or several files in Finder. The phone only
+  learns their names and sizes; the files themselves move **only when you use them**: open ClipBridge and tap
+  **Share…** (attaches them in Gmail, WhatsApp, Drive…) or **Save to Downloads**. Images can also simply be pasted.
   Offers expire after 10 minutes or at your next copy.
+- **Bluetooth fallback:** when the phone can't reach the Mac over Wi-Fi (café, office guest Wi-Fi, no Wi-Fi), it
+  connects over Bluetooth automatically, with the same pairing and encryption, and moves back to Wi-Fi when it can.
+  Text, formatting, screenshots and files up to 5 MB work over Bluetooth.
 - **Formatted text, both ways:** bold, italics, links and lists survive when the app you copy from includes
   formatting (Chrome, Safari, Docs, Notes, Mail…). Pastes take on the destination's own font and colours.
 - **Images and screenshots:** a ⌃⇧⌘4 screenshot or "Copy Image" on the Mac is pasted on the phone like a file
@@ -44,8 +48,8 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
    - **macOS 13–14:** right-click (or Control-click) ClipBridge.app → **Open** → **Open**.
    - Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/ClipBridge.app`
 4. A clipboard-with-a-bridge icon appears in the **menu bar** (top-right). There's no Dock icon — that's normal.
-5. When macOS asks, allow ClipBridge to **find devices on your local network**, to **use its key in your
-   Keychain** (click **Always Allow**), and to send **notifications** (optional).
+5. When macOS asks, allow ClipBridge to **find devices on your local network**, to **use Bluetooth** (for the
+   fallback), to **use its key in your Keychain** (click **Always Allow**), and to send **notifications** (optional).
 6. Optional: menu-bar icon → **Start ClipBridge at login**.
 
 ### 2. Android phone
@@ -78,6 +82,8 @@ never screen content — and sends only to your paired Mac.
 
 ### 5. Optional
 
+- **Bluetooth fallback:** in ClipBridge, tap **Allow Bluetooth** on the setup card and allow **Nearby devices**.
+  Without it, ClipBridge simply stays Wi-Fi-only.
 - **Quick Settings tile:** swipe down twice → ✏️ → drag **Send to Mac** into your tiles.
 - **Battery:** in ClipBridge, tap **Let ClipBridge run in the background**, so Android doesn't pause it.
 - **Notifications** are optional. With them off, everything still works; use the ClipBridge screen for
@@ -89,15 +95,16 @@ never screen content — and sends only to your paired Mac.
 |---|---|
 | Send text Mac → phone | Copy on the Mac. Paste on the phone. |
 | Send text phone → Mac | Copy on the phone (automatic copy on), or tap the **Send to Mac** tile. Paste on the Mac. |
-| Send a file Mac → phone | ⌘C the file in Finder. On the phone, paste it in the app (Gmail, chat…) **or** open ClipBridge → **Save to Downloads** (saved in *Download/ClipBridge*). |
+| Send files Mac → phone | ⌘C one or several files in Finder. On the phone open ClipBridge → **Share…** and pick Gmail, WhatsApp, Drive… **or** **Save to Downloads** (saved in *Download/ClipBridge*). |
 | Send a file phone → Mac | **Share → Send to Mac**. It's in **Downloads** on the Mac; ⌘V pastes it. |
 | Send a screenshot Mac → phone | ⌃⇧⌘4 (copies to the clipboard), then paste on the phone or **Save to Downloads**. |
 | Send an image phone → Mac | Copy it on the phone (Chrome: long-press → **Copy image**), then ⌘V on the Mac. |
 | Pause syncing | Mac menu → **Pause syncing**, or ClipBridge → **Pause syncing** on the phone. |
 | Pair a new phone / revoke the old one | Mac menu → **Reset pairing…**, then scan the new code. |
 
-Note: Samsung **My Files** can't paste files from other apps ("Destination folder is same as source folder").
-Use **Save to Downloads** in ClipBridge for that.
+Note: most Android apps (Gmail included) accept **pasted images** but ignore other pasted files such as PDFs —
+use **Share…** in ClipBridge for those. Samsung **My Files** can't paste files from other apps ("Destination folder
+is same as source folder"); use **Save to Downloads**.
 
 ## Troubleshooting
 
@@ -108,6 +115,15 @@ Use **Save to Downloads** in ClipBridge for that.
 - Mac firewall: allow incoming connections for ClipBridge (TCP port 52001).
 - A **VPN** on either device can hide the local network — pause it or allow LAN traffic.
 - Is ClipBridge running on the Mac (icon in the menu bar)?
+
+**Bluetooth fallback doesn't connect**
+- Phone: ClipBridge needs **Nearby devices** (Settings → Apps → ClipBridge → Permissions) and Bluetooth on.
+- Mac: **System Settings → Privacy & Security → Bluetooth → ClipBridge** must be on; the menu shows
+  **Bluetooth fallback: ready** when it's working.
+- Keep the phone within a few metres of the Mac. After the phone fails to find the Mac over Bluetooth, it waits
+  1–10 minutes before looking again (to save battery); turning Wi-Fi off and on makes it look right away.
+
+**"Too big for Bluetooth"** — files over 5 MB need both devices on the same Wi-Fi.
 
 **"Your Mac doesn't recognise this phone"** — the Mac's pairing was reset. Scan the QR code again
 (Mac menu → Pair phone…).
@@ -130,7 +146,8 @@ Turn **ClipBridge automatic copy** back on in Accessibility settings.
 
 ## Limits
 
-- Same Wi-Fi only. Text (with formatting) up to 256 KB per copy; files and images up to 25 MB, one file per Finder copy.
+- Same Wi-Fi, or Bluetooth within a few metres. Text (with formatting) up to 256 KB per copy; files and images up
+  to 25 MB each, 2–20 files and 100 MB per Finder copy (folders aren't sent). Over Bluetooth, files up to 5 MB.
 - One phone per Mac.
 - The apps aren't in the App Store / Play Store, so first launch needs the steps above.
 
