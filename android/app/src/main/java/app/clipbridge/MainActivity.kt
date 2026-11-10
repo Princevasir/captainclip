@@ -37,6 +37,7 @@ class MainActivity : Activity() {
     private lateinit var offerName: TextView
     private lateinit var offerMeta: TextView
     private lateinit var saveButton: Button
+    private lateinit var shareButton: Button
     private lateinit var savedText: TextView
     private lateinit var openButton: Button
     private lateinit var setupCard: View
@@ -102,6 +103,7 @@ class MainActivity : Activity() {
         offerName = findViewById(R.id.offerName)
         offerMeta = findViewById(R.id.offerMeta)
         saveButton = findViewById(R.id.saveButton)
+        shareButton = findViewById(R.id.shareButton)
         savedText = findViewById(R.id.savedText)
         openButton = findViewById(R.id.openButton)
         setupCard = findViewById(R.id.setupCard)
@@ -113,6 +115,7 @@ class MainActivity : Activity() {
         pauseButton = findViewById(R.id.pauseButton)
 
         saveButton.setOnClickListener { saveOffer() }
+        shareButton.setOnClickListener { shareOffers() }
         setupButton.setOnClickListener { onSetupAction() }
         pauseButton.setOnClickListener { toggleSync() }
         findViewById<View>(R.id.sendClipboardButton).setOnClickListener { sendClipboard() }
@@ -175,7 +178,8 @@ class MainActivity : Activity() {
             offerName.text = "${offers.size} files"
             offerMeta.text = "${offers.joinToString(", ") { it.name }} · ${UiText.size(offers.sumOf { it.size })} · $timeLeft"
         }
-        saveButton.text = if (offers.size == 1) "Save to Downloads" else "Save all to Downloads"
+        saveButton.text = if (offers.size == 1) "Save to Downloads" else "Save all"
+        if (shareButton.isEnabled) shareButton.text = if (offers.size == 1) "Share…" else "Share all…"
         val done = saved?.takeIf { it.first == offer.id }
         saveButton.visibility = if (done == null) View.VISIBLE else View.GONE
         savedText.visibility = if (done == null) View.GONE else View.VISIBLE
@@ -228,6 +232,32 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         refresh()
+    }
+
+    /** Share…: fetch the files, then Android's share menu with all of them attached (Gmail, WhatsApp, Drive…). */
+    private fun shareOffers() {
+        val offers = Files.cache(this).currentAll()
+        if (offers.isEmpty()) return refresh()
+        shareButton.isEnabled = false
+        shareButton.text = "Getting files…"
+        SyncService.prepareOffers(offers.map { it.id }) { error ->
+            shareButton.isEnabled = true
+            refresh()
+            if (error != null) return@prepareOffers toast(error)
+            val uris = ArrayList(offers.map { Files.uriFor(it.id, it.name) })
+            val send = if (uris.size == 1) {
+                Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, uris[0])
+            } else {
+                Intent(Intent.ACTION_SEND_MULTIPLE).putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+            }
+            send.type = app.clipbridge.files.ShareSet.mimeFor(offers.map { it.mime })
+            // ClipData carries the read grant for every file to the app the user picks.
+            send.clipData = android.content.ClipData.newRawUri(offers[0].name, uris[0]).apply {
+                uris.drop(1).forEach { addItem(android.content.ClipData.Item(it)) }
+            }
+            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(Intent.createChooser(send, if (uris.size == 1) "Share ${offers[0].name}" else "Share ${uris.size} files"))
+        }
     }
 
     private fun saveOffer() {

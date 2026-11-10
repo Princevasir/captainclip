@@ -76,6 +76,15 @@ class SyncService : Service() {
         }
         var onStatusChanged: (() -> Unit)? = null
 
+        /**
+         * Share: fetches every offered file into the cache first (so the receiving app never waits on the Mac).
+         * [onDone] runs on the main thread with null on success, or an error message.
+         */
+        fun prepareOffers(ids: List<String>, onDone: (String?) -> Unit) {
+            val service = instance ?: return onDone("Not connected to your Mac")
+            service.prepare(ids, onDone)
+        }
+
         fun start(ctx: Context) = command(ctx, ACTION_START, foreground = true)
         fun stop(ctx: Context) { if (instance != null) command(ctx, ACTION_STOP, foreground = false) }
 
@@ -255,6 +264,29 @@ class SyncService : Service() {
                 .setAutoCancel(true)
                 .addAction(Notification.Action.Builder(null, if (offers.size == 1) "Save" else "Save all", save).build())
                 .build())
+        }
+    }
+
+    private fun prepare(ids: List<String>, onDone: (String?) -> Unit) {
+        io.execute {
+            val cache = Files.cache(this)
+            val error = runCatching {
+                for (id in ids) {
+                    val offer = cache.offer(id) ?: throw FileFetchException("expired")
+                    if (cache.cachedFile(id) != null) continue
+                    val l = loop ?: throw FileFetchException("not-connected")
+                    val (total, first) = SyncLoop.saveTimeouts(offer.size, l.isOnBluetooth)
+                    cache.store(id, l.fetch(id, cache.fetchDir, timeoutMs = total, firstDataMs = first))
+                }
+            }.exceptionOrNull()?.let {
+                when ((it as? FileFetchException)?.reason) {
+                    "expired" -> "Those files are no longer on your Mac's clipboard"
+                    "changed" -> "A file changed on your Mac — copy it again"
+                    "too-large-bluetooth" -> "Too big for Bluetooth — connect both to the same Wi-Fi"
+                    else -> "Couldn't get the files from your Mac"
+                }
+            }
+            main.post { onDone(error) }
         }
     }
 

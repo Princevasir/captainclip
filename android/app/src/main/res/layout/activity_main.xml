@@ -114,12 +114,31 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Paste it into any app that accepts files, or save a copy here. Nothing is downloaded until you do." />
+                android:text="Share it to Gmail, WhatsApp or Drive, or save a copy here. Pictures can also be pasted. Nothing is downloaded until you do." />
 
-            <Button
-                android:id="@+id/saveButton"
-                style="@style/ButtonPrimary"
-                android:text="Save to Downloads" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/saveButton"
+                    style="@style/ButtonPrimary"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="8dp"
+                    android:text="Save to Downloads" />
+
+                <Button
+                    android:id="@+id/shareButton"
+                    style="@style/ButtonTonal"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginTop="0dp"
+                    android:text="Share…" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/savedText"
