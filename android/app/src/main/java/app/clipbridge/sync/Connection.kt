@@ -1,23 +1,27 @@
 package app.clipbridge.sync
 
 import app.clipbridge.core.ClipCrypto
+import app.clipbridge.core.Direction
 import app.clipbridge.core.Frame
 import app.clipbridge.core.FrameReader
 import app.clipbridge.core.Message
 import app.clipbridge.core.TextLimit
+import java.io.IOException
 import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.security.GeneralSecurityException
 import java.util.UUID
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * One encrypted TCP connection to the Mac. Sends hello first, pings every [pingIntervalMs],
- * and closes on any decrypt/parse/IO error. [Listener.onClosed] fires exactly once.
- * Listener callbacks run on a background thread. All socket writes happen on this connection's
- * own writer thread, so [send] is safe to call from Android's main thread.
+ * One encrypted TCP connection to the Mac (protocol v2):
+ * read the Mac's 16-byte challenge → send hello → wait for the Mac's hello (proof it has the key)
+ * → connected. Pings every [pingIntervalMs]; the Mac answers, so silence for [readTimeoutMs]
+ * means it's gone. [Listener.onClosed] fires exactly once, with why.
+ * All socket writes happen on this connection's own threads, so [send] is safe on Android's main thread.
  */
 class Connection(
     private val host: String,
@@ -26,18 +30,28 @@ class Connection(
     private val device: String,
     private val listener: Listener,
     private val pingIntervalMs: Long = 25_000,
+    private val readTimeoutMs: Int = 60_000,
 ) {
+    enum class CloseReason {
+        /** Network trouble, Mac went away/silent, or we closed it. Retry later. */
+        LOST,
+        /** The Mac rejected our key or sent something we couldn't decrypt. Pairing is probably stale. */
+        AUTH_FAILED,
+    }
+
     interface Listener {
         fun onConnected()
         fun onClip(text: String)
-        fun onClosed()
+        fun onClosed(reason: CloseReason)
     }
 
     private val crypto = ClipCrypto(key)
     private val socket = Socket()
     private val closed = AtomicBoolean(false)
-    @Volatile private var output: OutputStream? = null
     private val outbox = LinkedBlockingQueue<Message>(OUTBOX_CAPACITY)
+    @Volatile private var output: OutputStream? = null
+    @Volatile private var challenge: ByteArray? = null
+    @Volatile private var acked = false
 
     fun start() {
         Thread({ run() }, "clipbridge-conn").apply { isDaemon = true; start() }
@@ -49,44 +63,62 @@ class Connection(
         return enqueue(Message.Clip(UUID.randomUUID().toString(), text, System.currentTimeMillis()))
     }
 
-    private fun enqueue(message: Message): Boolean =
-        output != null && !closed.get() && outbox.offer(message)
+    fun close() = close(CloseReason.LOST)
 
-    fun close() {
+    private fun close(reason: CloseReason) {
         if (!closed.compareAndSet(false, true)) return
         runCatching { socket.close() }
-        listener.onClosed()
+        listener.onClosed(reason)
     }
 
+    private fun enqueue(message: Message): Boolean = acked && !closed.get() && outbox.offer(message)
+
     private fun run() {
+        var helloSent = false
         try {
             socket.connect(InetSocketAddress(host, port), CONNECT_TIMEOUT_MS)
             socket.tcpNoDelay = true
-            output = socket.getOutputStream()
-            if (!write(Message.Hello(device))) return close()
-            listener.onConnected()
-            startWriter()
-            startPinger()
+            socket.soTimeout = readTimeoutMs
             val reader = FrameReader(socket.getInputStream())
+            challenge = reader.next().takeIf { it.size == CHALLENGE_BYTES } ?: return close(CloseReason.LOST)
+            output = socket.getOutputStream()
+            if (!write(Message.Hello(device))) return
+            helloSent = true
+            val inbound = ClipCrypto.sessionAad(Direction.MAC_TO_PHONE, challenge!!)
             while (!closed.get()) {
-                val message = Message.parse(String(crypto.open(reader.next())))
-                if (message is Message.Clip && TextLimit.fits(message.text)) listener.onClip(message.text)
+                val message = Message.parse(String(crypto.open(reader.next(), inbound)))
+                when {
+                    message is Message.Hello && !acked -> {
+                        acked = true
+                        listener.onConnected()
+                        startWriter()
+                        startPinger()
+                    }
+                    message is Message.Clip && acked && TextLimit.fits(message.text) -> listener.onClip(message.text)
+                }
             }
-        } catch (_: Exception) {
-            // IO error, wrong key, bad frame or bad JSON: drop the connection.
+        } catch (_: GeneralSecurityException) {
+            return close(CloseReason.AUTH_FAILED)
+        } catch (_: IllegalArgumentException) {
+            return close(CloseReason.AUTH_FAILED)
+        } catch (_: IOException) {
+            // The real Mac hangs up right after a hello it can't decrypt (wrong/stale key).
+            return close(if (helloSent && !acked) CloseReason.AUTH_FAILED else CloseReason.LOST)
         }
-        close()
+        close(CloseReason.LOST)
     }
 
     private fun write(message: Message): Boolean {
         val out = output ?: return false
+        val ch = challenge ?: return false
         if (closed.get()) return false
         return try {
-            val frame = Frame.encode(crypto.seal(message.toJson().toByteArray()))
+            val aad = ClipCrypto.sessionAad(Direction.PHONE_TO_MAC, ch)
+            val frame = Frame.encode(crypto.seal(message.toJson().toByteArray(), aad = aad))
             synchronized(out) { out.write(frame); out.flush() }
             true
         } catch (_: Exception) {
-            close()
+            close(CloseReason.LOST)
             false
         }
     }
@@ -113,6 +145,7 @@ class Connection(
 
     private companion object {
         const val CONNECT_TIMEOUT_MS = 5_000
+        const val CHALLENGE_BYTES = 16
         const val OUTBOX_CAPACITY = 16
     }
 }

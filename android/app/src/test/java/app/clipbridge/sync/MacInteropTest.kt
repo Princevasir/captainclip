@@ -23,7 +23,7 @@ class MacInteropTest {
         val conn = Connection(info.host, info.port, info.key, "kotlin-interop", object : Connection.Listener {
             override fun onConnected() { connected.put(Unit) }
             override fun onClip(text: String) { clips.put(text) }
-            override fun onClosed() {}
+            override fun onClosed(reason: Connection.CloseReason) {}
         })
         conn.start()
         assertNotNull("connect to Mac", connected.poll(5, TimeUnit.SECONDS))

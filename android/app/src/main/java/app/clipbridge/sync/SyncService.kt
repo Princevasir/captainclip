@@ -104,7 +104,7 @@ class SyncService : Service() {
             val conn = Connection(host, port, info.key, Build.MODEL, object : Connection.Listener {
                 override fun onConnected() { backoff.reset(); setStatus("Connected to Mac") }
                 override fun onClip(text: String) = receivedFromMac(text)
-                override fun onClosed() = closed.countDown()
+                override fun onClosed(reason: Connection.CloseReason) = closed.countDown()
             })
             connection = conn
             conn.start()

@@ -13,6 +13,10 @@ import java.io.IOException
 private fun bytes(n: Int) = ByteArray(n) { it.toByte() }
 private fun ByteArray.hex() = joinToString("") { "%02x".format(it) }
 
+/** Session vector from docs/test-vector.txt: challenge 00..0f, direction P. */
+private const val SESSION_VECTOR =
+    "000102030405060708090a0b3c20a239ffc7b272e326b5f68821eabb40f176140df4f1cc1d9c2a80"
+
 /** Same vector as docs/test-vector.txt, produced by the Mac's CryptoKit. */
 private const val KNOWN_VECTOR =
     "000102030405060708090a0b3c20a239ffc7b272e326b5f68f06b385001a35d68d5681074ae47dc3"
@@ -32,6 +36,22 @@ class CryptoTest {
     @Test fun opensBoxSealedOnMac() {
         val box = KNOWN_VECTOR.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
         assertEquals("""{"t":"ping"}""", String(crypto.open(box)))
+    }
+
+    @Test fun matchesMacSessionVector() {
+        val aad = ClipCrypto.sessionAad(Direction.PHONE_TO_MAC, bytes(16))
+        assertEquals(SESSION_VECTOR, crypto.seal("""{"t":"ping"}""".toByteArray(), bytes(12), aad).hex())
+    }
+
+    @Test fun otherDirectionDoesNotOpen() {
+        val challenge = bytes(16)
+        val box = crypto.seal("x".toByteArray(), aad = ClipCrypto.sessionAad(Direction.PHONE_TO_MAC, challenge))
+        assertThrows { crypto.open(box, ClipCrypto.sessionAad(Direction.MAC_TO_PHONE, challenge)) }
+    }
+
+    @Test fun otherChallengeDoesNotOpen() {
+        val box = crypto.seal("x".toByteArray(), aad = ClipCrypto.sessionAad(Direction.MAC_TO_PHONE, bytes(16)))
+        assertThrows { crypto.open(box, ClipCrypto.sessionAad(Direction.MAC_TO_PHONE, ByteArray(16) { 9 })) }
     }
 
     @Test fun wrongKeyFails() {
