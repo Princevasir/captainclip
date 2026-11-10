@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem!
     private let statusLine = NSMenuItem(title: "Starting…", action: nil, keyEquivalent: "")
+    private let offerLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let pauseItem = NSMenuItem(title: "Pause syncing", action: #selector(togglePause), keyEquivalent: "")
     private var bridge: Bridge?
     private var server: Server?
@@ -37,6 +38,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         statusLine.isEnabled = false
         menu.addItem(statusLine)
+        offerLine.isEnabled = false
+        offerLine.isHidden = true
+        menu.addItem(offerLine)
         menu.addItem(.separator())
         menu.addItem(withTitle: "Pair phone…", action: #selector(showPairing), keyEquivalent: "p").target = self
         pauseItem.target = self
@@ -52,6 +56,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let bridge = Bridge(server: server, watcher: PasteboardWatcher())
         bridge.onStatus = { [weak self] status in self?.show(status) }
         bridge.onReceived = { [weak self] text in self?.notifyReceived(text) }
+        bridge.onFileReceived = { [weak self] url in self?.notifyFile(url) }
+        bridge.onOfferChanged = { [weak self] name in
+            self?.offerLine.title = name.map { "Ready to paste on phone: \($0)" } ?? ""
+            self?.offerLine.isHidden = name == nil
+        }
         do {
             try bridge.start()
             show(.waiting)
@@ -94,6 +103,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UserDefaults.standard.set(false, forKey: "pairedOnce")
         startBridge()
         showPairing()
+    }
+
+    private func notifyFile(_ url: URL) {
+        let content = UNMutableNotificationContent()
+        content.title = "\(url.lastPathComponent) from phone"
+        content.body = "Saved in Downloads — press ⌘V to paste it"
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "file", content: content, trigger: nil))
     }
 
     private func notifyReceived(_ text: String) {
