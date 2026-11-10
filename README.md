@@ -60,6 +60,18 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
    - **Samsung phones:** if installing is blocked, turn off **Settings → Security and privacy → Auto Blocker**
      while you install (you can turn it back on afterwards).
    - **Google Play Protect** may say the developer is unknown → **More details → Install anyway**.
+   - **"This app can request access to sensitive data" with only an OK button** — Play Protect blocks apps that
+     use an *accessibility service* (ClipBridge's automatic copy, which only reads the text of "Copy"/"Copied"
+     labels) when they're installed from a browser, chat app or file manager. In some countries (e.g. India,
+     Singapore, Thailand, Brazil) there's no "Install anyway". Install it from your Mac over USB instead — this
+     block doesn't apply there, and later versions from this page install over it normally:
+     1. On the phone: **Settings → About phone → Software information**, tap **Build number** 7 times, then
+        **Settings → Developer options → USB debugging** on. Connect the phone to the Mac and allow the prompt.
+     2. On the Mac, in Terminal (needs [Homebrew](https://brew.sh)):
+        `brew install android-platform-tools`, then `adb install ~/Downloads/ClipBridge-android.apk`
+     3. Turn **Developer options** off again afterwards (banking apps often refuse to run while it's on).
+
+     Please don't turn Play Protect off to get around it — it protects you from other apps too.
 3. Open **ClipBridge**.
 
 ### 3. Pair (once)
