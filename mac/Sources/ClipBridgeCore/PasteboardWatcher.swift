@@ -45,6 +45,14 @@ public final class PasteboardWatcher {
         lastChangeCount = pasteboard.changeCount
     }
 
+    /// The pasteboard's current plain text, or nil if empty or marked concealed/transient.
+    public func currentText() -> String? {
+        let types = (pasteboard.types ?? []).map(\.rawValue)
+        guard !Self.shouldSkip(types: types), let text = pasteboard.string(forType: .string), !text.isEmpty
+        else { return nil }
+        return text
+    }
+
     private func poll() {
         let count = pasteboard.changeCount
         guard count != lastChangeCount else { return }

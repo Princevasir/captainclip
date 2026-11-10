@@ -12,6 +12,9 @@ public final class LoopGuard {
     public func markReceived(_ text: String) { lock.withLock { lastReceived = text } }
     public func markSent(_ text: String) { lock.withLock { lastSent = text } }
 
+    /// True if this text is what the other device last sent us (never send it back).
+    public func wasReceived(_ text: String) -> Bool { lock.withLock { text == lastReceived } }
+
     public func shouldSend(_ text: String) -> Bool {
         lock.withLock { !text.isEmpty && text != lastReceived && text != lastSent }
     }

@@ -30,10 +30,22 @@ public final class Bridge {
             }
         }
         server.onStatus = { [weak self] status in
-            DispatchQueue.main.async { self?.onStatus?(status) }
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if case .connected = status { self.sendCurrentClipboard() }
+                self.onStatus?(status)
+            }
         }
         try server.start()
         watcher.start()
+    }
+
+    /// A phone just connected: give it the Mac's current clipboard, which it may have missed
+    /// while away — unless that text came from the phone in the first place.
+    private func sendCurrentClipboard() {
+        guard !paused, let text = watcher.currentText(), TextLimit.fits(text), !loopGuard.wasReceived(text)
+        else { return }
+        if server.send(text: text) { loopGuard.markSent(text) }
     }
 
     public func stop() {

@@ -12,6 +12,7 @@ do {
     try fixedPortTests()
     try handshakeTests()
     noticeTests()
+    try resendOnConnectTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()
