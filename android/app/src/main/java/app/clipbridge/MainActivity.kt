@@ -1,86 +1,216 @@
 package app.clipbridge
 
-import android.Manifest
 import android.app.Activity
-import android.app.NotificationManager
+import android.content.ClipboardManager
 import android.content.Intent
-import android.os.Build
+import android.graphics.Outline
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
-import android.view.Gravity
 import android.view.View
+import android.view.ViewOutlineProvider
 import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.ScrollView
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import app.clipbridge.capture.ClipPolicy
 import app.clipbridge.capture.CopyDetectService
 import app.clipbridge.core.PairingInfo
+import app.clipbridge.files.Files
 import app.clipbridge.sync.Prefs
+import app.clipbridge.sync.SyncLoop
 import app.clipbridge.sync.SyncService
 import com.google.zxing.integration.android.IntentIntegrator
 
 class MainActivity : Activity() {
-    private lateinit var statusView: TextView
-    private lateinit var stepView: TextView
-    private lateinit var stepButton: Button
-    private lateinit var toggleButton: Button
+    private val handler = Handler(Looper.getMainLooper())
+    private val ticker = object : Runnable {
+        override fun run() { refresh(); handler.postDelayed(this, 30_000) }
+    }
+
+    private lateinit var statusDot: View
+    private lateinit var statusTitle: TextView
+    private lateinit var statusDetail: TextView
+    private lateinit var offerCard: View
+    private lateinit var offerName: TextView
+    private lateinit var offerMeta: TextView
+    private lateinit var saveButton: Button
+    private lateinit var savedText: TextView
+    private lateinit var openButton: Button
+    private lateinit var setupCard: View
+    private lateinit var setupTitle: TextView
+    private lateinit var setupHelp: TextView
+    private lateinit var setupButton: Button
+    private lateinit var pauseButton: Button
+
+    /** Result of the last in-app save, shown on the offer card until the offer changes. */
+    private var saved: Pair<String, Uri>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(buildLayout())
+        setContentView(R.layout.activity_main)
+        bindViews()
         if (Prefs.pairing(this) != null && Prefs.syncEnabled(this)) SyncService.start(this)
     }
 
     override fun onResume() {
         super.onResume()
         SyncService.onStatusChanged = { refresh() }
-        refresh()
+        handler.post(ticker)
     }
 
     override fun onPause() {
         SyncService.onStatusChanged = null
+        handler.removeCallbacks(ticker)
         super.onPause()
     }
 
+    private fun bindViews() {
+        findViewById<ImageView>(R.id.logo).apply {
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) =
+                    outline.setRoundRect(0, 0, view.width, view.height, view.width * 0.28f)
+            }
+            clipToOutline = true
+        }
+        statusDot = findViewById(R.id.statusDot)
+        statusTitle = findViewById(R.id.statusTitle)
+        statusDetail = findViewById(R.id.statusDetail)
+        offerCard = findViewById(R.id.offerCard)
+        offerName = findViewById(R.id.offerName)
+        offerMeta = findViewById(R.id.offerMeta)
+        saveButton = findViewById(R.id.saveButton)
+        savedText = findViewById(R.id.savedText)
+        openButton = findViewById(R.id.openButton)
+        setupCard = findViewById(R.id.setupCard)
+        setupTitle = findViewById(R.id.setupTitle)
+        setupHelp = findViewById(R.id.setupHelp)
+        setupButton = findViewById(R.id.setupButton)
+        pauseButton = findViewById(R.id.pauseButton)
+
+        saveButton.setOnClickListener { saveOffer() }
+        setupButton.setOnClickListener { onSetupAction() }
+        pauseButton.setOnClickListener { toggleSync() }
+        findViewById<View>(R.id.sendClipboardButton).setOnClickListener { sendClipboard() }
+        findViewById<View>(R.id.repairRow).setOnClickListener { scanQr() }
+        findViewById<View>(R.id.batteryRow).setOnClickListener {
+            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        }
+        findViewById<View>(R.id.autoCopyRow).setOnClickListener {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+    }
+
     private fun refresh() {
-        val step = currentStep()
-        statusView.text = "Status: ${SyncService.status}"
-        stepView.text = step.help
-        stepButton.visibility = if (step == SetupStep.DONE) View.GONE else View.VISIBLE
-        stepButton.text = when (step) {
-            SetupStep.PAIR -> "Scan Mac QR code"
-            SetupStep.NOTIFICATIONS -> "Allow notifications"
+        renderStatus()
+        renderOffer()
+        renderSetup()
+        val enabled = Prefs.syncEnabled(this)
+        pauseButton.text = if (enabled) "Pause syncing" else "Resume syncing"
+        pauseButton.isEnabled = Prefs.pairing(this) != null
+    }
+
+    private fun renderStatus() {
+        val paired = Prefs.pairing(this) != null
+        val (color, title, detail) = when {
+            !paired -> Triple(R.color.idle, "Not paired yet", "Scan the QR code from ClipBridge on your Mac")
+            !Prefs.syncEnabled(this) -> Triple(R.color.idle, "Syncing paused", "Copies stay on this phone until you resume")
+            else -> when (SyncService.state) {
+                SyncLoop.Status.CONNECTED -> Triple(R.color.ok,
+                    SyncService.macName?.let { "Connected to $it" } ?: "Connected to your Mac",
+                    "Same Wi-Fi · end-to-end encrypted")
+                SyncLoop.Status.SEARCHING, SyncLoop.Status.RETRYING -> Triple(R.color.busy,
+                    "Looking for your Mac…", "Make sure ClipBridge is running on the Mac and both are on the same Wi-Fi")
+                SyncLoop.Status.PAIRING_INVALID -> Triple(R.color.bad,
+                    "Your Mac doesn't recognise this phone", "Its pairing was reset — scan the QR code again")
+                else -> Triple(R.color.idle, "Starting…", "")
+            }
+        }
+        statusDot.background.mutate().setTint(getColor(color))
+        statusTitle.text = title
+        statusDetail.text = detail
+        statusDetail.visibility = if (detail.isEmpty()) View.GONE else View.VISIBLE
+    }
+
+    private fun renderOffer() {
+        val cache = Files.cache(this)
+        val offer = cache.current()
+        if (offer == null) {
+            offerCard.visibility = View.GONE
+            saved = null
+            return
+        }
+        offerCard.visibility = View.VISIBLE
+        offerName.text = offer.name
+        offerMeta.text = "${UiText.size(offer.size)} · ${UiText.timeLeft(cache.msSinceOffer() ?: 0)}"
+        val done = saved?.takeIf { it.first == offer.id }
+        saveButton.visibility = if (done == null) View.VISIBLE else View.GONE
+        savedText.visibility = if (done == null) View.GONE else View.VISIBLE
+        openButton.visibility = savedText.visibility
+        if (done != null) {
+            savedText.text = "Saved to Download/ClipBridge"
+            openButton.setOnClickListener { open(done.second, offer.mime) }
+        }
+    }
+
+    private fun renderSetup() {
+        val step = SetupStep.next(paired = Prefs.pairing(this) != null, autoCopyOn = isAutoCopyOn())
+        setupCard.visibility = if (step == SetupStep.DONE) View.GONE else View.VISIBLE
+        setupTitle.text = step.title
+        setupHelp.text = step.help
+        setupButton.text = when (step) {
+            SetupStep.PAIR -> "Scan QR code"
             SetupStep.AUTO_COPY -> "Open Accessibility settings"
             SetupStep.DONE -> ""
         }
-        toggleButton.text = if (Prefs.syncEnabled(this)) "Stop syncing" else "Start syncing"
-        toggleButton.isEnabled = Prefs.pairing(this) != null
     }
 
-    private fun currentStep() = SetupStep.next(
-        paired = Prefs.pairing(this) != null,
-        notificationsAllowed = getSystemService(NotificationManager::class.java).areNotificationsEnabled(),
-        autoCopyOn = isAutoCopyOn(),
-    )
+    private fun onSetupAction() {
+        when (SetupStep.next(paired = Prefs.pairing(this) != null, autoCopyOn = isAutoCopyOn())) {
+            SetupStep.PAIR -> scanQr()
+            SetupStep.AUTO_COPY -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            SetupStep.DONE -> {}
+        }
+    }
+
+    private fun saveOffer() {
+        val offer = Files.cache(this).current() ?: return refresh()
+        saveButton.isEnabled = false
+        saveButton.text = "Saving…"
+        SyncService.saveOffer(offer.id) { uri, error ->
+            saveButton.isEnabled = true
+            saveButton.text = "Save to Downloads"
+            if (uri != null) saved = offer.id to uri else toast(error ?: "Couldn't save the file")
+            refresh()
+        }
+    }
+
+    private fun open(uri: Uri, mime: String) {
+        runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+        }.onFailure { toast("No app here can open this file") }
+    }
+
+    /** The screen is focused, so the clipboard can be read directly. */
+    private fun sendClipboard() {
+        val clip = getSystemService(ClipboardManager::class.java).primaryClip?.takeIf { it.itemCount > 0 }
+        val item = clip?.getItemAt(0)
+        val hasUri = item?.uri != null
+        val text = if (hasUri) null else item?.coerceToText(this)?.toString()
+        val sensitive = clip?.description?.extras?.getBoolean(ClipPolicy.EXTRA_IS_SENSITIVE, false) ?: false
+        toast(when {
+            hasUri -> "That's a file — use Share → Send to Mac"
+            !ClipPolicy.shouldSend(text, sensitive) -> if (sensitive) "Passwords aren't sent" else "Your clipboard is empty"
+            SyncService.send(text!!) -> "Sent to Mac"
+            else -> "Not connected to your Mac (or already sent)"
+        })
+    }
 
     private fun isAutoCopyOn(): Boolean {
         val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
         return enabled.split(':').any { it.equals("$packageName/${CopyDetectService::class.java.name}", ignoreCase = true) }
-    }
-
-    private fun onStepButton() {
-        when (currentStep()) {
-            SetupStep.PAIR -> scanQr()
-            SetupStep.NOTIFICATIONS ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
-                } else {
-                    startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
-                }
-            SetupStep.AUTO_COPY -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            SetupStep.DONE -> {}
-        }
     }
 
     private fun scanQr() {
@@ -97,19 +227,11 @@ class MainActivity : Activity() {
         val result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
         if (result == null) { super.onActivityResult(requestCode, resultCode, data); return }
         val contents = result.contents ?: return
-        val info = PairingInfo.parse(contents)
-        if (info == null) {
-            Toast.makeText(this, "Not a ClipBridge code", Toast.LENGTH_LONG).show()
-            return
-        }
+        val info = PairingInfo.parse(contents) ?: return toast("Not a ClipBridge code")
         Prefs.savePairing(this, info)
         Prefs.setSyncEnabled(this, true)
         SyncService.reconnect(this)
-        Toast.makeText(this, "Paired with Mac", Toast.LENGTH_SHORT).show()
-        refresh()
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        toast("Paired with your Mac")
         refresh()
     }
 
@@ -120,30 +242,5 @@ class MainActivity : Activity() {
         refresh()
     }
 
-    private fun buildLayout(): View {
-        val pad = (16 * resources.displayMetrics.density).toInt()
-        val column = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(pad, pad * 2, pad, pad)
-        }
-        fun text(size: Float, value: String = "") = TextView(this).apply {
-            textSize = size; text = value; setPadding(0, pad / 2, 0, pad / 2)
-        }
-        fun button(label: String, onClick: () -> Unit) = Button(this).apply {
-            text = label; setOnClickListener { onClick() }
-        }
-
-        column.addView(text(26f, "ClipBridge").apply { gravity = Gravity.START })
-        statusView = text(16f).also(column::addView)
-        stepView = text(16f).also(column::addView)
-        stepButton = button("") { onStepButton() }.also(column::addView)
-        toggleButton = button("") { toggleSync() }.also(column::addView)
-        column.addView(button("Pair with a different Mac") { scanQr() })
-        column.addView(button("Battery: let ClipBridge run in background") {
-            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-        })
-        column.addView(text(14f, "Tip: add the \"Send to Mac\" tile to Quick Settings for one-tap sending. " +
-            "You can also use Share → Send to Mac from any app."))
-        return ScrollView(this).apply { addView(column) }
-    }
+    private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
 }

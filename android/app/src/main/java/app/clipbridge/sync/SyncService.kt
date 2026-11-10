@@ -55,6 +55,19 @@ class SyncService : Service() {
         /** Human-readable status for the main screen. */
         @Volatile var status: String = "Stopped"
             private set
+
+        /** Structured status for the main screen's colour/wording. */
+        @Volatile var state: SyncLoop.Status = SyncLoop.Status.STOPPED
+            private set
+
+        /** The connected Mac's name, if any. */
+        val macName: String? get() = instance?.loop?.macName
+
+        /** In-app "Save to Downloads" for the Mac's offered file. [onDone] gets the saved Uri or an error, on the main thread. */
+        fun saveOffer(id: String, onDone: (Uri?, String?) -> Unit) {
+            val service = instance ?: return onDone(null, "Not connected to your Mac")
+            service.saveOffer(id, onDone)
+        }
         var onStatusChanged: (() -> Unit)? = null
 
         fun start(ctx: Context) = command(ctx, ACTION_START, foreground = true)
@@ -143,7 +156,10 @@ class SyncService : Service() {
             locate = { MacLocator(this).find(it) },
             device = Build.MODEL,
             callbacks = object : SyncLoop.Callbacks {
-                override fun onStatus(status: SyncLoop.Status) = setStatus(describe(status))
+                override fun onStatus(status: SyncLoop.Status) {
+                    state = status
+                    setStatus(describe(status))
+                }
                 override fun onClip(text: String) = writeClipboard(text)
                 override fun onOffer(offer: Message.Offer?) = handleOffer(offer)
             },
@@ -176,9 +192,11 @@ class SyncService : Service() {
         if (offer == null) {
             cache.clear()
             notifications.cancel(OFFER_NOTIFICATION_ID)
+            main.post { onStatusChanged?.invoke() }
             return
         }
         if (!cache.set(offer)) return  // already have it: don't overwrite newer copies made on the phone
+        main.post { onStatusChanged?.invoke() }
         main.post {
             runCatching {
                 OwnWrites.markNow()
@@ -192,7 +210,7 @@ class SyncService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         runCatching {
             notifications.notify(OFFER_NOTIFICATION_ID, Notification.Builder(this, FILES_CHANNEL)
-                .setSmallIcon(android.R.drawable.ic_menu_save)
+                .setSmallIcon(app.clipbridge.R.drawable.ic_stat_clipbridge)
                 .setContentTitle("${offer.name} is on your Mac")
                 .setContentText("Paste it into an app, or save it to Downloads")
                 .setTimeoutAfter(10 * 60_000L)
@@ -202,9 +220,13 @@ class SyncService : Service() {
         }
     }
 
-    /** Notification "Save": fetch the offer and copy it into Downloads/ClipBridge. */
-    private fun saveOffer(id: String) {
-        val offer = Files.cache(this).current()?.takeIf { it.id == id } ?: return transferNotice("File offer expired", null)
+    /** "Save" (notification or main screen): fetch the offer and copy it into Downloads/ClipBridge. */
+    private fun saveOffer(id: String, onDone: ((Uri?, String?) -> Unit)? = null) {
+        val offer = Files.cache(this).current()?.takeIf { it.id == id } ?: run {
+            transferNotice("File offer expired", null)
+            onDone?.invoke(null, "That file is no longer on your Mac's clipboard")
+            return
+        }
         transferNotice("Saving ${offer.name}…", null, ongoing = true)
         io.execute {
             val cache = Files.cache(this)
@@ -225,7 +247,12 @@ class SyncService : Service() {
                     PendingIntent.FLAG_IMMUTABLE)
                 transferNotice("Saved ${offer.name} to Downloads/ClipBridge", open)
                 getSystemService(NotificationManager::class.java).cancel(OFFER_NOTIFICATION_ID)
-            }.onFailure { transferNotice("Couldn't save ${offer.name}: ${(it as? FileFetchException)?.reason ?: it.message}", null) }
+                main.post { onDone?.invoke(uri, null) }
+            }.onFailure {
+                val reason = (it as? FileFetchException)?.reason ?: it.message
+                transferNotice("Couldn't save ${offer.name}: $reason", null)
+                main.post { onDone?.invoke(null, if (reason == "changed") "The file changed on your Mac — copy it again" else "Couldn't get the file from your Mac") }
+            }
         }
     }
 
@@ -255,7 +282,7 @@ class SyncService : Service() {
         runCatching {
             getSystemService(NotificationManager::class.java).notify(TRANSFER_NOTIFICATION_ID,
                 Notification.Builder(this, FILES_CHANNEL)
-                    .setSmallIcon(android.R.drawable.ic_menu_upload)
+                    .setSmallIcon(app.clipbridge.R.drawable.ic_stat_clipbridge)
                     .setContentTitle("ClipBridge")
                     .setContentText(text)
                     .setOngoing(ongoing)
@@ -327,7 +354,7 @@ class SyncService : Service() {
         val sendNow = PendingIntent.getActivity(
             this, 2, GhostActivity.readIntent(this, announce = true), PendingIntent.FLAG_IMMUTABLE)
         return Notification.Builder(this, CHANNEL)
-            .setSmallIcon(android.R.drawable.ic_menu_share)
+            .setSmallIcon(app.clipbridge.R.drawable.ic_stat_clipbridge)
             .setContentTitle("ClipBridge")
             .setContentText(text)
             .setContentIntent(open)

@@ -63,6 +63,9 @@ class SyncLoop(
 
     val isRunning: Boolean get() = synchronized(lock) { worker != null }
 
+    /** Name of the Mac we're connected to, if any. */
+    val macName: String? get() = connection?.macName
+
     fun start() = synchronized(lock) {
         if (worker != null) return
         val gen = ++generation

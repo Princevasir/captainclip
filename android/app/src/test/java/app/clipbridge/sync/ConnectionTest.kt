@@ -89,6 +89,12 @@ class ConnectionTest {
         assertTrue(events.connected.await() != null)
     }
 
+    @Test fun remembersTheMacsName() {
+        val conn = connect()
+        events.connected.await()
+        assertEquals("FakeMac", conn.macName)
+    }
+
     @Test fun notConnectedUntilMacProvesKey() {
         mac = FakeMac(key, autoAck = false)
         connect(mac.also { it.acceptInBackground() })

@@ -1,0 +1,12 @@
+<resources>
+    <color name="screen">#000000</color>
+    <color name="card">#1C1C1E</color>
+    <color name="text_primary">#F3F4F6</color>
+    <color name="text_secondary">#9CA3AF</color>
+    <color name="accent">#818CF8</color>
+    <color name="accent_soft">#33818CF8</color>
+    <color name="on_accent">#0B0B12</color>
+    <color name="ok">#4ADE80</color>
+    <color name="busy">#FBBF24</color>
+    <color name="bad">#F87171</color>
+</resources>
