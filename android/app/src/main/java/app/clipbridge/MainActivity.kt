@@ -67,7 +67,26 @@ class MainActivity : Activity() {
         super.onPause()
     }
 
+    /** Android 15+ draws edge to edge: keep content clear of the status and navigation bars. */
+    private fun applySystemBarInsets() {
+        val content = findViewById<View>(R.id.content)
+        val top = content.paddingTop
+        val bottom = content.paddingBottom
+        content.setOnApplyWindowInsetsListener { v, insets ->
+            val (barTop, barBottom) = if (android.os.Build.VERSION.SDK_INT >= 30) {
+                val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars() or android.view.WindowInsets.Type.displayCutout())
+                bars.top to bars.bottom
+            } else {
+                @Suppress("DEPRECATION") (insets.systemWindowInsetTop to insets.systemWindowInsetBottom)
+            }
+            v.setPadding(v.paddingLeft, top + barTop, v.paddingRight, bottom + barBottom)
+            insets
+        }
+        content.requestApplyInsets()
+    }
+
     private fun bindViews() {
+        applySystemBarInsets()
         findViewById<ImageView>(R.id.logo).apply {
             outlineProvider = object : ViewOutlineProvider() {
                 override fun getOutline(view: View, outline: Outline) =
