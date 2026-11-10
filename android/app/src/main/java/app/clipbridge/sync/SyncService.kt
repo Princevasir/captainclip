@@ -147,7 +147,11 @@ class SyncService : Service() {
         when (intent?.action) {
             ACTION_STOP -> { shutdown(); return START_NOT_STICKY }
             ACTION_RECONNECT -> if (ensureRunning()) loop?.reconnect()
-            ACTION_SAVE_OFFER -> intent.getStringExtra(EXTRA_OFFER_ID)?.let { if (loop != null) saveOffer(it) }
+            // Notification "Save": every file of the set (an id saves just that one).
+            ACTION_SAVE_OFFER -> if (loop != null) {
+                val id = intent.getStringExtra(EXTRA_OFFER_ID)
+                (if (id != null) listOf(id) else Files.cache(this).currentAll().map { it.id }).forEach { saveOffer(it) }
+            }
             else -> {  // START, or a sticky restart with a null intent
                 if (!Prefs.syncEnabled(this) || Prefs.pairing(this) == null) { shutdown(); return START_NOT_STICKY }
                 ensureRunning()
@@ -240,7 +244,7 @@ class SyncService : Service() {
             }
         }
         val save = PendingIntent.getService(
-            this, 3, Intent(this, SyncService::class.java).setAction(ACTION_SAVE_OFFER).putExtra(EXTRA_OFFER_ID, offer.id),
+            this, 3, Intent(this, SyncService::class.java).setAction(ACTION_SAVE_OFFER),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         runCatching {
             notifications.notify(OFFER_NOTIFICATION_ID, Notification.Builder(this, FILES_CHANNEL)
@@ -249,7 +253,7 @@ class SyncService : Service() {
                 .setContentText("Paste it into an app, or save it to Downloads")
                 .setTimeoutAfter(10 * 60_000L)
                 .setAutoCancel(true)
-                .addAction(Notification.Action.Builder(null, "Save", save).build())
+                .addAction(Notification.Action.Builder(null, if (offers.size == 1) "Save" else "Save all", save).build())
                 .build())
         }
     }
@@ -265,7 +269,11 @@ class SyncService : Service() {
         io.execute {
             val cache = Files.cache(this)
             val result = runCatching {
-                val file = cache.cachedFile(id) ?: loop!!.fetch(id, cache.fetchDir).also { cache.store(id, it) }
+                val file = cache.cachedFile(id) ?: run {
+                    val l = loop!!
+                    val (total, first) = SyncLoop.saveTimeouts(offer.size, l.isOnBluetooth)
+                    l.fetch(id, cache.fetchDir, timeoutMs = total, firstDataMs = first).also { cache.store(id, it) }
+                }
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, offer.name)
                     put(MediaStore.Downloads.MIME_TYPE, offer.mime)

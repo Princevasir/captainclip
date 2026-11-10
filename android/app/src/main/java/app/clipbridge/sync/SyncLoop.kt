@@ -359,5 +359,9 @@ class SyncLoop(
         /** (total, first-data) timeouts for fetching a Mac file while an app waits on the paste. */
         fun fetchTimeouts(size: Long, bluetooth: Boolean): Pair<Long, Long> =
             if (bluetooth) (10_000L + size / 30) to 6_000L else 20_000L to 4_000L
+
+        /** (total, first-data) timeouts for Save to Downloads: nobody is waiting, so allow slow Bluetooth (20 KB/s). */
+        fun saveTimeouts(size: Long, bluetooth: Boolean): Pair<Long, Long> =
+            if (bluetooth) (30_000L + size / 20) to 30_000L else 60_000L to 60_000L
     }
 }

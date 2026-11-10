@@ -156,6 +156,12 @@ class BluetoothLimitsTest {
         assertEquals(5_242_880L, app.clipbridge.core.FileLimit.BLUETOOTH_MAX_BYTES)
     }
 
+    @Test fun savingToDownloadsAllowsSlowBluetooth() {
+        // Nobody is waiting on a paste: allow 20 KB/s, the slow end of real-world Bluetooth.
+        assertEquals(60_000L to 60_000L, SyncLoop.saveTimeouts(size = 5_000_000, bluetooth = false))
+        assertEquals((30_000L + 5_000_000L / 20) to 30_000L, SyncLoop.saveTimeouts(size = 5_000_000, bluetooth = true))
+    }
+
     @Test fun fetchTimeoutsScaleWithSizeOnBluetooth() {
         assertEquals(20_000L to 4_000L, SyncLoop.fetchTimeouts(size = 2_000_000, bluetooth = false))
         // 10 s + size ÷ 30 KB/s; first data within 6 s

@@ -149,7 +149,16 @@ class BleLink private constructor(private val gatt: BluetoothGatt, private val c
         }
 
         /** Scans (up to [scanMs]) for this pairing's Mac and connects. Null if not found / not allowed. Blocking. */
-        fun find(context: Context, info: PairingInfo, scanMs: Long = 10_000): BleLink? {
+        fun find(context: Context, info: PairingInfo, scanMs: Long = 10_000): BleLink? = try {
+            findOrNull(context, info, scanMs)
+        } catch (e: InterruptedException) {
+            throw e
+        } catch (e: Exception) {
+            Log.i(TAG, "Bluetooth unavailable: ${e.javaClass.simpleName}")  // e.g. radio switched off mid-scan
+            null
+        }
+
+        private fun findOrNull(context: Context, info: PairingInfo, scanMs: Long): BleLink? {
             if (!allowed(context)) return null
             val adapter = context.getSystemService(BluetoothManager::class.java).adapter
             val scanner = adapter.bluetoothLeScanner ?: return null
@@ -173,7 +182,13 @@ class BleLink private constructor(private val gatt: BluetoothGatt, private val c
             val mac = device ?: return null
             val callback = Callback()
             val gatt = mac.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE) ?: return null
-            if (!callback.ready.await(15, TimeUnit.SECONDS) || callback.failed) {
+            val ready = try {
+                callback.ready.await(15, TimeUnit.SECONDS) && !callback.failed
+            } catch (e: InterruptedException) {
+                runCatching { gatt.disconnect(); gatt.close() }  // stopped mid-setup: never leave a link behind
+                throw e
+            }
+            if (!ready) {
                 Log.i(TAG, "Bluetooth link setup failed")
                 runCatching { gatt.disconnect(); gatt.close() }
                 return null
