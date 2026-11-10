@@ -159,21 +159,29 @@ class MainActivity : Activity() {
 
     private fun renderOffer() {
         val cache = Files.cache(this)
-        val offer = cache.current()
+        val offers = cache.currentAll()
+        val offer = offers.firstOrNull()
         if (offer == null) {
             offerCard.visibility = View.GONE
             saved = null
             return
         }
         offerCard.visibility = View.VISIBLE
-        offerName.text = offer.name
-        offerMeta.text = "${UiText.size(offer.size)} · ${UiText.timeLeft(cache.msSinceOffer() ?: 0)}"
+        val timeLeft = UiText.timeLeft(cache.msSinceOffer() ?: 0)
+        if (offers.size == 1) {
+            offerName.text = offer.name
+            offerMeta.text = "${UiText.size(offer.size)} · $timeLeft"
+        } else {
+            offerName.text = "${offers.size} files"
+            offerMeta.text = "${offers.joinToString(", ") { it.name }} · ${UiText.size(offers.sumOf { it.size })} · $timeLeft"
+        }
+        saveButton.text = if (offers.size == 1) "Save to Downloads" else "Save all to Downloads"
         val done = saved?.takeIf { it.first == offer.id }
         saveButton.visibility = if (done == null) View.VISIBLE else View.GONE
         savedText.visibility = if (done == null) View.GONE else View.VISIBLE
-        openButton.visibility = savedText.visibility
+        openButton.visibility = if (done != null && offers.size == 1) View.VISIBLE else View.GONE
         if (done != null) {
-            savedText.text = "Saved to Download/ClipBridge"
+            savedText.text = if (offers.size == 1) "Saved to Download/ClipBridge" else "Saved ${offers.size} files to Download/ClipBridge"
             openButton.setOnClickListener { open(done.second, offer.mime) }
         }
     }
@@ -223,15 +231,24 @@ class MainActivity : Activity() {
     }
 
     private fun saveOffer() {
-        val offer = Files.cache(this).current() ?: return refresh()
+        val offers = Files.cache(this).currentAll()
+        if (offers.isEmpty()) return refresh()
         saveButton.isEnabled = false
         saveButton.text = "Saving…"
-        SyncService.saveOffer(offer.id) { uri, error ->
-            saveButton.isEnabled = true
-            saveButton.text = "Save to Downloads"
-            if (uri != null) saved = offer.id to uri else toast(error ?: "Couldn't save the file")
-            refresh()
+        var firstUri: Uri? = null
+        fun saveNext(i: Int) {
+            if (i >= offers.size) {
+                saveButton.isEnabled = true
+                firstUri?.let { saved = offers.first().id to it }
+                refresh()
+                return
+            }
+            SyncService.saveOffer(offers[i].id) { uri, error ->
+                if (uri != null) { if (firstUri == null) firstUri = uri; saveNext(i + 1) }
+                else { saveButton.isEnabled = true; toast(error ?: "Couldn't save ${offers[i].name}"); refresh() }
+            }
         }
+        saveNext(0)
     }
 
     private fun open(uri: Uri, mime: String) {

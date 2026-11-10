@@ -15,6 +15,12 @@ sealed class Message {
 
     // v2 files
     data class Offer(val id: String, val name: String, val mime: String, val size: Long, val ts: Long) : Message()
+    /** One file in a several-files offer. */
+    data class OfferItem(val id: String, val name: String, val mime: String, val size: Long)
+    /** Several files copied together on the Mac. */
+    data class Offers(val items: List<OfferItem>, val ts: Long) : Message() {
+        val offers: List<Offer> get() = items.map { Offer(it.id, it.name, it.mime, it.size, ts) }
+    }
     data object OfferClear : Message()
     data class Fetch(val id: String) : Message()
     data class FileStart(
@@ -38,6 +44,9 @@ sealed class Message {
         Ping -> JSONObject().put("t", "ping")
         is Offer -> JSONObject().put("t", "offer").put("id", id).put("name", name).put("mime", mime)
             .put("size", size).put("ts", ts)
+        is Offers -> JSONObject().put("t", "offers").put("ts", ts).put("items", org.json.JSONArray().apply {
+            items.forEach { put(JSONObject().put("id", it.id).put("name", it.name).put("mime", it.mime).put("size", it.size)) }
+        })
         OfferClear -> JSONObject().put("t", "offer-clear")
         is Fetch -> JSONObject().put("t", "fetch").put("id", id)
         is FileStart -> JSONObject().put("t", "file-start").put("id", id).put("name", name).put("mime", mime)
@@ -61,6 +70,13 @@ sealed class Message {
                     "clip" -> Clip(o.getString("id"), o.getString("text"), o.getLong("ts"), o.optString("html").takeIf { o.has("html") })
                     "ping" -> Ping
                     "offer" -> Offer(o.getString("id"), o.getString("name"), o.getString("mime"), o.getLong("size"), o.getLong("ts"))
+                    "offers" -> {
+                        val arr = o.getJSONArray("items")
+                        Offers((0 until arr.length()).map { i ->
+                            val it = arr.getJSONObject(i)
+                            OfferItem(it.getString("id"), it.getString("name"), it.getString("mime"), it.getLong("size"))
+                        }, o.getLong("ts"))
+                    }
                     "offer-clear" -> OfferClear
                     "fetch" -> Fetch(o.getString("id"))
                     "file-start" -> FileStart(o.getString("id"), o.getString("name"), o.getString("mime"),

@@ -125,7 +125,7 @@ class Connection(
                     }
                     message is Message.Clip && acked && TextLimit.fits(message.text) ->
                         listener.onClip(message.text, RichClip.fitting(message.text, message.html))
-                    acked && (message is Message.Offer || message is Message.OfferClear || message is Message.FileStart ||
+                    acked && (message is Message.Offer || message is Message.Offers || message is Message.OfferClear || message is Message.FileStart ||
                         message is Message.FileChunk || message is Message.FileEnd || message is Message.FileError) ->
                         listener.onMessage(message)
                 }

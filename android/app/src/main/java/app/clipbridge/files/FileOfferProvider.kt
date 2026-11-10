@@ -25,7 +25,7 @@ class FileOfferProvider : ContentProvider() {
         return true
     }
 
-    private fun offerFor(uri: Uri) = Files.idFrom(uri)?.let { id -> Files.cache(context!!).current()?.takeIf { it.id == id } }
+    private fun offerFor(uri: Uri) = Files.idFrom(uri)?.let { id -> Files.cache(context!!).offer(id) }
 
     override fun getType(uri: Uri): String? = offerFor(uri)?.mime.also { log("getType -> $it", uri) }
 

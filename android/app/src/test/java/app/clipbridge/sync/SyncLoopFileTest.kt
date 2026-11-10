@@ -23,6 +23,7 @@ class SyncLoopFileTest {
     private val uploadDir by lazy { tmp.newFolder("mac-downloads") }
     private val mac by lazy { MultiFakeMac(key, uploadDir = uploadDir) }
     private val offers = CopyOnWriteArrayList<Message.Offer?>()
+    private val offerSets = CopyOnWriteArrayList<List<Message.Offer>>()
     private val statuses = CopyOnWriteArrayList<SyncLoop.Status>()
     private val loop by lazy {
         SyncLoop(
@@ -33,6 +34,7 @@ class SyncLoopFileTest {
                 override fun onStatus(status: SyncLoop.Status) { statuses.add(status) }
                 override fun onClip(text: String) {}
                 override fun onOffer(offer: Message.Offer?) { offers.add(offer) }
+                override fun onOffers(offers: List<Message.Offer>) { offerSets.add(offers) }
             },
             backoff = Backoff(longArrayOf(50)),
             pingIntervalMs = 500,
@@ -59,6 +61,16 @@ class SyncLoopFileTest {
         while (offers.size < 2 && System.currentTimeMillis() < end) Thread.sleep(20)
         assertEquals(listOf(offer, null), offers.toList())
     }
+
+    @Test fun severalFilesArriveAsOneSet() {
+        connected()
+        mac.send(Message.Offers(listOf(OfferItemFor("a"), OfferItemFor("b"), OfferItemFor("c")), 9))
+        val end = System.currentTimeMillis() + 2_000
+        while (offerSets.isEmpty() && System.currentTimeMillis() < end) Thread.sleep(20)
+        assertEquals(listOf("a", "b", "c"), offerSets.single().map { it.id })
+    }
+
+    private fun OfferItemFor(id: String) = Message.OfferItem(id, "$id.pdf", "application/pdf", 10)
 
     @Test fun fetchReturnsVerifiedFile() {
         val bytes = Random(1).nextBytes(700_000)

@@ -59,6 +59,8 @@ class SyncLoop(
         fun onClip(text: String, html: String?) = onClip(text)
         /** The Mac offered a file (or null: the offer was cleared). */
         fun onOffer(offer: Message.Offer?) {}
+        /** The Mac offered several files together. Defaults to offering the first. */
+        fun onOffers(offers: List<Message.Offer>) = onOffer(offers.firstOrNull())
     }
 
     private class PendingFetch(val id: String, val dir: File) {
@@ -178,6 +180,11 @@ class SyncLoop(
             is Message.Offer -> {
                 fetches.values.filter { it.id != message.id }.forEach { fail(it, "cancelled") }
                 callbacks.onOffer(message)
+            }
+            is Message.Offers -> {
+                val ids = message.items.map { it.id }.toSet()
+                fetches.values.filter { it.id !in ids }.forEach { fail(it, "cancelled") }
+                callbacks.onOffers(message.offers)
             }
             is Message.OfferClear -> callbacks.onOffer(null)
             is Message.FileStart -> fetches[message.id]?.let { p ->

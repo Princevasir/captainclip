@@ -92,7 +92,7 @@ class SyncService : Service() {
         fun fetchOffer(id: String, dir: File): File {
             val loop = instance?.loop ?: throw java.io.FileNotFoundException("not connected to your Mac")
             return try {
-                val size = Files.cache(instance!!).current()?.size ?: 0L
+                val size = Files.cache(instance!!).offer(id)?.size ?: 0L
                 val (total, first) = SyncLoop.fetchTimeouts(size, loop.isOnBluetooth)
                 loop.fetch(id, dir, timeoutMs = total, firstDataMs = first)  // the pasting app is waiting
             } catch (e: FileFetchException) {
@@ -189,7 +189,8 @@ class SyncService : Service() {
                 }
                 override fun onClip(text: String) = writeClipboard(text, null)
                 override fun onClip(text: String, html: String?) = writeClipboard(text, html)
-                override fun onOffer(offer: Message.Offer?) = handleOffer(offer)
+                override fun onOffer(offer: Message.Offer?) = handleOffers(listOfNotNull(offer))
+                override fun onOffers(offers: List<Message.Offer>) = handleOffers(offers)
             },
         )
         loop = newLoop
@@ -213,22 +214,27 @@ class SyncService : Service() {
         }
     }
 
-    /** Mac offered a file: put a placeholder on the clipboard (no download yet) and offer "Save". */
-    private fun handleOffer(offer: Message.Offer?) {
+    /** Mac offered one or several files: placeholders on the clipboard (no download yet) and "Save". */
+    private fun handleOffers(offers: List<Message.Offer>) {
         val cache = Files.cache(this)
         val notifications = getSystemService(NotificationManager::class.java)
+        val offer = offers.firstOrNull()
         if (offer == null) {
             cache.clear()
             notifications.cancel(OFFER_NOTIFICATION_ID)
             main.post { onStatusChanged?.invoke() }
             return
         }
-        if (!cache.set(offer)) return  // already have it: don't overwrite newer copies made on the phone
+        if (!cache.setAll(offers)) return  // already have it: don't overwrite newer copies made on the phone
         main.post { onStatusChanged?.invoke() }
         main.post {
             runCatching {
                 OwnWrites.markNow()
-                val clip = ClipData(ClipDescription(offer.name, arrayOf(offer.mime)), ClipData.Item(Files.uriFor(offer.id, offer.name)))
+                // One clip item per file: apps that take several files paste them all.
+                val label = if (offers.size == 1) offer.name else "${offers.size} files from your Mac"
+                val clip = ClipData(ClipDescription(label, offers.map { it.mime }.distinct().toTypedArray()),
+                    ClipData.Item(Files.uriFor(offer.id, offer.name)))
+                offers.drop(1).forEach { clip.addItem(ClipData.Item(Files.uriFor(it.id, it.name))) }
                 markFromMac(clip.description)
                 getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
             }
@@ -239,7 +245,7 @@ class SyncService : Service() {
         runCatching {
             notifications.notify(OFFER_NOTIFICATION_ID, Notification.Builder(this, FILES_CHANNEL)
                 .setSmallIcon(app.clipbridge.R.drawable.ic_stat_clipbridge)
-                .setContentTitle("${offer.name} is on your Mac")
+                .setContentTitle(if (offers.size == 1) "${offer.name} is on your Mac" else "${offers.size} files are on your Mac")
                 .setContentText("Paste it into an app, or save it to Downloads")
                 .setTimeoutAfter(10 * 60_000L)
                 .setAutoCancel(true)
@@ -250,7 +256,7 @@ class SyncService : Service() {
 
     /** "Save" (notification or main screen): fetch the offer and copy it into Downloads/ClipBridge. */
     private fun saveOffer(id: String, onDone: ((Uri?, String?) -> Unit)? = null) {
-        val offer = Files.cache(this).current()?.takeIf { it.id == id } ?: run {
+        val offer = Files.cache(this).offer(id) ?: run {
             transferNotice("File offer expired", null)
             onDone?.invoke(null, "That file is no longer on your Mac's clipboard")
             return
