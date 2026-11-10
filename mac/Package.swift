@@ -8,5 +8,6 @@ let package = Package(
         .target(name: "ClipBridgeCore"),
         .executableTarget(name: "selftest", dependencies: ["ClipBridgeCore"]),
         .executableTarget(name: "probe", dependencies: ["ClipBridgeCore"]),
+        .executableTarget(name: "ClipBridge", dependencies: ["ClipBridgeCore"]),
     ]
 )

@@ -18,6 +18,7 @@ public final class Server {
     private let macId: String
     private let advertise: Bool
     private let idleTimeout: TimeInterval
+    private let preferredPort: UInt16
     private let queue = DispatchQueue(label: "clipbridge.server")
     private var listener: NWListener?
     private var pending: [ObjectIdentifier: Session] = [:]
@@ -28,27 +29,41 @@ public final class Server {
 
     public var port: UInt16? { portLock.withLock { listeningPort } }
 
-    public init(key: Data, macId: String, advertise: Bool = true, idleTimeout: TimeInterval = 60) {
+    /// `preferredPort` 0 = any port; a busy preferred port falls back to any port.
+    public init(key: Data, macId: String, advertise: Bool = true, idleTimeout: TimeInterval = 60,
+                preferredPort: UInt16 = 0) {
         self.crypto = try! ClipCrypto(key: key)  // callers pass keys from ClipCrypto.randomKey / Keychain
         self.macId = macId
         self.advertise = advertise
         self.idleTimeout = idleTimeout
+        self.preferredPort = preferredPort
     }
 
     public func start() throws {
-        let listener = try NWListener(using: .tcp, on: .any)
+        try startListener(port: preferredPort == 0 ? .any : NWEndpoint.Port(rawValue: preferredPort)!)
+        startIdleTimer()
+    }
+
+    private func startListener(port: NWEndpoint.Port) throws {
+        let listener = try NWListener(using: .tcp, on: port)
         if advertise {
             listener.service = NWListener.Service(name: "ClipBridge-\(macId.prefix(6))", type: Self.serviceType)
         }
         listener.stateUpdateHandler = { [weak self] state in
-            if case .ready = state, let self {
+            guard let self else { return }
+            switch state {
+            case .ready:
                 self.portLock.withLock { self.listeningPort = listener.port?.rawValue }
+            case .failed where port != .any:
+                listener.cancel()
+                try? self.startListener(port: .any)
+            default:
+                break
             }
         }
         listener.newConnectionHandler = { [weak self] connection in self?.accept(connection) }
         listener.start(queue: queue)
         self.listener = listener
-        startIdleTimer()
     }
 
     public func stop() {

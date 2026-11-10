@@ -91,3 +91,17 @@ func idleTimeoutTests() throws {
     check(chatty.state == .connected, "pinging phone stays connected past idle timeout")
     chatty.stop()
 }
+
+func fixedPortTests() throws {
+    let server = Server(key: ClipCrypto.randomKey(), macId: "0123456789abcdef", advertise: false,
+                        preferredPort: 52999)
+    try server.start()
+    defer { server.stop() }
+    check(waitUntil { server.port == 52999 }, "server listens on preferred port")
+
+    let second = Server(key: ClipCrypto.randomKey(), macId: "fedcba9876543210", advertise: false,
+                        preferredPort: 52999)
+    try second.start()
+    defer { second.stop() }
+    check(waitUntil { second.port != nil && second.port != 52999 }, "busy preferred port falls back to any port")
+}

@@ -9,6 +9,7 @@ do {
     try serverTests()
     try wrongKeyTests()
     try idleTimeoutTests()
+    try fixedPortTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()
