@@ -154,6 +154,17 @@ class PathSelectionReviewTest {
         assertTrue("switches to Wi-Fi without waiting for the next regular check", eventually(3_000) { l.path == SyncLoop.Path.WIFI })
     }
 
+    @Test fun bigFileOnBluetoothFailsAtOnceWithoutAskingTheMac() {
+        val l = start({ PacketBridgeLink(mac.port) })
+        assertTrue(eventually { l.path == SyncLoop.Path.BLUETOOTH })
+        val dir = java.nio.file.Files.createTempDirectory("big").toFile()
+        val began = System.currentTimeMillis()
+        val reason = runCatching { l.fetch("big", dir, size = 6_000_000) }.exceptionOrNull() as? FileFetchException
+        assertEquals("too-large-bluetooth", reason?.reason)
+        assertTrue("fails at once", System.currentTimeMillis() - began < 500)
+        assertTrue("no fetch sent", mac.received.none { it is app.clipbridge.core.Message.Fetch })
+    }
+
     @Test fun bluetoothDialerThrowingDoesNotKillTheLoop() {
         start({ throw IllegalStateException("BT Adapter is not turned ON") })
         assertTrue(eventually { bleDials.get() >= 1 })

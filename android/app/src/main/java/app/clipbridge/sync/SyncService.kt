@@ -103,7 +103,7 @@ class SyncService : Service() {
             return try {
                 val size = Files.cache(instance!!).offer(id)?.size ?: 0L
                 val (total, first) = SyncLoop.fetchTimeouts(size, loop.isOnBluetooth)
-                loop.fetch(id, dir, timeoutMs = total, firstDataMs = first)  // the pasting app is waiting
+                loop.fetch(id, dir, timeoutMs = total, firstDataMs = first, size = size)  // the pasting app is waiting
             } catch (e: FileFetchException) {
                 instance?.toast(when (e.reason) {
                     "expired" -> "That file is no longer on your Mac's clipboard"
@@ -276,7 +276,7 @@ class SyncService : Service() {
                     if (cache.cachedFile(id) != null) continue
                     val l = loop ?: throw FileFetchException("not-connected")
                     val (total, first) = SyncLoop.saveTimeouts(offer.size, l.isOnBluetooth)
-                    cache.store(id, l.fetch(id, cache.fetchDir, timeoutMs = total, firstDataMs = first))
+                    cache.store(id, l.fetch(id, cache.fetchDir, timeoutMs = total, firstDataMs = first, size = offer.size))
                 }
             }.exceptionOrNull()?.let {
                 when ((it as? FileFetchException)?.reason) {
@@ -304,7 +304,7 @@ class SyncService : Service() {
                 val file = cache.cachedFile(id) ?: run {
                     val l = loop!!
                     val (total, first) = SyncLoop.saveTimeouts(offer.size, l.isOnBluetooth)
-                    l.fetch(id, cache.fetchDir, timeoutMs = total, firstDataMs = first).also { cache.store(id, it) }
+                    l.fetch(id, cache.fetchDir, timeoutMs = total, firstDataMs = first, size = offer.size).also { cache.store(id, it) }
                 }
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, offer.name)

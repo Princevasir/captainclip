@@ -147,7 +147,9 @@ class SyncLoop(
      * Fetches Mac offer [id] into [dir], blocking until the file has arrived and been verified.
      * Concurrent calls for the same id share one transfer. Never call on the main thread.
      */
-    fun fetch(id: String, dir: File, timeoutMs: Long = 60_000, firstDataMs: Long = timeoutMs): File {
+    fun fetch(id: String, dir: File, timeoutMs: Long = 60_000, firstDataMs: Long = timeoutMs, size: Long = -1): File {
+        // Known to be too big for Bluetooth: say so at once instead of asking the Mac.
+        if (size > FileLimit.BLUETOOTH_MAX_BYTES && isOnBluetooth) throw FileFetchException("too-large-bluetooth")
         var isNew = false
         val pending = synchronized(fetches) {
             fetches[id] ?: PendingFetch(id, dir).also { fetches[id] = it; isNew = true }
