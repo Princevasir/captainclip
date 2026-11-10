@@ -11,6 +11,8 @@ object FileLimit {
     const val MAX_BYTES = 26_214_400L
     /** Raw bytes per chunk (≈256 KiB once base64-encoded). Same as the Mac. */
     const val CHUNK_BYTES = 196_608
+    /** Bluetooth is slow (≈20–100 KB/s): larger files need Wi-Fi. Same as the Mac. */
+    const val BLUETOOTH_MAX_BYTES = 5_242_880L
 }
 
 class FileTransferException(message: String) : IOException(message)

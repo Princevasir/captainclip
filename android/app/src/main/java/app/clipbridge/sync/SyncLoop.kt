@@ -43,6 +43,9 @@ class SyncLoop(
 ) {
     enum class Path { WIFI, BLUETOOTH }
 
+    /** True while connected over Bluetooth. */
+    val isOnBluetooth: Boolean get() = connection?.isBluetooth == true
+
     /** How we're connected right now (null when not connected). */
     @Volatile var path: Path? = null
         private set
@@ -149,6 +152,7 @@ class SyncLoop(
     fun sendFile(name: String, mime: String, size: Long, purpose: String = "file", input: () -> InputStream): Boolean = synchronized(sendLock) {
         if (size < 0 || size > FileLimit.MAX_BYTES) return false
         val conn = connection ?: return false
+        if (conn.isBluetooth && size > FileLimit.BLUETOOTH_MAX_BYTES) return false  // too slow over Bluetooth
         val sender = FileSender(UUID.randomUUID().toString(), input, name, mime, size, purpose)
         val start = try { sender.start() } catch (_: Exception) { return false }
         if (!conn.sendControl(start)) return false
@@ -310,9 +314,13 @@ class SyncLoop(
         wakeRequested = false
     }
 
-    private companion object {
+    companion object {
         const val JOIN_TIMEOUT_MS = 2_000L
         const val AUTH_FAILURES_BEFORE_INVALID = 3
         const val WIFI_FAILURES_BEFORE_BLUETOOTH = 2
+
+        /** (total, first-data) timeouts for fetching a Mac file while an app waits on the paste. */
+        fun fetchTimeouts(size: Long, bluetooth: Boolean): Pair<Long, Long> =
+            if (bluetooth) (10_000L + size / 30) to 6_000L else 20_000L to 4_000L
     }
 }

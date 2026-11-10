@@ -89,11 +89,14 @@ class SyncService : Service() {
         fun fetchOffer(id: String, dir: File): File {
             val loop = instance?.loop ?: throw java.io.FileNotFoundException("not connected to your Mac")
             return try {
-                loop.fetch(id, dir, timeoutMs = 20_000, firstDataMs = 4_000)  // the pasting app is waiting
+                val size = Files.cache(instance!!).current()?.size ?: 0L
+                val (total, first) = SyncLoop.fetchTimeouts(size, loop.isOnBluetooth)
+                loop.fetch(id, dir, timeoutMs = total, firstDataMs = first)  // the pasting app is waiting
             } catch (e: FileFetchException) {
                 instance?.toast(when (e.reason) {
                     "expired" -> "That file is no longer on your Mac's clipboard"
                     "changed" -> "The file changed on your Mac — copy it again"
+                    "too-large-bluetooth" -> "Too big for Bluetooth — connect both to the same Wi-Fi"
                     "timeout", "not-connected", "io" -> "Couldn't reach your Mac"
                     else -> "Couldn't get the file from your Mac"
                 })
@@ -272,7 +275,11 @@ class SyncService : Service() {
             }.onFailure {
                 val reason = (it as? FileFetchException)?.reason ?: it.message
                 transferNotice("Couldn't save ${offer.name}: $reason", null)
-                main.post { onDone?.invoke(null, if (reason == "changed") "The file changed on your Mac — copy it again" else "Couldn't get the file from your Mac") }
+                main.post { onDone?.invoke(null, when (reason) {
+                    "changed" -> "The file changed on your Mac — copy it again"
+                    "too-large-bluetooth" -> "Too big for Bluetooth — connect both to the same Wi-Fi"
+                    else -> "Couldn't get the file from your Mac"
+                }) }
             }
         }
     }
@@ -289,7 +296,10 @@ class SyncService : Service() {
                         .onFailure { android.util.Log.w("ClipBridgeFiles", "upload of ${f.name} failed", it) }
                         .getOrDefault(false)
                     android.util.Log.i("ClipBridgeFiles", "upload of ${f.name} ok=$ok")
-                    if (ok) sent++ else if (f.purpose != "clipboard") toast("Couldn't send ${f.name} — not connected to your Mac")
+                    if (ok) sent++ else if (f.purpose != "clipboard") toast(
+                        if (loop?.isOnBluetooth == true && f.file.length() > app.clipbridge.core.FileLimit.BLUETOOTH_MAX_BYTES)
+                            "${f.name} is too big for Bluetooth — connect both to the same Wi-Fi"
+                        else "Couldn't send ${f.name} — not connected to your Mac")
                 } finally {
                     f.file.delete()
                 }

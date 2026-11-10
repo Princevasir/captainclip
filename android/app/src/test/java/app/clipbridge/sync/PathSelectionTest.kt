@@ -81,3 +81,40 @@ class PathSelectionTest {
         assertTrue("should switch back to Wi-Fi", eventually { l.path == SyncLoop.Path.WIFI && statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
     }
 }
+
+class BluetoothLimitsTest {
+    @Test fun bluetoothFileCapIsFiveMegabytes() {
+        assertEquals(5_242_880L, app.clipbridge.core.FileLimit.BLUETOOTH_MAX_BYTES)
+    }
+
+    @Test fun fetchTimeoutsScaleWithSizeOnBluetooth() {
+        assertEquals(20_000L to 4_000L, SyncLoop.fetchTimeouts(size = 2_000_000, bluetooth = false))
+        // 10 s + size ÷ 30 KB/s; first data within 6 s
+        assertEquals((10_000L + 3_000_000L / 30) to 6_000L, SyncLoop.fetchTimeouts(size = 3_000_000, bluetooth = true))
+    }
+}
+
+class BluetoothUploadCapTest {
+    private val key = ClipCrypto.randomKey()
+    private val mac = MultiFakeMac(key)
+    @After fun tearDown() { mac.close() }
+
+    @Test fun bigUploadIsRefusedOnBluetoothButFineOnWifi() {
+        val statuses = CopyOnWriteArrayList<SyncLoop.Status>()
+        fun loopVia(bluetooth: Boolean) = SyncLoop(
+            pairing = { PairingInfo("0123456789abcdef", key, "127.0.0.1", mac.port) },
+            locate = { null }, device = "phone",
+            callbacks = object : SyncLoop.Callbacks {
+                override fun onStatus(status: SyncLoop.Status) { statuses.add(status) }
+                override fun onClip(text: String) {}
+            },
+            wifiLink = { host, port -> if (bluetooth) PacketBridgeLink(port) else TcpLink(host, port) },
+        )
+        val ble = loopVia(bluetooth = true).also { it.start() }
+        val end = System.currentTimeMillis() + 5_000
+        while (statuses.lastOrNull() != SyncLoop.Status.CONNECTED && System.currentTimeMillis() < end) Thread.sleep(20)
+        assertEquals(false, ble.sendFile("big.zip", "application/zip", 6_000_000) { java.io.ByteArrayInputStream(ByteArray(0)) })
+        assertTrue(ble.isOnBluetooth)
+        ble.stop()
+    }
+}
