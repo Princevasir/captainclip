@@ -4,6 +4,8 @@ do {
     try cryptoTests()
     try frameTests()
     try messageTests()
+    try pairingTests()
+    loopGuardTests()
 } catch {
     failures += 1
     print("FAIL: unexpected error \(error)")
