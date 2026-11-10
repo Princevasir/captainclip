@@ -19,14 +19,14 @@ public struct FileSender {
     public let start: Message
     public var end: Message { .fileEnd(id: id) }
 
-    public init(id: String, url: URL, name: String, mime: String) throws {
+    public init(id: String, url: URL, name: String, mime: String, purpose: String = "file") throws {
         let attrs = try FileManager.default.attributesOfItem(atPath: url.path)
         guard attrs[.type] as? FileAttributeType == .typeRegular else { throw FileTransferError.notARegularFile }
         let size = (attrs[.size] as? NSNumber)?.int64Value ?? 0
         guard size <= FileLimit.maxBytes else { throw FileTransferError.tooLarge }
         self.id = id
         self.url = url
-        self.start = .fileStart(id: id, name: name, mime: mime, size: size, sha256: try Self.sha256(of: url))
+        self.start = .fileStart(id: id, name: name, mime: mime, size: size, sha256: try Self.sha256(of: url), purpose: purpose)
     }
 
     public func chunks() -> AnySequence<Message> {

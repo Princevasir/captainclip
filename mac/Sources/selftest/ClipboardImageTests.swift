@@ -107,3 +107,38 @@ func bridgeImageOfferTests() throws {
     check(waitUntil(5) { got.all.count == 1 }, "phone can fetch the image on paste")
     check(got.all.first.flatMap { try? Data(contentsOf: $0) } == png, "fetched image identical")
 }
+
+func bridgeReceivesPhoneImageTests() throws {
+    let key = ClipCrypto.randomKey()
+    let board = NSPasteboard(name: NSPasteboard.Name("clipbridge.rimg.\(UUID().uuidString)"))
+    defer { board.releaseGlobally() }
+    let downloads = tempDir("rimg-dl"), cache = tempDir("rimg-cache"), src = tempDir("rimg-src")
+    defer { [downloads, cache, src].forEach { try? FileManager.default.removeItem(at: $0) } }
+    let server = Server(key: key, macId: "0123456789abcdef", advertise: false)
+    let bridge = Bridge(server: server, watcher: PasteboardWatcher(pasteboard: board, interval: 0.05),
+                        downloads: downloads, imageCache: cache)
+    let statuses = Recorder<Server.Status>(), images = Recorder<Int>()
+    bridge.onStatus = { statuses.add($0) }
+    bridge.onImageReceived = { images.add($0) }
+    try bridge.start(); defer { bridge.stop() }
+    _ = waitUntil { server.port != nil }
+    let (phone, _, _) = makeClient(server, key: key); defer { phone.stop() }
+    let messages = Recorder<Message>()
+    phone.onMessage = { messages.add($0) }
+    _ = waitUntil { statuses.all.last == .connected(device: "probe") }
+
+    let png = pngData(90, color: .systemPink)
+    let file = src.appendingPathComponent("Screenshot_20261110.png"); try png.write(to: file)
+    phone.sendFile(url: file, mime: "image/png", purpose: "clipboard")
+    check(waitUntil(5) { board.data(forType: .png) == png }, "phone image lands on the Mac clipboard as an image")
+    check(board.data(forType: .tiff) != nil, "…also as TIFF for older apps")
+    check(images.all.count == 1, "Mac reports the received image")
+    check(((try? FileManager.default.contentsOfDirectory(atPath: downloads.path)) ?? []).isEmpty, "clipboard image is not saved to Downloads")
+    RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+    check(!messages.all.contains { if case .offer = $0 { return true } else { return false } }, "received image is not offered back to the phone")
+
+    let doc = randomFile(src, name: "doc.pdf", bytes: 500)
+    phone.sendFile(url: doc, mime: "application/pdf")
+    check(waitUntil(5) { FileManager.default.fileExists(atPath: downloads.appendingPathComponent("doc.pdf").path) },
+          "normal shared files still go to Downloads")
+}

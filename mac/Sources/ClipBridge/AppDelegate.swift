@@ -109,6 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         bridge.onStatus = { [weak self] status in self?.show(status) }
         bridge.onReceived = { [weak self] text in self?.notifyReceived(text) }
         bridge.onFileReceived = { [weak self] url in self?.notifyFile(url) }
+        bridge.onImageReceived = { [weak self] _ in self?.notifyImage() }
         bridge.onOfferChanged = { [weak self] name in
             self?.offerLine.title = name.map { MenuText.offer($0) } ?? ""
             self?.offerLine.isHidden = name == nil
@@ -205,6 +206,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         content.title = "\(url.lastPathComponent) from phone"
         content.body = "Saved in Downloads — press ⌘V to paste it"
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "file", content: content, trigger: nil))
+    }
+
+    private func notifyImage() {
+        let content = UNMutableNotificationContent()
+        content.title = "Image from phone"
+        content.body = "Ready to paste — press ⌘V"
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "image", content: content, trigger: nil))
     }
 
     private func notifyReceived(_ text: String) {

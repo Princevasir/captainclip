@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 /// Wires the pasteboard watcher to the server: text sync (v1) plus file offers, fetches and incoming files (v2).
@@ -8,6 +9,8 @@ public final class Bridge {
     public var onReceived: ((String) -> Void)?
     /// A file from the phone landed in Downloads (and is on the pasteboard).
     public var onFileReceived: ((URL) -> Void)?
+    /// An image from the phone was put on the Mac clipboard (byte count).
+    public var onImageReceived: ((Int) -> Void)?
     /// The file currently offered to the phone changed (nil = none).
     public var onOfferChanged: ((String?) -> Void)?
 
@@ -19,6 +22,7 @@ public final class Bridge {
     private let loopGuard = LoopGuard()
     private let files = DispatchQueue(label: "clipbridge.bridge.files")
     private var receivers: [String: FileReceiver] = [:]  // on `files`
+    private var clipboardImageIds: Set<String> = []      // on `files`: transfers meant for the clipboard
 
     public init(server: Server, watcher: PasteboardWatcher, offers: OfferStore = OfferStore(),
                 downloads: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0],
@@ -106,19 +110,36 @@ public final class Bridge {
         switch message {
         case .fetch(let id):
             serve(id: id)
-        case .fileStart(let id, _, _, _, _, _):
+        case .fileStart(let id, _, let mime, _, _, let purpose):
             receivers[id]?.abort()
-            do { receivers[id] = try FileReceiver(start: message, directory: downloads) }
+            let toClipboard = purpose == "clipboard" && mime.hasPrefix("image/")
+            if toClipboard { clipboardImageIds.insert(id) } else { clipboardImageIds.remove(id) }
+            let dir = toClipboard ? imageCache.appendingPathComponent("incoming", isDirectory: true) : downloads
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            do { receivers[id] = try FileReceiver(start: message, directory: dir) }
             catch { server.send(message: .fileError(id: id, reason: error as? FileTransferError == .tooLarge ? "too-large" : "io")) }
         case .fileChunk(let id, _, _), .fileEnd(let id):
             guard let receiver = receivers[id] else { return }
             do {
                 if let url = try receiver.accept(message) {
                     receivers[id] = nil
-                    DispatchQueue.main.async {
-                        self.clearOffer()
-                        self.watcher.writeFile(url)
-                        self.onFileReceived?(url)
+                    if clipboardImageIds.remove(id) != nil {
+                        // Phone image → Mac clipboard as an image; the temp file is not kept.
+                        let data = (try? Data(contentsOf: url)) ?? Data()
+                        try? FileManager.default.removeItem(at: url)
+                        let png = data.starts(with: [0x89, 0x50, 0x4E, 0x47]) ? data
+                            : (NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:]) ?? data)
+                        DispatchQueue.main.async {
+                            self.clearOffer()
+                            self.watcher.writeImage(png)
+                            self.onImageReceived?(png.count)
+                        }
+                    } else {
+                        DispatchQueue.main.async {
+                            self.clearOffer()
+                            self.watcher.writeFile(url)
+                            self.onFileReceived?(url)
+                        }
                     }
                 }
             } catch {

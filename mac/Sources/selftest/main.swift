@@ -34,6 +34,7 @@ do {
     try clipboardImageTests()
     watcherImageTests()
     try bridgeImageOfferTests()
+    try bridgeReceivesPhoneImageTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()

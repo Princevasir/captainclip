@@ -89,10 +89,10 @@ public final class Client {
 
     /// Sends a file to the Mac: file-start, then paced chunks + file-end.
     public func sendFile(url: URL, id: String = UUID().uuidString, mime: String = "application/octet-stream",
-                         completion: @escaping (Bool) -> Void = { _ in }) {
+                         purpose: String = "file", completion: @escaping (Bool) -> Void = { _ in }) {
         queue.async { [weak self] in
             guard let self, let session = self.session,
-                  let sender = try? FileSender(id: id, url: url, name: url.lastPathComponent, mime: mime)
+                  let sender = try? FileSender(id: id, url: url, name: url.lastPathComponent, mime: mime, purpose: purpose)
             else { completion(false); return }
             session.send(sender.start)
             session.sendChunked(sender.stream(), completion: completion)
