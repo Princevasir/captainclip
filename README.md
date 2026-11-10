@@ -40,18 +40,32 @@ The Mac menu shows *Connected: <your phone>* when it works.
 ## Tests
 
 ```bash
-cd mac && swift run selftest                                    # Mac: 66 checks
+cd mac && swift run selftest                                    # Mac: 93 checks
 cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew testDebugUnitTest   # Android unit tests
 ```
 
 Both sides check the same AES-GCM test vector (`docs/test-vector.txt`).
 `mac/.build/debug/probe "<pairing link>" [send "<text>"]` acts like a phone for testing the Mac app.
 
+## Troubleshooting (phone stays on "Looking for your Mac…")
+
+These are the usual culprits for any local-network sharing app (LocalSend's docs list the same ones):
+
+- **Same network?** Both on the same Wi-Fi — not a guest network. Guest/office Wi-Fi often has
+  *AP / client isolation*, which blocks device-to-device traffic. Turn it off in the router, or use a hotspot.
+- **macOS Local Network permission:** System Settings → Privacy & Security → Local Network → ClipBridge on.
+- **Mac firewall:** allow incoming connections for ClipBridge (TCP port 52001).
+- **VPN** on either device can hide the local network — allow LAN traffic or pause it.
+- Phone shows **"Mac rejected this phone"** → the Mac's pairing was reset; scan the QR code again.
+
 ## Known limits
 
-- Same Wi-Fi only. Some guest/office networks block device-to-device traffic ("client isolation").
+- Same Wi-Fi only.
+- Text up to 256 KB per copy; bigger copies are skipped. For files and images, the free
+  open-source [LocalSend](https://localsend.org) app pairs well with ClipBridge.
 - Automatic phone → Mac only sees copies that show a "Copy" button or a "Copied" message.
   For anything else use the tile or notification button.
+- Passwords are never sent: Mac password-manager copies and Android clips marked sensitive are skipped.
 - One phone per Mac. **Reset pairing** in the Mac menu creates a new key (the old phone stops working).
 
 ## Credits
