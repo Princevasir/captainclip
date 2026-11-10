@@ -1,17 +1,21 @@
 import AppKit
 import ClipBridgeCore
+import ServiceManagement
 import UserNotifications
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     static let port: UInt16 = 52001
 
     private var statusItem: NSStatusItem!
     private let statusLine = NSMenuItem(title: "Starting…", action: nil, keyEquivalent: "")
+    private let detailLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let offerLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let pauseItem = NSMenuItem(title: "Pause syncing", action: #selector(togglePause), keyEquivalent: "")
+    private let loginItem = NSMenuItem(title: "Start ClipBridge at login", action: #selector(toggleLogin), keyEquivalent: "")
     private var bridge: Bridge?
     private var server: Server?
     private var pairing: (macId: String, key: Data)!
+    private var lastStatus: Server.Status = .waiting
     private let keyStore = KeyStore()
     private let pairWindow = PairWindow()
 
@@ -20,7 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         buildMenu()
         startBridge()
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
-        if keyStore.load() != nil, !UserDefaults.standard.bool(forKey: "pairedOnce") {
+        if !UserDefaults.standard.bool(forKey: "pairedOnce") {
             showPairing()
         }
     }
@@ -32,24 +36,72 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return (macId, key)
     }
 
+    // MARK: Menu
+
     private func buildMenu() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "ClipBridge")
+        statusItem.button?.image = BrandIcon.menuBar()
+        statusItem.button?.toolTip = "ClipBridge"
         let menu = NSMenu()
-        statusLine.isEnabled = false
-        menu.addItem(statusLine)
-        offerLine.isEnabled = false
+        menu.delegate = self
+        [statusLine, detailLine, offerLine].forEach { $0.isEnabled = false }
+        detailLine.isHidden = true
         offerLine.isHidden = true
+        menu.addItem(statusLine)
+        menu.addItem(detailLine)
         menu.addItem(offerLine)
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Pair phone…", action: #selector(showPairing), keyEquivalent: "p").target = self
+        menu.addItem(item("Pair phone…", #selector(showPairing), key: "p"))
         pauseItem.target = self
         menu.addItem(pauseItem)
-        menu.addItem(withTitle: "Reset pairing (new key)", action: #selector(resetPairing), keyEquivalent: "").target = self
+        menu.addItem(item("Open Downloads", #selector(openDownloads), key: "d"))
         menu.addItem(.separator())
+        loginItem.target = self
+        menu.addItem(loginItem)
+        menu.addItem(item("Reset pairing…", #selector(resetPairing)))
+        menu.addItem(.separator())
+        menu.addItem(item("About ClipBridge", #selector(showAbout)))
         menu.addItem(withTitle: "Quit ClipBridge", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
     }
+
+    private func item(_ title: String, _ action: Selector, key: String = "") -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+        item.target = self
+        return item
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        renderStatus()
+    }
+
+    private func renderStatus() {
+        let paused = bridge?.paused ?? false
+        let color: NSColor
+        switch (paused, lastStatus) {
+        case (true, _): color = .systemGray
+        case (false, .connected): color = .systemGreen
+        case (false, .waiting): color = .systemOrange
+        }
+        let title = NSMutableAttributedString(string: "●  ", attributes: [.foregroundColor: color, .font: NSFont.menuFont(ofSize: 12)])
+        title.append(NSAttributedString(string: MenuText.status(lastStatus, paused: paused),
+                                        attributes: [.font: NSFont.menuFont(ofSize: 0), .foregroundColor: NSColor.labelColor]))
+        statusLine.attributedTitle = title
+        let detail: String?
+        switch lastStatus {
+        case .connected: detail = paused ? nil : "Same Wi-Fi · end-to-end encrypted"
+        case .waiting: detail = paused ? nil : "Open ClipBridge on your phone, on the same Wi-Fi"
+        }
+        detailLine.isHidden = detail == nil
+        if let detail {
+            detailLine.attributedTitle = NSAttributedString(string: "     " + detail, attributes: [
+                .font: NSFont.menuFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor])
+        }
+        statusItem.button?.appearsDisabled = paused || lastStatus == .waiting
+    }
+
+    // MARK: Bridge
 
     private func startBridge() {
         let server = Server(key: pairing.key, macId: pairing.macId, preferredPort: Self.port)
@@ -58,52 +110,95 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         bridge.onReceived = { [weak self] text in self?.notifyReceived(text) }
         bridge.onFileReceived = { [weak self] url in self?.notifyFile(url) }
         bridge.onOfferChanged = { [weak self] name in
-            self?.offerLine.title = name.map { "Ready to paste on phone: \($0)" } ?? ""
+            self?.offerLine.title = name.map { MenuText.offer($0) } ?? ""
             self?.offerLine.isHidden = name == nil
         }
         do {
             try bridge.start()
             show(.waiting)
         } catch {
-            statusLine.title = "Error: \(error.localizedDescription)"
+            statusLine.title = "Couldn't start: \(error.localizedDescription)"
         }
         self.server = server
         self.bridge = bridge
     }
 
     private func show(_ status: Server.Status) {
-        switch status {
-        case .waiting:
-            statusLine.title = "Waiting for phone…"
-            statusItem.button?.appearsDisabled = true
-        case .connected(let device):
-            statusLine.title = "Connected: \(device)"
-            statusItem.button?.appearsDisabled = false
+        lastStatus = status
+        if case .connected = status {
             UserDefaults.standard.set(true, forKey: "pairedOnce")
             pairWindow.close()
         }
+        renderStatus()
     }
+
+    // MARK: Actions
 
     @objc private func showPairing() {
         let info = PairingInfo(macId: pairing.macId, key: pairing.key,
                                host: NetworkInfo.primaryIPv4() ?? "0.0.0.0",
                                port: Int(server?.port ?? Self.port))
-        pairWindow.show(uri: info.uri, subtitle: "Mac at \(info.host):\(info.port)")
+        pairWindow.show(uri: info.uri, address: "\(info.host):\(info.port)")
     }
 
     @objc private func togglePause() {
         guard let bridge else { return }
         bridge.paused.toggle()
         pauseItem.state = bridge.paused ? .on : .off
+        renderStatus()
+    }
+
+    @objc private func openDownloads() {
+        NSWorkspace.shared.open(FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0])
+    }
+
+    @objc private func toggleLogin() {
+        do {
+            if SMAppService.mainApp.status == .enabled {
+                try SMAppService.mainApp.unregister()
+            } else {
+                try SMAppService.mainApp.register()
+            }
+        } catch {
+            alert("Couldn't change the login setting",
+                  "Move ClipBridge.app to your Applications folder and try again.\n\n\(error.localizedDescription)")
+        }
+        loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
     }
 
     @objc private func resetPairing() {
+        NSApp.activate(ignoringOtherApps: true)
+        let confirm = NSAlert()
+        confirm.messageText = "Reset pairing?"
+        confirm.informativeText = "ClipBridge will make a new key. Your phone stops syncing until you scan the new QR code."
+        confirm.addButton(withTitle: "Reset")
+        confirm.addButton(withTitle: "Cancel")
+        confirm.alertStyle = .warning
+        guard confirm.runModal() == .alertFirstButtonReturn else { return }
         bridge?.stop()
         pairing = newPairing()
         UserDefaults.standard.set(false, forKey: "pairedOnce")
         startBridge()
         showPairing()
     }
+
+    @objc private func showAbout() {
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.orderFrontStandardAboutPanel(options: [
+            .applicationIcon: BrandIcon.app(side: 256),
+            .credits: NSAttributedString(string: "Share your clipboard and small files between this Mac and your Android phone on the same Wi-Fi. End-to-end encrypted, nothing leaves your network."),
+        ])
+    }
+
+    private func alert(_ title: String, _ text: String) {
+        NSApp.activate(ignoringOtherApps: true)
+        let a = NSAlert()
+        a.messageText = title
+        a.informativeText = text
+        a.runModal()
+    }
+
+    // MARK: Notifications
 
     private func notifyFile(_ url: URL) {
         let content = UNMutableNotificationContent()
@@ -116,7 +211,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let content = UNMutableNotificationContent()
         content.title = "Copied from phone"
         content.body = ReceivedNotice.body(for: text)
-        let request = UNNotificationRequest(identifier: "clip", content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request)
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "clip", content: content, trigger: nil))
     }
 }

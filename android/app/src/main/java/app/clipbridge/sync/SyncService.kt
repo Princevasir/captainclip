@@ -154,7 +154,9 @@ class SyncService : Service() {
         val newLoop = SyncLoop(
             pairing = { Prefs.pairing(this) },
             locate = { MacLocator(this).find(it) },
-            device = Build.MODEL,
+            // The phone's own name from Settings → About phone (e.g. "Balveer's S25 Ultra"), else the model.
+            device = runCatching { android.provider.Settings.Global.getString(contentResolver, "device_name") }
+                .getOrNull()?.takeIf { it.isNotBlank() } ?: Build.MODEL,
             callbacks = object : SyncLoop.Callbacks {
                 override fun onStatus(status: SyncLoop.Status) {
                     state = status

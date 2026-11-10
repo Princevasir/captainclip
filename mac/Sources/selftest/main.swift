@@ -26,6 +26,8 @@ do {
     try phoneCopyClearsOfferTests()
     fileReferenceURLTests()
     try quarantineTests()
+    brandIconTests()
+    menuTextTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()
