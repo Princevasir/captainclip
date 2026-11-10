@@ -51,11 +51,10 @@ public final class PasteboardWatcher {
         lastChangeCount = pasteboard.changeCount
     }
 
-    /// Puts an image on the pasteboard (PNG + TIFF) without reporting it back through onImage.
-    public func writeImage(_ png: Data) {
+    /// Puts image bytes on the pasteboard under their own type (no re-encoding), without reporting them back.
+    public func writeImage(_ data: Data, type: NSPasteboard.PasteboardType) {
         pasteboard.clearContents()
-        pasteboard.setData(png, forType: .png)
-        if let tiff = NSImage(data: png)?.tiffRepresentation { pasteboard.setData(tiff, forType: .tiff) }
+        pasteboard.setData(data, forType: type)
         lastChangeCount = pasteboard.changeCount
     }
 

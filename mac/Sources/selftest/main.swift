@@ -31,6 +31,7 @@ do {
     try richMessageTests()
     try richTextTests()
     try bridgeRichTextTests()
+    richTextSafetyTests()
     try clipboardImageTests()
     watcherImageTests()
     try bridgeImageOfferTests()

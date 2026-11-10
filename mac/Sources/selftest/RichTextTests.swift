@@ -70,3 +70,19 @@ func bridgeRichTextTests() throws {
     RunLoop.current.run(until: Date().addingTimeInterval(0.4))
     check(!plainClips.all.contains("secret"), "concealed formatted copy is not sent")
 }
+
+func richTextSafetyTests() {
+    let html = #"<p>Hi <img src="https://tracker.example/pixel.png"> <link rel="stylesheet" href="https://x.example/a.css"><script>alert(1)</script><iframe src="https://x.example"></iframe><b>there</b></p>"#
+    let safe = RichText.importable(html)
+    check(!safe.contains("<img") && !safe.contains("<link") && !safe.contains("<script") && !safe.contains("<iframe"),
+          "remote images, stylesheets, scripts and frames are removed before converting to RTF")
+    check(safe.contains("<b>there</b>") && safe.contains("Hi"), "formatting and text survive")
+
+    let board = NSPasteboard(name: NSPasteboard.Name("clipbridge.safe.\(UUID().uuidString)"))
+    defer { board.releaseGlobally() }
+    let started = Date()
+    RichText.write(text: "Hi there", html: html, to: board)
+    check(Date().timeIntervalSince(started) < 2, "writing HTML with remote resources does not hang")
+    check(board.string(forType: .html) == html, "the original HTML is still offered to apps as-is")
+    check(board.data(forType: .rtf) != nil && board.string(forType: .string) == "Hi there", "RTF and text written too")
+}

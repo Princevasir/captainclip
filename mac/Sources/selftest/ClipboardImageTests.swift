@@ -72,10 +72,10 @@ func watcherImageTests() {
     RunLoop.current.run(until: Date().addingTimeInterval(0.3))
     check(images.all.count == 1, "concealed image is ignored")
 
-    watcher.writeImage(pngData(8, color: .red))
+    watcher.writeImage(pngData(8, color: .red), type: .png)
     RunLoop.current.run(until: Date().addingTimeInterval(0.3))
     check(images.all.count == 1, "an image ClipBridge itself writes is not reported back")
-    check(board.data(forType: .png) != nil && board.data(forType: .tiff) != nil, "writeImage puts PNG and TIFF")
+    check(board.data(forType: .png) != nil, "writeImage puts the image under its own type")
 }
 
 func bridgeImageOfferTests() throws {
@@ -131,8 +131,14 @@ func bridgeReceivesPhoneImageTests() throws {
     let file = src.appendingPathComponent("Screenshot_20261110.png"); try png.write(to: file)
     phone.sendFile(url: file, mime: "image/png", purpose: "clipboard")
     check(waitUntil(5) { board.data(forType: .png) == png }, "phone image lands on the Mac clipboard as an image")
-    check(board.data(forType: .tiff) != nil, "…also as TIFF for older apps")
-    check(images.all.count == 1, "Mac reports the received image")
+    let jpeg = NSBitmapImageRep(data: NSImage(data: pngData(64, color: .systemGreen))!.tiffRepresentation!)!
+        .representation(using: .jpeg, properties: [:])!
+    let jfile = src.appendingPathComponent("photo.jpg"); try jpeg.write(to: jfile)
+    phone.sendFile(url: jfile, mime: "image/jpeg", purpose: "clipboard")
+    check(waitUntil(5) { board.data(forType: NSPasteboard.PasteboardType("public.jpeg")) == jpeg },
+          "a phone JPEG lands on the Mac clipboard in its original format, byte for byte")
+    check(board.data(forType: .png) == nil, "…without being re-encoded as PNG")
+    check(images.all.count >= 1, "Mac reports the received image")
     check(((try? FileManager.default.contentsOfDirectory(atPath: downloads.path)) ?? []).isEmpty, "clipboard image is not saved to Downloads")
     RunLoop.current.run(until: Date().addingTimeInterval(0.4))
     check(!messages.all.contains { if case .offer = $0 { return true } else { return false } }, "received image is not offered back to the phone")

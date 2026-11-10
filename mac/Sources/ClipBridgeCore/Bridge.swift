@@ -23,6 +23,7 @@ public final class Bridge {
     private let files = DispatchQueue(label: "clipbridge.bridge.files")
     private var receivers: [String: FileReceiver] = [:]  // on `files`
     private var clipboardImageIds: Set<String> = []      // on `files`: transfers meant for the clipboard
+    private var imageMimes: [String: String] = [:]       // on `files`: their image types
 
     public init(server: Server, watcher: PasteboardWatcher, offers: OfferStore = OfferStore(),
                 downloads: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0],
@@ -113,26 +114,28 @@ public final class Bridge {
         case .fileStart(let id, _, let mime, _, _, let purpose):
             receivers[id]?.abort()
             let toClipboard = purpose == "clipboard" && mime.hasPrefix("image/")
-            if toClipboard { clipboardImageIds.insert(id) } else { clipboardImageIds.remove(id) }
+            if toClipboard { clipboardImageIds.insert(id); imageMimes[id] = mime } else { clipboardImageIds.remove(id) }
             let dir = toClipboard ? imageCache.appendingPathComponent("incoming", isDirectory: true) : downloads
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             do { receivers[id] = try FileReceiver(start: message, directory: dir) }
             catch { server.send(message: .fileError(id: id, reason: error as? FileTransferError == .tooLarge ? "too-large" : "io")) }
         case .fileChunk(let id, _, _), .fileEnd(let id):
             guard let receiver = receivers[id] else { return }
+            let mime = imageMimes[id] ?? "image/png"
             do {
                 if let url = try receiver.accept(message) {
                     receivers[id] = nil
                     if clipboardImageIds.remove(id) != nil {
                         // Phone image → Mac clipboard as an image; the temp file is not kept.
-                        let data = (try? Data(contentsOf: url)) ?? Data()
+                        // Kept in its original format (JPEG stays JPEG): no decoding, so big photos can't blow up memory.
+                        let data = (try? Data(contentsOf: url, options: .mappedIfSafe)) ?? Data()
                         try? FileManager.default.removeItem(at: url)
-                        let png = data.starts(with: [0x89, 0x50, 0x4E, 0x47]) ? data
-                            : (NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:]) ?? data)
-                        DispatchQueue.main.async {
-                            self.clearOffer()
-                            self.watcher.writeImage(png)
-                            self.onImageReceived?(png.count)
+                        if let type = ClipboardImage.pasteboardType(forMime: mime), !data.isEmpty {
+                            DispatchQueue.main.async {
+                                self.clearOffer()
+                                self.watcher.writeImage(data, type: type)
+                                self.onImageReceived?(data.count)
+                            }
                         }
                     } else {
                         DispatchQueue.main.async {

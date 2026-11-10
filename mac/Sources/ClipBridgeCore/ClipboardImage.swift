@@ -33,6 +33,20 @@ public enum ClipboardImage {
         return url
     }
 
+    /// Pasteboard type for an image MIME type (the bytes are written as-is). Nil if not an image type we accept.
+    public static func pasteboardType(forMime mime: String) -> NSPasteboard.PasteboardType? {
+        switch mime.lowercased() {
+        case "image/png": return .png
+        case "image/jpeg", "image/jpg": return NSPasteboard.PasteboardType("public.jpeg")
+        case "image/heic": return NSPasteboard.PasteboardType("public.heic")
+        case "image/heif": return NSPasteboard.PasteboardType("public.heif")
+        case "image/webp": return NSPasteboard.PasteboardType("org.webmproject.webp")
+        case "image/gif": return NSPasteboard.PasteboardType("com.compuserve.gif")
+        case "image/tiff": return .tiff
+        default: return nil
+        }
+    }
+
     /// Default cache folder for clipboard images (never Downloads).
     public static var defaultCache: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
