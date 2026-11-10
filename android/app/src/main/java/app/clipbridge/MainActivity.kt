@@ -221,8 +221,8 @@ class MainActivity : Activity() {
         val sensitive = clip?.description?.extras?.getBoolean(ClipPolicy.EXTRA_IS_SENSITIVE, false) ?: false
         if (hasUri) {
             Thread {
-                val sent = app.clipbridge.capture.ClipImages.sendIfImage(applicationContext, clip)
-                runOnUiThread { toast(if (sent) "Image sent to Mac" else "That's a file — use Share → Send to Mac") }
+                val outcome = app.clipbridge.capture.ClipImages.sendIfImage(applicationContext, clip)
+                app.clipbridge.capture.ImageSend.message(outcome, manual = true)?.let { runOnUiThread { toast(it) } }
             }.start()
             return
         }

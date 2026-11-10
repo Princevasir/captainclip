@@ -12,9 +12,9 @@ import java.io.File
 
 /** Sends an image that's on the phone clipboard to the Mac clipboard (used by the ghost screen and the app). */
 object ClipImages {
-    /** Returns true if the clip held an image that was queued for the Mac. Call while the clip is readable. */
-    fun sendIfImage(context: Context, clip: ClipData?): Boolean {
-        val uri = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri ?: return false
+    /** Sends the clip's image to the Mac if it is one and we're connected. Call while the clip is readable. */
+    fun sendIfImage(context: Context, clip: ClipData?): ImageSend.Outcome {
+        val uri = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri ?: return ImageSend.Outcome.NOT_AN_IMAGE
         val resolver = context.contentResolver
         val mime = runCatching { resolver.getType(uri) }.getOrNull() ?: clip.description.getMimeType(0)
         val sensitive = clip.description.extras?.getBoolean(ClipPolicy.EXTRA_IS_SENSITIVE, false) ?: false
@@ -29,10 +29,12 @@ object ClipImages {
             }
         }
         if (size < 0) size = runCatching { resolver.openAssetFileDescriptor(uri, "r")?.use { it.length } }.getOrNull() ?: -1
-        if (!ClipImagePolicy.accepts(uri.scheme, uri.authority, mime, sensitive, if (size < 0) 1 else size)) return false
+        val isImage = ClipImagePolicy.accepts(uri.scheme, uri.authority, mime, sensitive, if (size < 0) 1 else size)
+        val outcome = ImageSend.decide(isImage, SyncService.isConnected)
+        if (outcome != ImageSend.Outcome.SEND) return outcome  // checked before copying anything
+        val dir = File(context.cacheDir, "outgoing").apply { mkdirs() }
+        val target = File(dir, "${System.nanoTime()}-${FileReceiver.safeName(name)}")
         return try {
-            val dir = File(context.cacheDir, "outgoing").apply { mkdirs() }
-            val target = File(dir, "${System.nanoTime()}-${FileReceiver.safeName(name)}")
             var copied = 0L
             resolver.openInputStream(uri)!!.use { input ->
                 target.outputStream().use { out ->
@@ -46,10 +48,12 @@ object ClipImages {
                     }
                 }
             }
-            SyncService.sendClipboardImage(OutgoingFile(target, name, mime!!, purpose = "clipboard"), key = "$uri:$copied")
+            if (SyncService.sendClipboardImage(OutgoingFile(target, name, mime!!, purpose = "clipboard"), key = "$uri:$copied"))
+                ImageSend.Outcome.SEND else ImageSend.Outcome.NOT_CONNECTED
         } catch (e: Exception) {
             Log.w("ClipBridgeFiles", "couldn't read clipboard image", e)
-            false
+            target.delete()
+            ImageSend.Outcome.NOT_AN_IMAGE
         }
     }
 }

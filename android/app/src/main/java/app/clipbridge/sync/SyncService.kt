@@ -60,6 +60,9 @@ class SyncService : Service() {
         @Volatile var state: SyncLoop.Status = SyncLoop.Status.STOPPED
             private set
 
+        /** True while connected to the Mac (not just running). */
+        val isConnected: Boolean get() = instance?.loop != null && state == SyncLoop.Status.CONNECTED
+
         /** The connected Mac's name, if any. */
         val macName: String? get() = instance?.loop?.macName
 
@@ -286,7 +289,7 @@ class SyncService : Service() {
                         .onFailure { android.util.Log.w("ClipBridgeFiles", "upload of ${f.name} failed", it) }
                         .getOrDefault(false)
                     android.util.Log.i("ClipBridgeFiles", "upload of ${f.name} ok=$ok")
-                    if (ok) sent++ else toast("Couldn't send ${f.name} — not connected to your Mac")
+                    if (ok) sent++ else if (f.purpose != "clipboard") toast("Couldn't send ${f.name} — not connected to your Mac")
                 } finally {
                     f.file.delete()
                 }

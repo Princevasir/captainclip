@@ -55,9 +55,9 @@ class GhostActivity : Activity() {
             // A copied image (screenshot "Copy", Chrome "Copy image") → Mac clipboard. Read it before closing.
             val announce = intent.getBooleanExtra(EXTRA_ANNOUNCE, false)
             Thread {
-                val sent = ClipImages.sendIfImage(applicationContext, clip)
-                if (announce) runOnUiThread {
-                    Toast.makeText(applicationContext, if (sent) "Image sent to Mac" else "Couldn't send that to your Mac", Toast.LENGTH_SHORT).show()
+                val outcome = ClipImages.sendIfImage(applicationContext, clip)
+                ImageSend.message(outcome, manual = announce)?.let { text ->
+                    runOnUiThread { Toast.makeText(applicationContext, text, Toast.LENGTH_SHORT).show() }
                 }
             }.start()
             finishQuietly()
