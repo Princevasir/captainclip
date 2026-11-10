@@ -77,6 +77,26 @@ class ConnectionTest {
         assertEquals("from phone", (msg as Message.Clip).text)
     }
 
+    @Test fun sendNeverBlocksCallerThread() {
+        // On Android the caller is the main thread, where socket writes are forbidden.
+        // Writes must happen on Connection's own thread, so send() returns at once even
+        // when the Mac stops reading and the socket buffer is full.
+        val stalledMac = ServerSocket(0)
+        val accepted = LinkedBlockingQueue<Socket>()
+        Thread { accepted.put(stalledMac.accept()) }.apply { isDaemon = true; start() }
+        val conn = Connection("127.0.0.1", stalledMac.localPort, key, "test-phone", events, pingIntervalMs = 60_000)
+        conn.start()
+        val macSide = accepted.await()  // keep a reference so the stalled socket stays open
+        events.connected.await()
+        val chunk = "x".repeat(200_000)
+        val started = System.nanoTime()
+        val accepted2 = (1..100).count { conn.send(chunk) }  // ~20 MB, far beyond any socket buffer
+        val elapsedMs = (System.nanoTime() - started) / 1_000_000
+        conn.close(); macSide?.close(); stalledMac.close()
+        assertTrue("send blocked caller for $elapsedMs ms", elapsedMs < 1_000)
+        assertTrue("sends are accepted while connected", accepted2 > 0)
+    }
+
     @Test fun refusesOversizedText() {
         connection.start()
         events.connected.await()
