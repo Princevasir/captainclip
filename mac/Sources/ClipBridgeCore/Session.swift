@@ -25,6 +25,13 @@ final class Session {
     var onClose: (() -> Void)?
     var lastSeen = Date()
 
+    // File chunks are paced: at most `maxChunksInFlight` are handed to the network at once, so any
+    // control/text message sent meanwhile goes out right behind them instead of behind the whole file.
+    private static let maxChunksInFlight = 2
+    private var chunkIterator: AnyIterator<Message>?
+    private var chunksInFlight = 0
+    private var chunkCompletion: ((Bool) -> Void)?
+
     private var inbound: Direction { role == .server ? .phoneToMac : .macToPhone }
     private var outbound: Direction { role == .server ? .macToPhone : .phoneToMac }
 
@@ -102,6 +109,48 @@ final class Session {
         return true
     }
 
+    /// Streams messages (file chunks + end) with pacing. Must be called on `queue`.
+    /// Completion is called once: true when all were handed off and acknowledged by the network stack.
+    func sendChunked(_ messages: AnySequence<Message>, completion: @escaping (Bool) -> Void) {
+        guard !closed, chunkIterator == nil else { completion(false); return }
+        chunkIterator = AnyIterator(messages.makeIterator())
+        chunkCompletion = completion
+        pumpChunks()
+    }
+
+    private func pumpChunks() {
+        while chunksInFlight < Self.maxChunksInFlight, let iterator = chunkIterator {
+            guard let message = iterator.next() else {
+                chunkIterator = nil
+                if chunksInFlight == 0 { finishChunks(true) }
+                return
+            }
+            guard !closed, let challenge,
+                  let plain = try? message.encoded(),
+                  let box = try? crypto.seal(plain, aad: ClipCrypto.sessionAAD(direction: outbound, challenge: challenge)),
+                  let frame = try? FrameCodec.encode(box)
+            else { finishChunks(false); return }
+            chunksInFlight += 1
+            connection.send(content: frame, completion: .contentProcessed { [weak self] error in
+                guard let self else { return }
+                self.chunksInFlight -= 1
+                if error != nil { self.finishChunks(false); self.close(); return }
+                if self.chunkIterator == nil {
+                    if self.chunksInFlight == 0 { self.finishChunks(true) }
+                } else {
+                    self.pumpChunks()
+                }
+            })
+        }
+    }
+
+    private func finishChunks(_ ok: Bool) {
+        chunkIterator = nil
+        let completion = chunkCompletion
+        chunkCompletion = nil
+        completion?(ok)
+    }
+
     private func sendRaw(_ frame: Data) {
         connection.send(content: frame, completion: .contentProcessed { [weak self] error in
             if error != nil { self?.close() }
@@ -111,6 +160,7 @@ final class Session {
     func close() {
         guard !closed else { return }
         closed = true
+        finishChunks(false)
         connection.cancel()
         onClose?()
     }

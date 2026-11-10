@@ -87,6 +87,20 @@ public final class Server {
         }
     }
 
+    /// Sends any message to the connected phone. False if none is connected.
+    @discardableResult
+    public func send(message: Message) -> Bool {
+        queue.sync { active?.send(message) ?? false }
+    }
+
+    /// Streams file chunks (+ end) to the phone with pacing; text sent meanwhile is not held up.
+    public func sendStream(_ messages: AnySequence<Message>, completion: @escaping (Bool) -> Void) {
+        queue.async { [weak self] in
+            guard let active = self?.active else { completion(false); return }
+            active.sendChunked(messages, completion: completion)
+        }
+    }
+
     private func accept(_ connection: NWConnection) {
         let session = Session(connection: connection, crypto: crypto, queue: queue, role: .server)
         let id = ObjectIdentifier(session)

@@ -10,6 +10,11 @@ public final class Client {
 
     public var onClip: ((String) -> Void)?
     public var onState: ((State) -> Void)?
+    /// Every message other than hello/clip/ping (offers, file transfer messages…).
+    public var onMessage: ((Message) -> Void)?
+
+    private var expected: [String: (dir: URL, completion: (Result<URL, Error>) -> Void)] = [:]
+    private var receivers: [String: FileReceiver] = [:]
 
     private let info: PairingInfo
     private let device: String
@@ -49,8 +54,11 @@ public final class Client {
                 }
             case .clip(_, let text, _):
                 self.onClip?(text)
+            case .ping, .unknown:
+                break
             default:
-                break  // ping, unknown, and file messages handled elsewhere
+                self.handleFileMessage(message)
+                self.onMessage?(message)
             }
         }
         session.onClose = { [weak self] in
@@ -65,6 +73,54 @@ public final class Client {
         queue.async { [weak self] in
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
             self?.session?.send(.clip(id: UUID().uuidString, text: text, ts: ts))
+        }
+    }
+
+    public func send(message: Message) {
+        queue.async { [weak self] in self?.session?.send(message) }
+    }
+
+    /// Get ready to receive file `id` into `dir` (e.g. before sending `fetch`).
+    public func expectFile(id: String, into dir: URL, completion: @escaping (Result<URL, Error>) -> Void) {
+        queue.async { self.expected[id] = (dir, completion) }
+    }
+
+    /// Sends a file to the Mac: file-start, then paced chunks + file-end.
+    public func sendFile(url: URL, id: String = UUID().uuidString, mime: String = "application/octet-stream",
+                         completion: @escaping (Bool) -> Void = { _ in }) {
+        queue.async { [weak self] in
+            guard let self, let session = self.session,
+                  let sender = try? FileSender(id: id, url: url, name: url.lastPathComponent, mime: mime)
+            else { completion(false); return }
+            session.send(sender.start)
+            session.sendChunked(AnySequence(Array(sender.chunks()) + [sender.end]), completion: completion)
+        }
+    }
+
+    private func handleFileMessage(_ message: Message) {
+        switch message {
+        case .fileStart(let id, _, _, _, _):
+            guard let exp = expected[id] else { return }
+            do { receivers[id] = try FileReceiver(start: message, directory: exp.dir) }
+            catch { expected[id] = nil; exp.completion(.failure(error)) }
+        case .fileChunk(let id, _, _), .fileEnd(let id):
+            guard let receiver = receivers[id], let exp = expected[id] else { return }
+            do {
+                if let url = try receiver.accept(message) {
+                    receivers[id] = nil; expected[id] = nil
+                    exp.completion(.success(url))
+                }
+            } catch {
+                receivers[id] = nil; expected[id] = nil
+                exp.completion(.failure(error))
+            }
+        case .fileError(let id, let reason):
+            receivers[id]?.abort(); receivers[id] = nil
+            if let exp = expected.removeValue(forKey: id) {
+                exp.completion(.failure(NSError(domain: "ClipBridge", code: 1, userInfo: [NSLocalizedDescriptionKey: reason])))
+            }
+        default:
+            break
         }
     }
 

@@ -15,6 +15,7 @@ do {
     try resendOnConnectTests()
     try fileMessageTests()
     try fileTransferTests()
+    try priorityTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()
