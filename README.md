@@ -87,7 +87,7 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
 2. On the phone: ClipBridge → **Scan QR code**, allow the camera, and point it at the QR code.
 3. The phone shows **Connected to ‹your Mac›** and the Mac menu shows **Connected to ‹your phone›**. Done.
 
-### 4. Turn on automatic copy (recommended)
+### 4. Turn on automatic copy (full app; Lite: skip this — use the Send to Mac tile)
 
 This lets ClipBridge notice when you tap **Copy** in other apps, so phone → Mac works by itself.
 
