@@ -1,8 +1,21 @@
 package app.clipbridge.sync
 
+import app.clipbridge.core.FileLimit
+import app.clipbridge.core.FileReceiver
+import app.clipbridge.core.FileSender
 import app.clipbridge.core.LoopGuard
+import app.clipbridge.core.Message
 import app.clipbridge.core.PairingInfo
+import java.io.File
+import java.io.IOException
+import java.io.InputStream
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
+/** A Mac file couldn't be fetched. [reason]: expired, changed, too-large, io, cancelled, bad-data, timeout, not-connected. */
+class FileFetchException(val reason: String) : IOException(reason)
 
 /**
  * The phone's reconnect loop, free of Android types so it can be unit-tested:
@@ -25,7 +38,19 @@ class SyncLoop(
     interface Callbacks {
         fun onStatus(status: Status)
         fun onClip(text: String)
+        /** The Mac offered a file (or null: the offer was cleared). */
+        fun onOffer(offer: Message.Offer?) {}
     }
+
+    private class PendingFetch(val id: String, val dir: File) {
+        val done = CountDownLatch(1)
+        @Volatile var file: File? = null
+        @Volatile var reason: String? = null
+        @Volatile var receiver: FileReceiver? = null
+    }
+
+    private val fetches = ConcurrentHashMap<String, PendingFetch>()
+    private val sendLock = Object()
 
     private val lock = Object()
     private var generation = 0 // guarded by lock
@@ -76,6 +101,70 @@ class SyncLoop(
         return conn.send(text).also { if (it) loopGuard.markSent(text) }
     }
 
+    /**
+     * Fetches Mac offer [id] into [dir], blocking until the file has arrived and been verified.
+     * Concurrent calls for the same id share one transfer. Never call on the main thread.
+     */
+    fun fetch(id: String, dir: File, timeoutMs: Long = 60_000): File {
+        var isNew = false
+        val pending = synchronized(fetches) {
+            fetches[id] ?: PendingFetch(id, dir).also { fetches[id] = it; isNew = true }
+        }
+        if (isNew) {
+            val conn = connection
+            if (conn == null || !conn.sendControl(Message.Fetch(id))) fail(pending, "not-connected")
+        }
+        if (!pending.done.await(timeoutMs, TimeUnit.MILLISECONDS)) fail(pending, "timeout")
+        pending.file?.let { return it }
+        throw FileFetchException(pending.reason ?: "io")
+    }
+
+    /** Sends one file to the Mac (one at a time). Blocks while streaming; never call on the main thread. */
+    fun sendFile(name: String, mime: String, size: Long, input: () -> InputStream): Boolean = synchronized(sendLock) {
+        if (size < 0 || size > FileLimit.MAX_BYTES) return false
+        val conn = connection ?: return false
+        val sender = FileSender(UUID.randomUUID().toString(), input, name, mime, size)
+        if (!conn.sendControl(sender.start())) return false
+        for (chunk in sender.chunks()) if (!conn.sendChunk(chunk)) return false
+        conn.sendChunk(sender.end())  // via the chunk queue so it can't overtake the last chunks
+    }
+
+    private fun fail(pending: PendingFetch, reason: String) {
+        synchronized(fetches) { if (fetches[pending.id] === pending) fetches.remove(pending.id) }
+        pending.receiver?.abort()
+        if (pending.file == null && pending.reason == null) pending.reason = reason
+        pending.done.countDown()
+    }
+
+    private fun onFileMessage(message: Message) {
+        when (message) {
+            is Message.Offer -> {
+                fetches.values.filter { it.id != message.id }.forEach { fail(it, "cancelled") }
+                callbacks.onOffer(message)
+            }
+            is Message.OfferClear -> callbacks.onOffer(null)
+            is Message.FileStart -> fetches[message.id]?.let { p ->
+                try { p.receiver = FileReceiver(message, p.dir) } catch (_: Exception) { fail(p, "too-large") }
+            }
+            is Message.FileChunk, is Message.FileEnd -> {
+                val id = if (message is Message.FileChunk) message.id else (message as Message.FileEnd).id
+                val p = fetches[id] ?: return
+                val receiver = p.receiver ?: return
+                try {
+                    receiver.accept(message)?.let { file ->
+                        p.file = file
+                        synchronized(fetches) { if (fetches[id] === p) fetches.remove(id) }
+                        p.done.countDown()
+                    }
+                } catch (_: Exception) {
+                    fail(p, "bad-data")
+                }
+            }
+            is Message.FileError -> fetches[message.id]?.let { fail(it, message.reason) }
+            else -> {}
+        }
+    }
+
     private fun alive(gen: Int) = synchronized(lock) { generation == gen }
 
     private fun status(gen: Int, status: Status) {
@@ -108,6 +197,9 @@ class SyncLoop(
                         loopGuard.markReceived(text)
                         callbacks.onClip(text)
                     }
+                    override fun onMessage(message: Message) {
+                        if (alive(gen)) onFileMessage(message)
+                    }
                     override fun onClosed(reason0: Connection.CloseReason) {
                         reason = reason0
                         closed.countDown()
@@ -124,6 +216,7 @@ class SyncLoop(
                 } finally {
                     conn.close()
                     synchronized(lock) { if (connection === conn) connection = null }
+                    fetches.values.toList().forEach { fail(it, "io") }  // a dropped connection ends any fetch
                 }
                 if (!alive(gen)) return
 

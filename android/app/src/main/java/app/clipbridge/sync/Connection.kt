@@ -53,7 +53,7 @@ class Connection(
     /** Text, pings and file control messages: always written before any queued file chunk. */
     private val outbox = LinkedBlockingQueue<Message>(OUTBOX_CAPACITY)
     /** File chunks: small bound so a waiting text never sits behind more than a few chunks. */
-    private val chunks = LinkedBlockingQueue<Message.FileChunk>(CHUNK_CAPACITY)
+    private val chunks = LinkedBlockingQueue<Message>(CHUNK_CAPACITY)
     @Volatile private var output: OutputStream? = null
     @Volatile private var challenge: ByteArray? = null
     @Volatile private var acked = false
@@ -72,10 +72,10 @@ class Connection(
     fun sendControl(message: Message): Boolean = enqueue(message)
 
     /**
-     * Queues one file chunk, waiting for room if needed. Call from a worker thread, never the main thread.
-     * Returns false if the connection closes (or isn't up).
+     * Queues one file chunk — or the file-end that must follow the chunks in order — waiting for room
+     * if needed. Call from a worker thread, never the main thread. False if the connection closes.
      */
-    fun sendChunk(chunk: Message.FileChunk): Boolean {
+    fun sendChunk(chunk: Message): Boolean {
         while (acked && !closed.get()) {
             if (chunks.offer(chunk, 200, TimeUnit.MILLISECONDS)) return true
         }
