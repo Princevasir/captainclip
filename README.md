@@ -21,6 +21,11 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
 - **Files, Mac → phone (up to 25 MB):** ⌘C a file in Finder. The phone only learns its name and size; the file
   itself moves **only when you paste it** (into Gmail, chat apps, Drive…) or tap **Save to Downloads** in ClipBridge.
   Offers expire after 10 minutes or at your next copy.
+- **Formatted text, both ways:** bold, italics, links and lists survive when the app you copy from includes
+  formatting (Chrome, Safari, Docs, Notes, Mail…). Pastes take on the destination's own font and colours.
+- **Images and screenshots:** a ⌃⇧⌘4 screenshot or "Copy Image" on the Mac is pasted on the phone like a file
+  (fetched only when you paste). An image copied on the phone (Chrome "Copy image", screenshot "Copy") goes
+  straight onto the Mac clipboard — ⌘V in Notes, Messages, Slack.
 - **Files, phone → Mac:** **Share → Send to Mac** from any app. Files land in your Mac's **Downloads** and on its
   clipboard, ready for ⌘V in Finder or Mail.
 - **Private by design:** a direct encrypted connection on your own Wi-Fi (AES-256-GCM with a key that only ever
@@ -86,6 +91,8 @@ never screen content — and sends only to your paired Mac.
 | Send text phone → Mac | Copy on the phone (automatic copy on), or tap the **Send to Mac** tile. Paste on the Mac. |
 | Send a file Mac → phone | ⌘C the file in Finder. On the phone, paste it in the app (Gmail, chat…) **or** open ClipBridge → **Save to Downloads** (saved in *Download/ClipBridge*). |
 | Send a file phone → Mac | **Share → Send to Mac**. It's in **Downloads** on the Mac; ⌘V pastes it. |
+| Send a screenshot Mac → phone | ⌃⇧⌘4 (copies to the clipboard), then paste on the phone or **Save to Downloads**. |
+| Send an image phone → Mac | Copy it on the phone (Chrome: long-press → **Copy image**), then ⌘V on the Mac. |
 | Pause syncing | Mac menu → **Pause syncing**, or ClipBridge → **Pause syncing** on the phone. |
 | Pair a new phone / revoke the old one | Mac menu → **Reset pairing…**, then scan the new code. |
 
@@ -108,6 +115,13 @@ Use **Save to Downloads** in ClipBridge for that.
 **A copy on the phone didn't reach the Mac** — some apps copy without showing a "Copy" button or "Copied"
 message. Use the **Send to Mac** tile right after copying.
 
+**Pasted text has no formatting** — some apps copy plain text only (e.g. the ChatGPT app). Copy from Chrome,
+Docs or Notes to keep formatting.
+
+**Banking app won't open** — many banking apps refuse to run while **Developer options / USB debugging** is on
+(only needed for building ClipBridge yourself) or while an accessibility service from outside the Play Store is on.
+Turn off Developer options first; if needed, turn off *ClipBridge automatic copy* (use the Send to Mac tile instead).
+
 **"Copied." pop-up on the phone when the Mac sends something** — that's Android's own clipboard confirmation
 (shown whenever any app sets the clipboard). Apps can't turn it off.
 
@@ -116,7 +130,7 @@ Turn **ClipBridge automatic copy** back on in Accessibility settings.
 
 ## Limits
 
-- Same Wi-Fi only. Text up to 256 KB per copy; files up to 25 MB, one file per Finder copy.
+- Same Wi-Fi only. Text (with formatting) up to 256 KB per copy; files and images up to 25 MB, one file per Finder copy.
 - One phone per Mac.
 - The apps aren't in the App Store / Play Store, so first launch needs the steps above.
 
