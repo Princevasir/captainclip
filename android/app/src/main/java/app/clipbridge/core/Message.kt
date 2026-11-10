@@ -10,14 +10,17 @@ import java.util.Base64
  */
 sealed class Message {
     data class Hello(val device: String) : Message()
-    data class Clip(val id: String, val text: String, val ts: Long) : Message()
+    data class Clip(val id: String, val text: String, val ts: Long, val html: String? = null) : Message()
     data object Ping : Message()
 
     // v2 files
     data class Offer(val id: String, val name: String, val mime: String, val size: Long, val ts: Long) : Message()
     data object OfferClear : Message()
     data class Fetch(val id: String) : Message()
-    data class FileStart(val id: String, val name: String, val mime: String, val size: Long, val sha256: String) : Message()
+    data class FileStart(
+        val id: String, val name: String, val mime: String, val size: Long, val sha256: String,
+        val purpose: String = "file",
+    ) : Message()
     class FileChunk(val id: String, val seq: Long, val data: ByteArray) : Message() {
         override fun equals(other: Any?) =
             other is FileChunk && other.id == id && other.seq == seq && other.data.contentEquals(data)
@@ -31,6 +34,7 @@ sealed class Message {
     fun toJson(): String = when (this) {
         is Hello -> JSONObject().put("t", "hello").put("device", device)
         is Clip -> JSONObject().put("t", "clip").put("id", id).put("text", text).put("ts", ts)
+            .apply { html?.let { put("html", it) } }
         Ping -> JSONObject().put("t", "ping")
         is Offer -> JSONObject().put("t", "offer").put("id", id).put("name", name).put("mime", mime)
             .put("size", size).put("ts", ts)
@@ -38,6 +42,7 @@ sealed class Message {
         is Fetch -> JSONObject().put("t", "fetch").put("id", id)
         is FileStart -> JSONObject().put("t", "file-start").put("id", id).put("name", name).put("mime", mime)
             .put("size", size).put("sha256", sha256)
+            .apply { if (purpose != "file") put("purpose", purpose) }
         is FileChunk -> JSONObject().put("t", "file-chunk").put("id", id).put("seq", seq)
             .put("data", Base64.getEncoder().encodeToString(data))
         is FileEnd -> JSONObject().put("t", "file-end").put("id", id)
@@ -53,13 +58,13 @@ sealed class Message {
             return try {
                 when (val t = o.getString("t")) {
                     "hello" -> Hello(o.getString("device"))
-                    "clip" -> Clip(o.getString("id"), o.getString("text"), o.getLong("ts"))
+                    "clip" -> Clip(o.getString("id"), o.getString("text"), o.getLong("ts"), o.optString("html").takeIf { o.has("html") })
                     "ping" -> Ping
                     "offer" -> Offer(o.getString("id"), o.getString("name"), o.getString("mime"), o.getLong("size"), o.getLong("ts"))
                     "offer-clear" -> OfferClear
                     "fetch" -> Fetch(o.getString("id"))
                     "file-start" -> FileStart(o.getString("id"), o.getString("name"), o.getString("mime"),
-                        o.getLong("size"), o.getString("sha256"))
+                        o.getLong("size"), o.getString("sha256"), o.optString("purpose", "file"))
                     "file-chunk" -> FileChunk(o.getString("id"), o.getLong("seq"), Base64.getDecoder().decode(o.getString("data")))
                     "file-end" -> FileEnd(o.getString("id"))
                     "file-error" -> FileError(o.getString("id"), o.getString("reason"))
