@@ -19,9 +19,10 @@ enum class SetupStep(val title: String, val help: String) {
         fun bluetoothAction(askedBefore: Boolean, canShowPrompt: Boolean): PermissionAction =
             if (askedBefore && !canShowPrompt) PermissionAction.OPEN_APP_INFO else PermissionAction.ASK
 
-        fun next(paired: Boolean, autoCopyOn: Boolean, bluetoothAllowed: Boolean = true, bluetoothDismissed: Boolean = false): SetupStep = when {
+        fun next(paired: Boolean, autoCopyOn: Boolean, bluetoothAllowed: Boolean = true, bluetoothDismissed: Boolean = false,
+                 autoCopyAvailable: Boolean = true): SetupStep = when {
             !paired -> PAIR
-            !autoCopyOn -> AUTO_COPY
+            autoCopyAvailable && !autoCopyOn -> AUTO_COPY
             !bluetoothAllowed && !bluetoothDismissed -> BLUETOOTH
             else -> DONE
         }

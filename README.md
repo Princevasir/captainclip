@@ -8,6 +8,13 @@ directly and end-to-end encrypted. No account, no cloud, no server.
 |---|---|
 | 🖥 **Mac app** | [**Download ClipBridge for Mac**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-mac.zip) · macOS 13 Ventura or later · Apple silicon and Intel |
 | 📱 **Android app** | [**Download ClipBridge for Android**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android.apk) · Android 10 or later |
+| 📱 **Android app — Lite** | [**Download ClipBridge Lite**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android-lite.apk) · no automatic copy, so Google Play Protect doesn't block the install (see below) |
+
+**Full or Lite?** Both do everything Mac → phone automatically. The full app also notices when you copy on the
+phone and sends it to the Mac by itself — that needs an Android *accessibility service*, which Play Protect
+blocks for apps installed from a browser in some countries. **ClipBridge Lite** leaves it out: after copying on
+the phone you tap **Send to Mac** (Quick Settings tile, Share, or the button in the app). Either one installs over
+the other and keeps your pairing.
 
 All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge/releases).
 
@@ -171,19 +178,19 @@ Requirements: macOS 13+, Xcode Command Line Tools, Homebrew `openjdk@17`, Androi
 # Mac app → mac/build/ClipBridge.app (universal: Apple silicon + Intel)
 cd mac && ./build-app.sh
 
-# Android app → android/app/build/outputs/apk/debug/app-debug.apk
-cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleDebug
+# Android app → android/app/build/outputs/apk/{full,lite}/debug/app-{full,lite}-debug.apk
+cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleFullDebug assembleLiteDebug
 ```
 
 Tests:
 
 ```bash
 cd mac && swift run selftest
-cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew testDebugUnitTest
+cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew testFullDebugUnitTest testLiteDebugUnitTest
 ```
 
 Release APKs are signed with a key kept outside the repo (`~/.config/clipbridge-release/keystore.properties`,
-or pass `-Pclipbridge.signing=/path/to/keystore.properties`). Without it, `assembleRelease` produces an unsigned APK.
+or pass `-Pclipbridge.signing=/path/to/keystore.properties`). Without it, `assembleFullRelease` / `assembleLiteRelease` produce unsigned APKs.
 
 How it works: [`docs/`](docs/) has the design notes and the wire protocol (`docs/test-vector.txt` is the shared
 encryption test vector both apps check).

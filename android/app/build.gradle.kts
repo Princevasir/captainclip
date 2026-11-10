@@ -36,6 +36,24 @@ android {
         }
     }
 
+    buildFeatures { buildConfig = true }
+
+    // full: automatic copy (accessibility service). lite: no accessibility service, so Play Protect
+    // doesn't block installs from the browser; phone → Mac uses the Send to Mac tile / Share / in-app button.
+    // Same package and signing key: either installs over the other and keeps the pairing.
+    flavorDimensions += "edition"
+    productFlavors {
+        create("full") {
+            dimension = "edition"
+            buildConfigField("boolean", "AUTO_COPY", "true")
+        }
+        create("lite") {
+            dimension = "edition"
+            versionNameSuffix = "-lite"
+            buildConfigField("boolean", "AUTO_COPY", "false")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

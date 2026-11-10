@@ -119,6 +119,12 @@ class MainActivity : Activity() {
         setupButton.setOnClickListener { onSetupAction() }
         pauseButton.setOnClickListener { toggleSync() }
         findViewById<View>(R.id.sendClipboardButton).setOnClickListener { sendClipboard() }
+        if (!Edition.AUTO_COPY) {
+            findViewById<View>(R.id.liteHint).visibility = View.VISIBLE
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                findViewById<View>(R.id.addTileButton).apply { visibility = View.VISIBLE; setOnClickListener { addTile() } }
+            }
+        }
         findViewById<View>(R.id.repairRow).setOnClickListener { scanQr() }
         findViewById<View>(R.id.batteryRow).setOnClickListener {
             startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
@@ -207,6 +213,7 @@ class MainActivity : Activity() {
     private fun currentStep() = SetupStep.next(
         paired = Prefs.pairing(this) != null,
         autoCopyOn = isAutoCopyOn(),
+        autoCopyAvailable = Edition.AUTO_COPY,
         bluetoothAllowed = bluetoothPermissionGranted(),
         bluetoothDismissed = Prefs.bluetoothDismissed(this),
     )
@@ -240,6 +247,20 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         refresh()
+    }
+
+    /** Lite: ask Android to add the Send to Mac tile to Quick Settings (Android 13+ shows a one-tap prompt). */
+    @android.annotation.SuppressLint("NewApi")
+    private fun addTile() {
+        val bar = getSystemService(android.app.StatusBarManager::class.java) ?: return
+        bar.requestAddTileService(
+            android.content.ComponentName(this, app.clipbridge.capture.SendTileService::class.java),
+            getString(R.string.tile_label),
+            android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_menu_send),
+            mainExecutor,
+        ) { result ->
+            if (result == android.app.StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED) toast("Send to Mac is already in Quick Settings")
+        }
     }
 
     /** Share…: fetch the files, then Android's share menu with all of them attached (Gmail, WhatsApp, Drive…). */

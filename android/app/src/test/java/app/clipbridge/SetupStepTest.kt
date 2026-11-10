@@ -43,4 +43,11 @@ class SetupStepTest {
         // Android silently ignores the request once the user chose "Don't allow" twice / "Don't ask again".
         assertEquals(SetupStep.PermissionAction.OPEN_APP_INFO, SetupStep.bluetoothAction(askedBefore = true, canShowPrompt = false))
     }
+
+    @Test fun liteNeverAsksForAutomaticCopy() {
+        // ClipBridge Lite has no accessibility service, so there's nothing to turn on.
+        assertEquals(SetupStep.DONE, SetupStep.next(paired = true, autoCopyOn = false, autoCopyAvailable = false))
+        assertEquals(SetupStep.BLUETOOTH,
+            SetupStep.next(paired = true, autoCopyOn = false, autoCopyAvailable = false, bluetoothAllowed = false))
+    }
 }

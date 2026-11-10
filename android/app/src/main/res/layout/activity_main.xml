@@ -199,6 +199,22 @@
                 style="@style/ButtonTonal"
                 android:text="Send clipboard to Mac" />
 
+            <TextView
+                android:id="@+id/liteHint"
+                style="@style/Secondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="ClipBridge Lite: after copying on the phone, tap Send to Mac (here, in Quick Settings, or Share → Send to Mac). Mac → phone is automatic."
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/addTileButton"
+                style="@style/ButtonTonal"
+                android:layout_marginTop="8dp"
+                android:text="Add Send to Mac to Quick Settings"
+                android:visibility="gone" />
+
             <Button
                 android:id="@+id/pauseButton"
                 style="@style/ButtonTonal"
