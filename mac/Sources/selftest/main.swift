@@ -2,6 +2,8 @@ import Foundation
 
 do {
     try cryptoTests()
+    try frameTests()
+    try messageTests()
 } catch {
     failures += 1
     print("FAIL: unexpected error \(error)")
