@@ -88,3 +88,39 @@ func phoneCopyClearsOfferTests() throws {
     phone2.sendFile(url: randomFile(src, name: "from-phone.pdf", bytes: 1000))
     check(waitUntil(5) { after.all.contains(.offerClear) }, "a file from the phone also clears the offer")
 }
+
+/// Finder often writes file *reference* URLs (file:///.file/id=…); offers must still use the real name.
+func fileReferenceURLTests() {
+    let dir = tempDir("ref")
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let pdf = randomFile(dir, name: "report.pdf", bytes: 2000)
+    // Swift bridges fileReferenceURL() back to a path URL, so ask Objective-C for the raw NSURL string.
+    let raw = (pdf as NSURL).perform(#selector(NSURL.fileReferenceURL))?.takeUnretainedValue() as? NSURL
+    guard let refString = raw?.absoluteString else { check(false, "can make a file reference URL"); return }
+    check(refString.contains("/.file/id="), "test uses a real file reference URL (\(refString))")
+    let board = NSPasteboard(name: NSPasteboard.Name("clipbridge.ref.\(UUID().uuidString)"))
+    defer { board.releaseGlobally() }
+    let watcher = PasteboardWatcher(pasteboard: board, interval: 0.05)
+    let files = Recorder<URL>()
+    watcher.onFile = { files.add($0) }
+    watcher.start()
+    defer { watcher.stop() }
+    board.clearContents()
+    let item = NSPasteboardItem()
+    item.setString(refString, forType: .fileURL)
+    board.writeObjects([item])
+    check(waitUntil { files.all.first?.lastPathComponent == "report.pdf" }, "file reference URL is resolved to the real file name")
+}
+
+/// Files from the phone get the quarantine flag, so Gatekeeper checks them like any download.
+func quarantineTests() throws {
+    let src = tempDir("q-src"), dst = tempDir("q-dst")
+    defer { [src, dst].forEach { try? FileManager.default.removeItem(at: $0) } }
+    let file = randomFile(src, name: "tool.sh", bytes: 100)
+    let sender = try FileSender(id: "q", url: file, name: "tool.sh", mime: "text/x-shellscript")
+    let receiver = try FileReceiver(start: sender.start, directory: dst)
+    var out: URL?
+    for m in sender.stream() { out = try receiver.accept(m) ?? out }
+    let props = try out.flatMap { try $0.resourceValues(forKeys: [.quarantinePropertiesKey]).quarantineProperties }
+    check(props != nil, "received file carries the macOS quarantine flag")
+}

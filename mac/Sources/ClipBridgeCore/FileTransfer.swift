@@ -116,8 +116,13 @@ public final class FileReceiver {
                 guard digest == sha256 else { throw FileTransferError.checksumMismatch }
                 try handle?.close()
                 handle = nil
-                let final = uniqueURL()
+                var final = uniqueURL()
                 try FileManager.default.moveItem(at: temp, to: final)
+                // Mark it as downloaded from elsewhere, so Gatekeeper checks it like any download.
+                var values = URLResourceValues()
+                values.quarantineProperties = ["LSQuarantineType": "LSQuarantineTypeOtherDownload",
+                                               "LSQuarantineAgentName": "ClipBridge"]
+                try? final.setResourceValues(values)
                 return final
             default:
                 throw FileTransferError.wrongTransfer

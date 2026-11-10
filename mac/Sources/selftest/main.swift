@@ -24,6 +24,8 @@ do {
     try reconnectMidUploadTests()
     try refetchWhileStreamingTests()
     try phoneCopyClearsOfferTests()
+    fileReferenceURLTests()
+    try quarantineTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()
