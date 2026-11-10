@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">ClipBridge</string>
+    <string name="tile_label">Send to Mac</string>
+    <string name="accessibility_description">Notices when you copy text in other apps and sends it to your paired Mac on the same Wi-Fi. ClipBridge only reads the short text of "Copy" buttons and "Copied" messages, never screen content, and sends nothing anywhere except your Mac.</string>
 </resources>

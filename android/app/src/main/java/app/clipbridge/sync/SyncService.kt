@@ -17,6 +17,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import app.clipbridge.MainActivity
+import app.clipbridge.capture.GhostActivity
 import app.clipbridge.core.LoopGuard
 import java.util.concurrent.CountDownLatch
 
@@ -170,12 +171,15 @@ class SyncService : Service() {
 
     private fun buildNotification(text: String): Notification {
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val sendNow = PendingIntent.getActivity(
+            this, 2, GhostActivity.readIntent(this, announce = true), PendingIntent.FLAG_IMMUTABLE)
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_menu_share)
             .setContentTitle("ClipBridge")
             .setContentText(text)
             .setContentIntent(open)
             .setOngoing(true)
+            .addAction(Notification.Action.Builder(null, "Send clipboard to Mac", sendNow).build())
             .build()
     }
 }
