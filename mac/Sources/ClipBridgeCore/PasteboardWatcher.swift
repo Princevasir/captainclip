@@ -49,6 +49,13 @@ public final class PasteboardWatcher {
         lastChangeCount = pasteboard.changeCount
     }
 
+    /// Puts a file on the pasteboard (for ⌘V in Finder/Mail) without reporting it back through onFile.
+    public func writeFile(_ url: URL) {
+        pasteboard.clearContents()
+        pasteboard.writeObjects([url as NSURL])
+        lastChangeCount = pasteboard.changeCount
+    }
+
     /// The pasteboard's current plain text, or nil if empty, marked concealed/transient, or a file copy.
     public func currentText() -> String? {
         let types = (pasteboard.types ?? []).map(\.rawValue)

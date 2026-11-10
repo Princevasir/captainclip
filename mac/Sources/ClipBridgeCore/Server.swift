@@ -14,6 +14,8 @@ public final class Server {
 
     public var onClip: ((String) -> Void)?
     public var onStatus: ((Status) -> Void)?
+    /// File-related messages from the connected phone (fetch, file-start/chunk/end/error). Runs on the server queue.
+    public var onMessage: ((Message) -> Void)?
 
     private let crypto: ClipCrypto
     private let macId: String
@@ -125,6 +127,7 @@ public final class Server {
             switch message {
             case .clip(_, let text, _) where TextLimit.fits(text): onClip?(text)
             case .ping: session.send(.ping)  // lets the phone know the Mac is alive
+            case .fetch, .fileStart, .fileChunk, .fileEnd, .fileError: onMessage?(message)
             default: break
             }
             return

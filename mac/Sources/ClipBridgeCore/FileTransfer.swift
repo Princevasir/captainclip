@@ -45,6 +45,21 @@ public struct FileSender {
         }
     }
 
+    /// Chunks followed by file-end, read lazily as the sequence is consumed (never the whole file in memory).
+    public func stream() -> AnySequence<Message> {
+        let chunks = self.chunks(), end = self.end
+        return AnySequence { () -> AnyIterator<Message> in
+            let iterator = chunks.makeIterator()
+            var finished = false
+            return AnyIterator {
+                if let next = iterator.next() { return next }
+                if finished { return nil }
+                finished = true
+                return end
+            }
+        }
+    }
+
     public static func sha256(of url: URL) throws -> String {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }

@@ -93,7 +93,7 @@ public final class Client {
                   let sender = try? FileSender(id: id, url: url, name: url.lastPathComponent, mime: mime)
             else { completion(false); return }
             session.send(sender.start)
-            session.sendChunked(AnySequence(Array(sender.chunks()) + [sender.end]), completion: completion)
+            session.sendChunked(sender.stream(), completion: completion)
         }
     }
 

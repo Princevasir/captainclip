@@ -86,3 +86,16 @@ func fileTransferTests() throws {
         _ = try FileReceiver(start: .fileStart(id: "b", name: "b", mime: "x", size: Int64(FileLimit.maxBytes + 1), sha256: ""), directory: dst)
     }
 }
+
+func fileStreamTests() throws {
+    let dir = tempDir("stream")
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let file = randomFile(dir, name: "s.bin", bytes: 500_000)
+    let sender = try FileSender(id: "s1", url: file, name: "s.bin", mime: "x")
+    let all = Array(sender.stream())
+    check(all.count == 4 && all.last == .fileEnd(id: "s1"), "stream() yields chunks then file-end")
+    // Lazy: the file is read as the stream is consumed, not when stream() is called.
+    let lazy = sender.stream()
+    try Data(count: 10).write(to: file)  // shrink the file before consuming
+    check(Array(lazy).count == 2, "stream() reads lazily (one chunk + end after the file shrank)")
+}
