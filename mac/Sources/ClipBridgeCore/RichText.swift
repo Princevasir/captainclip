@@ -20,7 +20,9 @@ public enum RichText {
     /// The RTF is built first (from HTML with remote resources removed), then all three are written together.
     public static func write(text: String, html: String, to pasteboard: NSPasteboard) {
         var rtf: Data?
-        if let data = normalizedWeights(importable(html)).data(using: .utf8),
+        // Apps (Notes reads HTML first) get the same cleaned HTML the RTF is made from.
+        let pasteHTML = withoutColors(normalizedWeights(importable(html)))
+        if let data = pasteHTML.data(using: .utf8),
            let attributed = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html,
                                                                           .characterEncoding: String.Encoding.utf8.rawValue],
                                                     documentAttributes: nil) {
@@ -30,7 +32,7 @@ public enum RichText {
         }
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
-        pasteboard.setString(html, forType: .html)
+        pasteboard.setString(pasteHTML, forType: .html)
         if let rtf { pasteboard.setData(rtf, forType: .rtf) }
     }
 
@@ -53,6 +55,21 @@ public enum RichText {
                 replacement = NSFontManager.shared.convert(replacement, toHaveTrait: .italicFontMask)
             }
             out.addAttribute(.font, value: replacement, range: range)
+        }
+        return out
+    }
+
+    /// Drops text/background colours from inline styles and legacy attributes, so pastes use the
+    /// destination's colours (no black-on-white boxes in dark mode).
+    static func withoutColors(_ html: String) -> String {
+        var out = html
+        let patterns = [
+            #"(?:background-color|background|color)\s*:\s*(?:[^;"]|&quot;)*;?"#,
+            #"\s(?:bgcolor|color)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)"#,
+        ]
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { continue }
+            out = regex.stringByReplacingMatches(in: out, range: NSRange(out.startIndex..., in: out), withTemplate: "")
         }
         return out
     }

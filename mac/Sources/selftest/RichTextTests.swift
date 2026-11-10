@@ -83,7 +83,7 @@ func richTextSafetyTests() {
     let started = Date()
     RichText.write(text: "Hi there", html: html, to: board)
     check(Date().timeIntervalSince(started) < 2, "writing HTML with remote resources does not hang")
-    check(board.string(forType: .html) == html, "the original HTML is still offered to apps as-is")
+    check(board.string(forType: .html)?.contains("tracker.example") == false, "HTML offered to apps has no remote resources either")
     check(board.data(forType: .rtf) != nil && board.string(forType: .string) == "Hi there", "RTF and text written too")
 }
 
@@ -136,4 +136,17 @@ func richTextSystemFontBoldTests() {
         if let p = v as? NSParagraphStyle, !p.textLists.isEmpty { listed = true }
     }
     check(listed, "bullet list survives")
+
+    // Notes reads the HTML version first: it must import with bold too.
+    if let written = board.string(forType: .html),
+       let imported = try? NSAttributedString(data: Data(written.utf8), options: [.documentType: NSAttributedString.DocumentType.html,
+                                                                                  .characterEncoding: String.Encoding.utf8.rawValue], documentAttributes: nil) {
+        var bold = 0, background = 0
+        imported.enumerateAttributes(in: NSRange(location: 0, length: imported.length)) { attrs, range, _ in
+            if (attrs[.font] as? NSFont)?.fontDescriptor.symbolicTraits.contains(.bold) == true { bold += range.length }
+            if attrs[.backgroundColor] != nil { background += range.length }
+        }
+        check(bold >= 9, "HTML written for Notes imports with bold (\(bold) chars)")
+        check(background == 0, "HTML written for Notes has no white background boxes")
+    } else { check(false, "HTML written") }
 }
