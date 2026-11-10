@@ -43,6 +43,7 @@ do {
     try bridgeReceivesPhoneImageTests()
     try offerSetTests()
     centralLinksTests()
+    try smallFixTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()

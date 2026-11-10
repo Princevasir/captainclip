@@ -125,6 +125,13 @@ public final class Server {
         guard !fileQueue.isEmpty else { fileSending = false; return }
         let next = fileQueue.removeFirst()
         guard let active, ObjectIdentifier(active) == next.session else { next.done(false); sendNextFile(); return }
+        // Re-checked here: the phone may have moved to Bluetooth since the fetch was accepted.
+        if active.isBluetooth, case .fileStart(let id, _, _, let size, _, _) = next.start, size > FileLimit.bluetoothMaxBytes {
+            active.send(.fileError(id: id, reason: "too-large-bluetooth"))
+            next.done(false)
+            sendNextFile()
+            return
+        }
         fileSending = true
         active.send(next.start)
         active.sendChunked(next.stream) { [weak self] ok in
