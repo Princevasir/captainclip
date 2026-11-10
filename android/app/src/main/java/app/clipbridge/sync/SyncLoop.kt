@@ -32,6 +32,8 @@ class SyncLoop(
     private val callbacks: Callbacks,
     private val backoff: Backoff = Backoff(),
     private val pingIntervalMs: Long = 25_000,
+    /** How to reach the Mac over Wi-Fi (tests swap in other links). */
+    private val wifiLink: (host: String, port: Int) -> Link = { host, port -> TcpLink(host, port) },
 ) {
     enum class Status { STOPPED, NOT_PAIRED, SEARCHING, CONNECTED, RETRYING, PAIRING_INVALID }
 
@@ -206,7 +208,7 @@ class SyncLoop(
 
                 val closed = CountDownLatch(1)
                 var reason = Connection.CloseReason.LOST
-                val conn = Connection(host, port, info.key, device, object : Connection.Listener {
+                val conn = Connection(wifiLink(host, port), info.key, device, object : Connection.Listener {
                     override fun onConnected() {
                         authFailures = 0
                         backoff.reset()
