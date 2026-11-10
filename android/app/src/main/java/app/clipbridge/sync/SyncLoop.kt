@@ -40,6 +40,8 @@ class SyncLoop(
     /** While on Bluetooth: is the Mac reachable over Wi-Fi again? Default: quick TCP connect. */
     private val wifiProbe: ((PairingInfo) -> Boolean)? = null,
     private val wifiProbeIntervalMs: Long = 30_000,
+    /** Wait after each Bluetooth scan that found nothing (battery): 1, 2, 5, then every 10 min; reset by [wake] or a connection. */
+    private val bluetoothRetryDelaysMs: LongArray = longArrayOf(60_000, 120_000, 300_000, 600_000),
 ) {
     enum class Path { WIFI, BLUETOOTH }
 
@@ -74,6 +76,13 @@ class SyncLoop(
 
     private val fetches = ConcurrentHashMap<String, PendingFetch>()
     private val sendLock = Object()
+    private val uploads = java.util.concurrent.atomic.AtomicInteger()
+
+    /** A paste/save or an upload is in progress (switching links now would break it). */
+    private val busy: Boolean get() = fetches.isNotEmpty() || uploads.get() > 0
+
+    @Volatile private var bluetoothMisses = 0
+    @Volatile private var bluetoothNotBefore = 0L
 
     private val lock = Object()
     private var generation = 0 // guarded by lock
@@ -116,6 +125,7 @@ class SyncLoop(
 
     /** Skip the current back-off wait (e.g. Wi-Fi came back). */
     fun wake() = synchronized(lock) {
+        bluetoothNotBefore = 0  // the network changed: worth looking over Bluetooth again
         wakeRequested = true
         lock.notifyAll()
     }
@@ -155,6 +165,11 @@ class SyncLoop(
         if (size < 0 || size > FileLimit.MAX_BYTES) return false
         val conn = connection ?: return false
         if (conn.isBluetooth && size > FileLimit.BLUETOOTH_MAX_BYTES) return false  // too slow over Bluetooth
+        uploads.incrementAndGet()
+        try { upload(conn, name, mime, size, purpose, input) } finally { uploads.decrementAndGet() }
+    }
+
+    private fun upload(conn: Connection, name: String, mime: String, size: Long, purpose: String, input: () -> InputStream): Boolean {
         val sender = FileSender(UUID.randomUUID().toString(), input, name, mime, size, purpose)
         val start = try { sender.start() } catch (_: Exception) { return false }
         if (!conn.sendControl(start)) return false
@@ -165,7 +180,7 @@ class SyncLoop(
             conn.sendControl(Message.FileError(sender.id, "cancelled"))
             return false
         }
-        conn.sendChunk(sender.end())  // via the chunk queue so it can't overtake the last chunks
+        return conn.sendChunk(sender.end())  // via the chunk queue so it can't overtake the last chunks
     }
 
     private fun fail(pending: PendingFetch, reason: String) {
@@ -234,10 +249,22 @@ class SyncLoop(
                 }
                 status(gen, Status.SEARCHING)
                 // Wi-Fi first; Bluetooth only after two Wi-Fi attempts that never connected.
-                val useBluetooth = bluetoothLink != null && wifiFailures >= WIFI_FAILURES_BEFORE_BLUETOOTH
+                val useBluetooth = bluetoothLink != null && wifiFailures >= WIFI_FAILURES_BEFORE_BLUETOOTH &&
+                    System.currentTimeMillis() >= bluetoothNotBefore
                 val link: Link = if (useBluetooth) {
-                    bluetoothLink!!.invoke(info) ?: run {
-                        wifiFailures = 0  // Mac not found over Bluetooth either: go back to trying Wi-Fi
+                    val found = try {
+                        bluetoothLink!!.invoke(info)
+                    } catch (e: InterruptedException) {
+                        throw e
+                    } catch (_: Exception) {
+                        null  // radio turned off mid-scan, etc.: never crash the app
+                    }
+                    found ?: run {
+                        // Mac not found over Bluetooth either: back to Wi-Fi, and don't scan again for a while (battery).
+                        bluetoothNotBefore = System.currentTimeMillis() +
+                            bluetoothRetryDelaysMs[bluetoothMisses.coerceAtMost(bluetoothRetryDelaysMs.size - 1)]
+                        bluetoothMisses++
+                        wifiFailures = 0
                         status(gen, Status.RETRYING)
                         pause(gen, backoff.nextDelayMs())
                         null
@@ -255,6 +282,8 @@ class SyncLoop(
                     override fun onConnected() {
                         acked = true
                         authFailures = 0
+                        bluetoothMisses = 0
+                        bluetoothNotBefore = 0
                         if (!link.isBluetooth) wifiFailures = 0
                         backoff.reset()
                         path = if (link.isBluetooth) Path.BLUETOOTH else Path.WIFI
@@ -285,7 +314,8 @@ class SyncLoop(
                     try {
                         while (closed.count > 0 && alive(gen)) {
                             Thread.sleep(wifiProbeIntervalMs)
-                            if (closed.count > 0 && probeWifi(info)) { wifiFailures = 0; conn.close(); break }
+                            // Never switch mid-transfer: a Bluetooth paste or upload would fail.
+                            if (closed.count > 0 && !busy && probeWifi(info)) { wifiFailures = 0; conn.close(); break }
                         }
                     } catch (_: InterruptedException) {}
                 }, "clipbridge-wifi-probe").apply { isDaemon = true; start() } else null
