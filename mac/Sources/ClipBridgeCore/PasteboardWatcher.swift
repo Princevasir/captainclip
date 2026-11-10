@@ -56,6 +56,19 @@ public final class PasteboardWatcher {
         lastChangeCount = pasteboard.changeCount
     }
 
+    /// HTML of the current copy (nil for plain, concealed or file copies).
+    public func currentHTML() -> String? {
+        let types = (pasteboard.types ?? []).map(\.rawValue)
+        guard !Self.shouldSkip(types: types), fileURLs().isEmpty else { return nil }
+        return RichText.html(from: pasteboard)
+    }
+
+    /// Puts formatted text on the pasteboard without reporting it back through onText.
+    public func write(_ text: String, html: String) {
+        RichText.write(text: text, html: html, to: pasteboard)
+        lastChangeCount = pasteboard.changeCount
+    }
+
     /// The pasteboard's current plain text, or nil if empty, marked concealed/transient, or a file copy.
     public func currentText() -> String? {
         let types = (pasteboard.types ?? []).map(\.rawValue)

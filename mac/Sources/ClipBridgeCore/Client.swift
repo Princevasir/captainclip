@@ -9,6 +9,7 @@ public final class Client {
     }
 
     public var onClip: ((String) -> Void)?
+    public var onRichClip: ((String, String?) -> Void)?
     public var onState: ((State) -> Void)?
     /// Every message other than hello/clip/ping (offers, file transfer messages…).
     public var onMessage: ((Message) -> Void)?
@@ -52,8 +53,9 @@ public final class Client {
                     self.setState(.connected)
                     self.startPing()
                 }
-            case .clip(_, let text, _, _):
+            case .clip(_, let text, _, let html):
                 self.onClip?(text)
+                self.onRichClip?(text, html)
             case .ping, .unknown:
                 break
             default:
@@ -69,10 +71,10 @@ public final class Client {
         queue.async { session.start() }
     }
 
-    public func send(text: String) {
+    public func send(text: String, html: String? = nil) {
         queue.async { [weak self] in
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
-            self?.session?.send(.clip(id: UUID().uuidString, text: text, ts: ts))
+            self?.session?.send(.clip(id: UUID().uuidString, text: text, ts: ts, html: html))
         }
     }
 

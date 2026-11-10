@@ -13,6 +13,8 @@ public final class Server {
     private let macName = Host.current().localizedName ?? "Mac"
 
     public var onClip: ((String) -> Void)?
+    /// Like onClip, with the copy's HTML when it has one.
+    public var onRichClip: ((String, String?) -> Void)?
     public var onStatus: ((Status) -> Void)?
     /// File-related messages from the connected phone (fetch, file-start/chunk/end/error). Runs on the server queue.
     public var onMessage: ((Message) -> Void)?
@@ -80,12 +82,12 @@ public final class Server {
 
     /// Sends text to the connected phone. False if none is connected or the text is too large.
     @discardableResult
-    public func send(text: String) -> Bool {
+    public func send(text: String, html: String? = nil) -> Bool {
         guard TextLimit.fits(text) else { return false }
         return queue.sync {
             guard let active else { return false }
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
-            return active.send(.clip(id: UUID().uuidString, text: text, ts: ts))
+            return active.send(.clip(id: UUID().uuidString, text: text, ts: ts, html: RichText.fitting(text: text, html: html)))
         }
     }
 
@@ -140,7 +142,9 @@ public final class Server {
     private func handle(_ message: Message, from session: Session) {
         if active === session {
             switch message {
-            case .clip(_, let text, _, _) where TextLimit.fits(text): onClip?(text)
+            case .clip(_, let text, _, let html) where TextLimit.fits(text):
+                onClip?(text)
+                onRichClip?(text, RichText.fitting(text: text, html: html))
             case .ping: session.send(.ping)  // lets the phone know the Mac is alive
             case .fetch, .fileStart, .fileChunk, .fileEnd, .fileError: onMessage?(message)
             default: break

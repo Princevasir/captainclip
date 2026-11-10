@@ -32,7 +32,8 @@ public final class Bridge {
             guard let self, !self.paused else { return }
             self.clearOffer()
             guard TextLimit.fits(text), self.loopGuard.shouldSend(text) else { return }
-            if self.server.send(text: text) { self.loopGuard.markSent(text) }
+            let html = RichText.fitting(text: text, html: self.watcher.currentHTML())
+            if self.server.send(text: text, html: html) { self.loopGuard.markSent(text) }
         }
         watcher.onFile = { [weak self] url in
             guard let self, !self.paused, let offer = try? self.offers.make(url: url) else { return }
@@ -41,12 +42,12 @@ public final class Bridge {
             self.onOfferChanged?(url.lastPathComponent)
         }
         watcher.onIgnoredFiles = { [weak self] in self?.clearOffer() }
-        server.onClip = { [weak self] text in
+        server.onRichClip = { [weak self] text, html in
             DispatchQueue.main.async {
                 guard let self, !self.paused else { return }
                 self.clearOffer()  // the Mac clipboard no longer holds the offered file
                 self.loopGuard.markReceived(text)
-                self.watcher.write(text)
+                if let html { self.watcher.write(text, html: html) } else { self.watcher.write(text) }
                 self.onReceived?(text)
             }
         }
@@ -88,7 +89,7 @@ public final class Bridge {
             return
         }
         guard let text = watcher.currentText(), TextLimit.fits(text), !loopGuard.wasReceived(text) else { return }
-        if server.send(text: text) { loopGuard.markSent(text) }
+        if server.send(text: text, html: RichText.fitting(text: text, html: watcher.currentHTML())) { loopGuard.markSent(text) }
     }
 
     // MARK: files (on `files` queue)

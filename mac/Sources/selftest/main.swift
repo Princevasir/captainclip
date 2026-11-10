@@ -29,6 +29,8 @@ do {
     brandIconTests()
     menuTextTests()
     try richMessageTests()
+    try richTextTests()
+    try bridgeRichTextTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()
