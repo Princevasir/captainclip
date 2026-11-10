@@ -49,6 +49,12 @@ public final class Bridge {
             self.server.send(message: offer)  // just name/type/size; content waits for a fetch
             self.onOfferChanged?(url.lastPathComponent)
         }
+        watcher.onFiles = { [weak self] urls in
+            guard let self, !self.paused, let offer = try? self.offers.makeSet(urls: urls) else { return }
+            self.server.cancelStream()
+            self.server.send(message: offer)  // names/types/sizes only; each file waits for its own fetch
+            self.onOfferChanged?("\(urls.count) files")
+        }
         watcher.onImage = { [weak self] png in
             // Offered like a file: only name/type/size go to the phone until it pastes.
             guard let self, !self.paused, let url = try? ClipboardImage.save(png, in: self.imageCache) else { return }

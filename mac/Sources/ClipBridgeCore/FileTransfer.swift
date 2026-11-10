@@ -8,6 +8,9 @@ public enum FileLimit {
     public static let chunkBytes = 196_608
     /// Bluetooth is slow (≈20–100 KB/s): larger files need Wi-Fi.
     public static let bluetoothMaxBytes = 5_242_880
+    /// Several files copied together: at most 20 files and 100 MB in total.
+    public static let setMaxFiles = 20
+    public static let setMaxBytes = 104_857_600
 }
 
 public enum FileTransferError: Error, Equatable {

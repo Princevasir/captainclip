@@ -41,6 +41,7 @@ do {
     watcherImageTests()
     try bridgeImageOfferTests()
     try bridgeReceivesPhoneImageTests()
+    try offerSetTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()

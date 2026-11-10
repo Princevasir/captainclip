@@ -21,13 +21,15 @@ public final class OfferStore {
 
     private let now: () -> Date
     private let lock = NSLock()
-    private var entry: Entry?
+    private var entries: [Entry] = []
+    private var currentMessage: Message?
+    private var created = Date.distantPast
 
     public init(now: @escaping () -> Date = Date.init) {
         self.now = now
     }
 
-    public var current: Message? { lock.withLock { entry.flatMap { isLive($0) ? $0.message : nil } } }
+    public var current: Message? { lock.withLock { isLiveSet() ? currentMessage : nil } }
 
     /// Creates (and becomes) the current offer for `url`.
     public func make(url: URL) throws -> Message {
@@ -37,16 +39,42 @@ public final class OfferStore {
         let created = now()
         let message = Message.offer(id: id, name: url.lastPathComponent, mime: mime, size: size,
                                     ts: Int64(created.timeIntervalSince1970 * 1000))
-        lock.withLock { entry = Entry(id: id, url: url, size: size, modified: modified, created: created, message: message) }
+        lock.withLock {
+            entries = [Entry(id: id, url: url, size: size, modified: modified, created: created, message: message)]
+            currentMessage = message
+            self.created = created
+        }
         return message
     }
 
-    public func clear() { lock.withLock { entry = nil } }
+    /// Creates (and becomes) the current offer for several files.
+    public func makeSet(urls: [URL]) throws -> Message {
+        let created = now()
+        var items: [OfferItem] = []
+        var newEntries: [Entry] = []
+        for url in urls {
+            let (size, modified) = try Self.stat(url)
+            let id = UUID().uuidString
+            let mime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+            let single = Message.offer(id: id, name: url.lastPathComponent, mime: mime, size: size, ts: Int64(created.timeIntervalSince1970 * 1000))
+            items.append(OfferItem(id: id, name: url.lastPathComponent, mime: mime, size: size))
+            newEntries.append(Entry(id: id, url: url, size: size, modified: modified, created: created, message: single))
+        }
+        let message = Message.offers(items: items, ts: Int64(created.timeIntervalSince1970 * 1000))
+        lock.withLock {
+            entries = newEntries
+            currentMessage = message
+            self.created = created
+        }
+        return message
+    }
+
+    public func clear() { lock.withLock { entries = []; currentMessage = nil } }
 
     /// Everything needed to serve offer `id`, read under one lock (so a new ⌘C can't mix two offers).
     public func entry(id: String) -> Result<(url: URL, name: String, mime: String), OfferError> {
         lock.withLock {
-            guard let entry, entry.id == id, isLive(entry) else { return .failure(.expired) }
+            guard let entry = entries.first(where: { $0.id == id }), isLive(entry) else { return .failure(.expired) }
             guard let (size, modified) = try? Self.stat(entry.url), size == entry.size, modified == entry.modified
             else { return .failure(.changed) }
             guard case .offer(_, let name, let mime, _, _) = entry.message else { return .failure(.expired) }
@@ -56,7 +84,7 @@ public final class OfferStore {
 
     public func lookup(id: String) -> Result<URL, OfferError> {
         lock.withLock {
-            guard let entry, entry.id == id, isLive(entry) else { return .failure(.expired) }
+            guard let entry = entries.first(where: { $0.id == id }), isLive(entry) else { return .failure(.expired) }
             guard let (size, modified) = try? Self.stat(entry.url), size == entry.size, modified == entry.modified
             else { return .failure(.changed) }
             return .success(entry.url)
@@ -64,6 +92,7 @@ public final class OfferStore {
     }
 
     private func isLive(_ e: Entry) -> Bool { now().timeIntervalSince(e.created) < Self.lifetime }
+    private func isLiveSet() -> Bool { currentMessage != nil && now().timeIntervalSince(created) < Self.lifetime }
 
     private static func stat(_ url: URL) throws -> (Int64, Date) {
         let attrs = try FileManager.default.attributesOfItem(atPath: url.path)

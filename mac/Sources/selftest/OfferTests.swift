@@ -28,9 +28,10 @@ func watcherFileTests() {
     let board = NSPasteboard(name: NSPasteboard.Name("clipbridge.files.\(UUID().uuidString)"))
     defer { board.releaseGlobally() }
     let watcher = PasteboardWatcher(pasteboard: board, interval: 0.05)
-    let texts = Recorder<String>(), files = Recorder<URL>(), ignored = Recorder<Int>()
+    let texts = Recorder<String>(), files = Recorder<URL>(), ignored = Recorder<Int>(), sets = Recorder<[URL]>()
     watcher.onText = { texts.add($0) }
     watcher.onFile = { files.add($0) }
+    watcher.onFiles = { sets.add($0) }
     watcher.onIgnoredFiles = { ignored.add(1) }
     watcher.start()
     defer { watcher.stop() }
@@ -41,11 +42,11 @@ func watcherFileTests() {
     check(texts.all.isEmpty, "file name from a Finder copy is NOT sent as text")
 
     finderCopy([pdf, other], on: board)
-    check(waitUntil { ignored.all.count == 1 }, "copying two files is ignored")
+    check(waitUntil { sets.all.count == 1 && sets.all[0].count == 2 }, "copying two files offers them together (v3)")
     finderCopy([folder], on: board)
-    check(waitUntil { ignored.all.count == 2 }, "copying a folder is ignored")
+    check(waitUntil { ignored.all.count == 1 }, "copying a folder is ignored")
     finderCopy([big], on: board)
-    check(waitUntil { ignored.all.count == 3 }, "copying a 30 MB file is ignored")
+    check(waitUntil { ignored.all.count == 2 }, "copying a 30 MB file is ignored")
     RunLoop.current.run(until: Date().addingTimeInterval(0.2))
     check(files.all.count == 1 && texts.all.isEmpty, "ignored copies send neither file nor names")
     check(watcher.currentText() == nil, "currentText is nil while files are on the pasteboard")

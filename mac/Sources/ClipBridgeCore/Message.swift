@@ -4,6 +4,14 @@ public enum MessageError: Error {
     case invalid
 }
 
+/// One file in a several-files offer.
+public struct OfferItem: Equatable {
+    public let id: String, name: String, mime: String, size: Int64
+    public init(id: String, name: String, mime: String, size: Int64) {
+        self.id = id; self.name = name; self.mime = mime; self.size = size
+    }
+}
+
 /// Plaintext JSON messages, discriminated by key "t".
 /// Unknown types decode to `.unknown` and are ignored, so newer messages never break a connection.
 public enum Message: Equatable {
@@ -12,6 +20,8 @@ public enum Message: Equatable {
     case ping
     // v2 files
     case offer(id: String, name: String, mime: String, size: Int64, ts: Int64)
+    /// Several files copied together (⌘C on 2–20 files in Finder).
+    case offers(items: [OfferItem], ts: Int64)
     case offerClear
     case fetch(id: String)
     case fileStart(id: String, name: String, mime: String, size: Int64, sha256: String, purpose: String = "file")
@@ -31,6 +41,9 @@ public enum Message: Equatable {
         case .ping: object = ["t": "ping"]
         case .offer(let id, let name, let mime, let size, let ts):
             object = ["t": "offer", "id": id, "name": name, "mime": mime, "size": size, "ts": ts]
+        case .offers(let items, let ts):
+            object = ["t": "offers", "ts": ts,
+                      "items": items.map { ["id": $0.id, "name": $0.name, "mime": $0.mime, "size": $0.size] }]
         case .offerClear: object = ["t": "offer-clear"]
         case .fetch(let id): object = ["t": "fetch", "id": id]
         case .fileStart(let id, let name, let mime, let size, let sha256, let purpose):
@@ -65,6 +78,15 @@ public enum Message: Equatable {
         case "offer":
             return .offer(id: try str("id"), name: try str("name"), mime: try str("mime"),
                           size: try int("size"), ts: try int("ts"))
+        case "offers":
+            guard let raw = o["items"] as? [[String: Any]] else { throw MessageError.invalid }
+            let items = try raw.map { item -> OfferItem in
+                guard let id = item["id"] as? String, let name = item["name"] as? String,
+                      let mime = item["mime"] as? String, let size = (item["size"] as? NSNumber)?.int64Value
+                else { throw MessageError.invalid }
+                return OfferItem(id: id, name: name, mime: mime, size: size)
+            }
+            return .offers(items: items, ts: try int("ts"))
         case "offer-clear": return .offerClear
         case "fetch": return .fetch(id: try str("id"))
         case "file-start":

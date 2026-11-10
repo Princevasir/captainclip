@@ -12,6 +12,8 @@ public final class PasteboardWatcher {
     public var onText: ((String) -> Void)?
     /// Exactly one regular file ≤ 25 MB was copied (e.g. ⌘C in Finder).
     public var onFile: ((URL) -> Void)?
+    /// 2–20 regular files copied together (each ≤ 25 MB, ≤ 100 MB in total).
+    public var onFiles: (([URL]) -> Void)?
     /// An image (not a file) was copied, e.g. a ⌃⇧⌘4 screenshot. PNG bytes.
     public var onImage: ((Data) -> Void)?
     /// Files were copied but can't be offered (several files, a folder, or too large).
@@ -100,6 +102,18 @@ public final class PasteboardWatcher {
         }
     }
 
+    /// 2–20 regular files within the per-file and total limits, else nil.
+    static func offerableSet(_ urls: [URL]) -> [URL]? {
+        guard urls.count >= 2, urls.count <= FileLimit.setMaxFiles else { return nil }
+        var total = 0
+        for url in urls {
+            guard let v = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+                  v.isRegularFile == true, let size = v.fileSize, size <= FileLimit.maxBytes else { return nil }
+            total += size
+        }
+        return total <= FileLimit.setMaxBytes ? urls : nil
+    }
+
     /// One regular file within the size limit, else nil.
     static func offerable(_ urls: [URL]) -> URL? {
         guard urls.count == 1, let url = urls.first,
@@ -118,7 +132,9 @@ public final class PasteboardWatcher {
         let files = fileURLs()
         if !files.isEmpty {
             // A Finder copy: never send the accompanying file names as text.
-            if let url = Self.offerable(files) { onFile?(url) } else { onIgnoredFiles?() }
+            if let url = Self.offerable(files) { onFile?(url) }
+            else if let set = Self.offerableSet(files) { onFiles?(set) }
+            else { onIgnoredFiles?() }
             return
         }
         if ClipboardImage.isImageCopy(pasteboard) {
