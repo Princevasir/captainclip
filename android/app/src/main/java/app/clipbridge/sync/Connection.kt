@@ -9,8 +9,6 @@ import app.clipbridge.core.RichClip
 import app.clipbridge.core.TextLimit
 import java.io.IOException
 import java.io.OutputStream
-import java.net.InetSocketAddress
-import java.net.Socket
 import java.security.GeneralSecurityException
 import java.util.UUID
 import java.util.concurrent.LinkedBlockingQueue
@@ -25,14 +23,21 @@ import java.util.concurrent.atomic.AtomicBoolean
  * All socket writes happen on this connection's own threads, so [send] is safe on Android's main thread.
  */
 class Connection(
-    private val host: String,
-    private val port: Int,
+    private val link: Link,
     key: ByteArray,
     private val device: String,
     private val listener: Listener,
     private val pingIntervalMs: Long = 25_000,
     private val readTimeoutMs: Int = 60_000,
 ) {
+    /** Wi-Fi convenience constructor. */
+    constructor(host: String, port: Int, key: ByteArray, device: String, listener: Listener,
+                pingIntervalMs: Long = 25_000, readTimeoutMs: Int = 60_000) :
+        this(TcpLink(host, port), key, device, listener, pingIntervalMs, readTimeoutMs)
+
+    /** True when this connection runs over Bluetooth. */
+    val isBluetooth: Boolean get() = link.isBluetooth
+
     enum class CloseReason {
         /** Network trouble, Mac went away/silent, or we closed it. Retry later. */
         LOST,
@@ -51,7 +56,6 @@ class Connection(
     }
 
     private val crypto = ClipCrypto(key)
-    private val socket = Socket()
     private val closed = AtomicBoolean(false)
     /** Text, pings and file control messages: always written before any queued file chunk. */
     private val outbox = LinkedBlockingQueue<Message>(OUTBOX_CAPACITY)
@@ -93,7 +97,7 @@ class Connection(
 
     private fun close(reason: CloseReason) {
         if (!closed.compareAndSet(false, true)) return
-        runCatching { socket.close() }
+        link.close()
         listener.onClosed(reason)
     }
 
@@ -102,12 +106,10 @@ class Connection(
     private fun run() {
         var helloSent = false
         try {
-            socket.connect(InetSocketAddress(host, port), CONNECT_TIMEOUT_MS)
-            socket.tcpNoDelay = true
-            socket.soTimeout = readTimeoutMs
-            val reader = FrameReader(socket.getInputStream())
+            val (input, out) = link.open(readTimeoutMs)
+            val reader = FrameReader(input)
             challenge = reader.next().takeIf { it.size == CHALLENGE_BYTES } ?: return close(CloseReason.LOST)
-            output = socket.getOutputStream()
+            output = out
             if (!write(Message.Hello(device))) return
             helloSent = true
             val inbound = ClipCrypto.sessionAad(Direction.MAC_TO_PHONE, challenge!!)
@@ -176,7 +178,6 @@ class Connection(
     }
 
     private companion object {
-        const val CONNECT_TIMEOUT_MS = 5_000
         const val CHALLENGE_BYTES = 16
         const val OUTBOX_CAPACITY = 16
         const val CHUNK_CAPACITY = 4
