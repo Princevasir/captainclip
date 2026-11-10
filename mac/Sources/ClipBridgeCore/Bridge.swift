@@ -97,7 +97,7 @@ public final class Bridge {
         switch message {
         case .fetch(let id):
             serve(id: id)
-        case .fileStart(let id, _, _, _, _):
+        case .fileStart(let id, _, _, _, _, _):
             receivers[id]?.abort()
             do { receivers[id] = try FileReceiver(start: message, directory: downloads) }
             catch { server.send(message: .fileError(id: id, reason: error as? FileTransferError == .tooLarge ? "too-large" : "io")) }

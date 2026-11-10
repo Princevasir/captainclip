@@ -140,7 +140,7 @@ public final class Server {
     private func handle(_ message: Message, from session: Session) {
         if active === session {
             switch message {
-            case .clip(_, let text, _) where TextLimit.fits(text): onClip?(text)
+            case .clip(_, let text, _, _) where TextLimit.fits(text): onClip?(text)
             case .ping: session.send(.ping)  // lets the phone know the Mac is alive
             case .fetch, .fileStart, .fileChunk, .fileEnd, .fileError: onMessage?(message)
             default: break

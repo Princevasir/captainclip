@@ -84,7 +84,7 @@ public final class FileReceiver {
     private var nextSeq: Int64 = 0
 
     public init(start: Message, directory: URL) throws {
-        guard case .fileStart(let id, let name, _, let size, let sha256) = start else { throw FileTransferError.wrongTransfer }
+        guard case .fileStart(let id, let name, _, let size, let sha256, _) = start else { throw FileTransferError.wrongTransfer }
         guard size >= 0, size <= FileLimit.maxBytes else { throw FileTransferError.tooLarge }
         self.id = id
         self.name = Self.safeName(name)

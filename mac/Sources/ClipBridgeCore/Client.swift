@@ -52,7 +52,7 @@ public final class Client {
                     self.setState(.connected)
                     self.startPing()
                 }
-            case .clip(_, let text, _):
+            case .clip(_, let text, _, _):
                 self.onClip?(text)
             case .ping, .unknown:
                 break
@@ -99,7 +99,7 @@ public final class Client {
 
     private func handleFileMessage(_ message: Message) {
         switch message {
-        case .fileStart(let id, _, _, _, _):
+        case .fileStart(let id, _, _, _, _, _):
             guard let exp = expected[id] else { return }
             do { receivers[id] = try FileReceiver(start: message, directory: exp.dir) }
             catch { expected[id] = nil; exp.completion(.failure(error)) }

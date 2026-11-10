@@ -8,13 +8,13 @@ public enum MessageError: Error {
 /// Unknown types decode to `.unknown` and are ignored, so newer messages never break a connection.
 public enum Message: Equatable {
     case hello(device: String)
-    case clip(id: String, text: String, ts: Int64)
+    case clip(id: String, text: String, ts: Int64, html: String? = nil)
     case ping
     // v2 files
     case offer(id: String, name: String, mime: String, size: Int64, ts: Int64)
     case offerClear
     case fetch(id: String)
-    case fileStart(id: String, name: String, mime: String, size: Int64, sha256: String)
+    case fileStart(id: String, name: String, mime: String, size: Int64, sha256: String, purpose: String = "file")
     case fileChunk(id: String, seq: Int64, data: Data)
     case fileEnd(id: String)
     case fileError(id: String, reason: String)
@@ -24,14 +24,19 @@ public enum Message: Equatable {
         let object: [String: Any]
         switch self {
         case .hello(let device): object = ["t": "hello", "device": device]
-        case .clip(let id, let text, let ts): object = ["t": "clip", "id": id, "text": text, "ts": ts]
+        case .clip(let id, let text, let ts, let html):
+            var o: [String: Any] = ["t": "clip", "id": id, "text": text, "ts": ts]
+            if let html { o["html"] = html }
+            object = o
         case .ping: object = ["t": "ping"]
         case .offer(let id, let name, let mime, let size, let ts):
             object = ["t": "offer", "id": id, "name": name, "mime": mime, "size": size, "ts": ts]
         case .offerClear: object = ["t": "offer-clear"]
         case .fetch(let id): object = ["t": "fetch", "id": id]
-        case .fileStart(let id, let name, let mime, let size, let sha256):
-            object = ["t": "file-start", "id": id, "name": name, "mime": mime, "size": size, "sha256": sha256]
+        case .fileStart(let id, let name, let mime, let size, let sha256, let purpose):
+            var o: [String: Any] = ["t": "file-start", "id": id, "name": name, "mime": mime, "size": size, "sha256": sha256]
+            if purpose != "file" { o["purpose"] = purpose }
+            object = o
         case .fileChunk(let id, let seq, let data):
             object = ["t": "file-chunk", "id": id, "seq": seq, "data": data.base64EncodedString()]
         case .fileEnd(let id): object = ["t": "file-end", "id": id]
@@ -55,7 +60,7 @@ public enum Message: Equatable {
         }
         switch type {
         case "hello": return .hello(device: try str("device"))
-        case "clip": return .clip(id: try str("id"), text: try str("text"), ts: try int("ts"))
+        case "clip": return .clip(id: try str("id"), text: try str("text"), ts: try int("ts"), html: o["html"] as? String)
         case "ping": return .ping
         case "offer":
             return .offer(id: try str("id"), name: try str("name"), mime: try str("mime"),
@@ -64,7 +69,8 @@ public enum Message: Equatable {
         case "fetch": return .fetch(id: try str("id"))
         case "file-start":
             return .fileStart(id: try str("id"), name: try str("name"), mime: try str("mime"),
-                              size: try int("size"), sha256: try str("sha256"))
+                              size: try int("size"), sha256: try str("sha256"),
+                              purpose: o["purpose"] as? String ?? "file")
         case "file-chunk":
             guard let bytes = Data(base64Encoded: try str("data")) else { throw MessageError.invalid }
             return .fileChunk(id: try str("id"), seq: try int("seq"), data: bytes)

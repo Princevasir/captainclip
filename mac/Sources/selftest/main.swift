@@ -28,6 +28,7 @@ do {
     try quarantineTests()
     brandIconTests()
     menuTextTests()
+    try richMessageTests()
     watcherTests()
     keyStoreTests()
     networkInfoTests()
