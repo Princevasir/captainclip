@@ -19,6 +19,7 @@ import android.os.Looper
 import app.clipbridge.MainActivity
 import app.clipbridge.capture.GhostActivity
 import app.clipbridge.capture.OwnWrites
+import app.clipbridge.history.Direction
 import android.content.ClipDescription
 import android.content.ContentValues
 import android.net.Uri
@@ -95,8 +96,12 @@ class SyncService : Service() {
          * Send text to the Mac, in-process (no Intent, so no Binder size limit). Never starts the
          * service: if sync is stopped, nothing is sent. Returns true if queued for the Mac.
          */
-        fun send(text: String, html: String? = null, userInitiated: Boolean = false): Boolean =
-            instance?.loop?.send(text, html, userInitiated) ?: false
+        fun send(text: String, html: String? = null, userInitiated: Boolean = false): Boolean {
+            val service = instance ?: return false
+            val sent = service.loop?.send(text, html, userInitiated) ?: false
+            if (sent) service.history().recordText(text, html, Direction.TO_MAC)  // it crossed: keep it in history
+            return sent
+        }
 
         /** Fetch (and verify) the Mac's offered file. Blocking; used by FileOfferProvider on a binder thread. */
         fun fetchOffer(id: String, dir: File): File {
@@ -105,6 +110,7 @@ class SyncService : Service() {
                 val size = Files.cache(instance!!).offer(id)?.size ?: 0L
                 val (total, first) = SyncLoop.fetchTimeouts(size, loop.isOnBluetooth)
                 loop.fetch(id, dir, timeoutMs = total, firstDataMs = first, size = size)  // the pasting app is waiting
+                    .also { instance?.recordFetched(id) }
             } catch (e: FileFetchException) {
                 instance?.toast(when (e.reason) {
                     "expired" -> "That file is no longer on your Mac's clipboard"
@@ -283,6 +289,7 @@ class SyncService : Service() {
                     val l = loop ?: throw FileFetchException("not-connected")
                     val (total, first) = SyncLoop.saveTimeouts(offer.size, l.isOnBluetooth)
                     cache.store(id, l.fetch(id, cache.fetchDir, timeoutMs = total, firstDataMs = first, size = offer.size))
+                    recordFetched(id)
                 }
             }.exceptionOrNull()?.let {
                 when ((it as? FileFetchException)?.reason) {
@@ -310,7 +317,8 @@ class SyncService : Service() {
                 val file = cache.cachedFile(id) ?: run {
                     val l = loop!!
                     val (total, first) = SyncLoop.saveTimeouts(offer.size, l.isOnBluetooth)
-                    l.fetch(id, cache.fetchDir, timeoutMs = total, firstDataMs = first, size = offer.size).also { cache.store(id, it) }
+                    l.fetch(id, cache.fetchDir, timeoutMs = total, firstDataMs = first, size = offer.size)
+                        .also { cache.store(id, it); recordFetched(id) }
                 }
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, offer.name)
@@ -352,6 +360,7 @@ class SyncService : Service() {
                         .onFailure { android.util.Log.w("ClipBridgeFiles", "upload of ${f.name} failed", it) }
                         .getOrDefault(false)
                     android.util.Log.i("ClipBridgeFiles", "upload of ${f.name} ok=$ok")
+                    if (ok) history().recordFile(java.util.UUID.randomUUID().toString(), f.name, f.mime, f.file.length(), Direction.TO_MAC)
                     if (ok) sent++ else if (f.purpose != "clipboard") toast(
                         if (loop?.isOnBluetooth == true && f.file.length() > app.clipbridge.core.FileLimit.BLUETOOTH_MAX_BYTES)
                             "${f.name} is too big for Bluetooth — connect both to the same Wi-Fi"
@@ -363,6 +372,14 @@ class SyncService : Service() {
             val done = if (sent == 1) "Sent to Mac" else "Sent $sent files to Mac"
             if (sent > 0 && files.any { it.purpose != "clipboard" }) { toast(done); transferNotice(done, null) }
         }
+    }
+
+    private fun history() = app.clipbridge.history.HistoryHub.store(this)
+
+    /** A Mac file reached the phone: one history entry per offer id (repeat reads add nothing). */
+    private fun recordFetched(id: String) {
+        val offer = Files.cache(this).offer(id) ?: return
+        history().recordFile(id, offer.name, offer.mime, offer.size, Direction.FROM_MAC)
     }
 
     private fun transferNotice(text: String, tap: PendingIntent?, ongoing: Boolean = false) {
@@ -380,6 +397,7 @@ class SyncService : Service() {
     }
 
     private fun writeClipboard(text: String, html: String?) {
+        history().recordText(text, html, Direction.FROM_MAC)  // it crossed: keep it in history
         main.post {
             runCatching {
                 OwnWrites.markNow()  // so copy detection ignores the system "Copied" overlay this causes
