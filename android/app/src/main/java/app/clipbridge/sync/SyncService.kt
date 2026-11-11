@@ -197,7 +197,8 @@ class SyncService : Service() {
             // The phone's own name from Settings → About phone (e.g. "Alex's Galaxy S25"), else the model.
             device = runCatching { android.provider.Settings.Global.getString(contentResolver, "device_name") }
                 .getOrNull()?.takeIf { it.isNotBlank() } ?: Build.MODEL,
-            bluetoothLink = { info -> BleLink.find(this, info) },
+            bluetoothLink = if (app.clipbridge.SetupStep.bluetoothFallbackAvailable(Build.VERSION.SDK_INT, app.clipbridge.Edition.LOCATION_FOR_BLUETOOTH))
+                { info -> BleLink.find(this, info) } else null,
             callbacks = object : SyncLoop.Callbacks {
                 override fun onStatus(status: SyncLoop.Status) {
                     state = status

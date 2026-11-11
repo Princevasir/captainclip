@@ -46,11 +46,14 @@ android {
         create("full") {
             dimension = "edition"
             buildConfigField("boolean", "AUTO_COPY", "true")
+            buildConfigField("boolean", "LOCATION_FOR_BLUETOOTH", "true")
         }
         create("lite") {
             dimension = "edition"
             versionNameSuffix = "-lite"
             buildConfigField("boolean", "AUTO_COPY", "false")
+            // No location permission at all: Bluetooth fallback is Android 12+ only (Nearby devices).
+            buildConfigField("boolean", "LOCATION_FOR_BLUETOOTH", "false")
         }
     }
 

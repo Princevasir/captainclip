@@ -119,11 +119,9 @@ class MainActivity : Activity() {
         setupButton.setOnClickListener { onSetupAction() }
         pauseButton.setOnClickListener { toggleSync() }
         findViewById<View>(R.id.sendClipboardButton).setOnClickListener { sendClipboard() }
-        if (!Edition.AUTO_COPY) {
-            findViewById<View>(R.id.liteHint).visibility = View.VISIBLE
-            if (android.os.Build.VERSION.SDK_INT >= 33) {
-                findViewById<View>(R.id.addTileButton).apply { visibility = View.VISIBLE; setOnClickListener { addTile() } }
-            }
+        if (!Edition.AUTO_COPY) findViewById<View>(R.id.liteHint).visibility = View.VISIBLE
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            findViewById<View>(R.id.addTileButton).apply { visibility = View.VISIBLE; setOnClickListener { addTile() } }
         }
         findViewById<View>(R.id.repairRow).setOnClickListener { scanQr() }
         findViewById<View>(R.id.batteryRow).setOnClickListener {
@@ -214,6 +212,7 @@ class MainActivity : Activity() {
         paired = Prefs.pairing(this) != null,
         autoCopyOn = isAutoCopyOn(),
         autoCopyAvailable = Edition.AUTO_COPY,
+        bluetoothAvailable = SetupStep.bluetoothFallbackAvailable(android.os.Build.VERSION.SDK_INT, Edition.LOCATION_FOR_BLUETOOTH),
         bluetoothAllowed = bluetoothPermissionGranted(),
         bluetoothDismissed = Prefs.bluetoothDismissed(this),
     )
@@ -249,7 +248,7 @@ class MainActivity : Activity() {
         refresh()
     }
 
-    /** Lite: ask Android to add the Send to Mac tile to Quick Settings (Android 13+ shows a one-tap prompt). */
+    /** Ask Android to add the Send to Mac tile to Quick Settings (Android 13+ shows a one-tap prompt). */
     @android.annotation.SuppressLint("NewApi")
     private fun addTile() {
         val bar = getSystemService(android.app.StatusBarManager::class.java) ?: return

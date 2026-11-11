@@ -50,4 +50,15 @@ class SetupStepTest {
         assertEquals(SetupStep.BLUETOOTH,
             SetupStep.next(paired = true, autoCopyOn = false, autoCopyAvailable = false, bluetoothAllowed = false))
     }
+
+    @Test fun bluetoothNeedsAndroid12InLite() {
+        // Lite doesn't hold the location permission that Android 10-11 require for Bluetooth scanning.
+        assertTrue(SetupStep.bluetoothFallbackAvailable(sdk = 31, hasLocationPermission = false))
+        assertTrue(SetupStep.bluetoothFallbackAvailable(sdk = 30, hasLocationPermission = true))
+        assertEquals(false, SetupStep.bluetoothFallbackAvailable(sdk = 30, hasLocationPermission = false))
+    }
+
+    @Test fun noBluetoothStepWhereBluetoothCantWork() {
+        assertEquals(SetupStep.DONE, SetupStep.next(paired = true, autoCopyOn = true, bluetoothAllowed = false, bluetoothAvailable = false))
+    }
 }

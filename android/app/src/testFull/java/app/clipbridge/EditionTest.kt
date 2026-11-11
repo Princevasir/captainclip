@@ -5,4 +5,6 @@ import org.junit.Test
 
 class EditionTest {
     @Test fun fullHasAutomaticCopy() = assertTrue(Edition.AUTO_COPY)
+
+    @Test fun fullKeepsBluetoothOnOldAndroid() = assertTrue(Edition.LOCATION_FOR_BLUETOOTH)
 }

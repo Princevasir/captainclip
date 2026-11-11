@@ -19,11 +19,14 @@ enum class SetupStep(val title: String, val help: String) {
         fun bluetoothAction(askedBefore: Boolean, canShowPrompt: Boolean): PermissionAction =
             if (askedBefore && !canShowPrompt) PermissionAction.OPEN_APP_INFO else PermissionAction.ASK
 
+        /** Bluetooth scanning needs "Nearby devices" on Android 12+, or location on Android 10-11. */
+        fun bluetoothFallbackAvailable(sdk: Int, hasLocationPermission: Boolean): Boolean = sdk >= 31 || hasLocationPermission
+
         fun next(paired: Boolean, autoCopyOn: Boolean, bluetoothAllowed: Boolean = true, bluetoothDismissed: Boolean = false,
-                 autoCopyAvailable: Boolean = true): SetupStep = when {
+                 autoCopyAvailable: Boolean = true, bluetoothAvailable: Boolean = true): SetupStep = when {
             !paired -> PAIR
             autoCopyAvailable && !autoCopyOn -> AUTO_COPY
-            !bluetoothAllowed && !bluetoothDismissed -> BLUETOOTH
+            bluetoothAvailable && !bluetoothAllowed && !bluetoothDismissed -> BLUETOOTH
             else -> DONE
         }
     }

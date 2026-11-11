@@ -5,4 +5,6 @@ import org.junit.Test
 
 class EditionTest {
     @Test fun liteHasNoAutomaticCopy() = assertFalse(Edition.AUTO_COPY)
+
+    @Test fun liteHasNoLocationPermission() = assertFalse(Edition.LOCATION_FOR_BLUETOOTH)
 }
