@@ -127,6 +127,9 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.batteryRow).setOnClickListener {
             startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
         }
+        findViewById<TextView>(R.id.tipText).text = UiText.tip(Edition.AUTO_COPY,
+            SetupStep.bluetoothFallbackAvailable(android.os.Build.VERSION.SDK_INT, Edition.LOCATION_FOR_BLUETOOTH))
+        if (!Edition.AUTO_COPY) findViewById<View>(R.id.autoCopyRow).visibility = View.GONE  // Lite has no automatic copy
         findViewById<View>(R.id.autoCopyRow).setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }

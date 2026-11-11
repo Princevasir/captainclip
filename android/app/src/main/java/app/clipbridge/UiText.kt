@@ -5,6 +5,15 @@ import kotlin.math.roundToLong
 
 /** Small, user-facing wording helpers (unit-tested). */
 object UiText {
+    /** The tip at the bottom of the main screen, worded for the full app or Lite. */
+    fun tip(autoCopy: Boolean, bluetooth: Boolean): String {
+        val how = if (autoCopy) "Copies on the phone go to your Mac by themselves. The “Send to Mac” quick toggle and " +
+            "Share → Send to Mac work too."
+        else "After copying on the phone, tap the “Send to Mac” quick toggle or use Share → Send to Mac."
+        val where = if (bluetooth) "Same Wi-Fi, or Bluetooth when nearby" else "Same Wi-Fi"
+        return "$how $where · end-to-end encrypted."
+    }
+
     private const val OFFER_LIFETIME_MS = 10 * 60_000L
 
     fun size(bytes: Long): String {

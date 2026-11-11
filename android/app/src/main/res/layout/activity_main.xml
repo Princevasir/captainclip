@@ -240,12 +240,12 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/tipText"
             style="@style/Secondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:text="Tip: add the “Send to Mac” tile to Quick Settings, or use Share → Send to Mac from any app. Same Wi-Fi only · end-to-end encrypted." />
+            android:paddingEnd="8dp" />
     </LinearLayout>
 </ScrollView>
