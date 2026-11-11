@@ -21,69 +21,116 @@
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="4dp"
-            android:paddingBottom="8dp">
+            android:paddingBottom="14dp">
 
             <ImageView
                 android:id="@+id/logo"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:contentDescription="@null"
                 android:src="@mipmap/ic_launcher" />
 
-            <LinearLayout
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans-serif-medium"
-                    android:text="@string/app_name"
-                    android:textColor="@color/text_primary"
-                    android:textSize="26sp" />
-
-                <TextView
-                    style="@style/Secondary"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Mac ↔ phone clipboard" />
-            </LinearLayout>
+                android:layout_marginStart="12dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="@string/app_name"
+                android:textColor="@color/text_primary"
+                android:textSize="22sp" />
         </LinearLayout>
 
-        <!-- Status -->
-        <LinearLayout style="@style/Card" android:id="@+id/statusCard">
+        <!-- Status: a colour card that says how you're connected, with the main action -->
+        <LinearLayout
+            android:id="@+id/statusCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="22dp">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <View
-                    android:id="@+id/statusDot"
-                    android:layout_width="12dp"
-                    android:layout_height="12dp"
-                    android:background="@drawable/dot" />
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:background="@drawable/bg_pill"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="14dp">
 
-                <TextView
-                    android:id="@+id/statusTitle"
-                    style="@style/Body"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    android:fontFamily="sans-serif-medium"
-                    android:textSize="18sp" />
+                    <View
+                        android:id="@+id/statusDot"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/dot" />
+
+                    <TextView
+                        android:id="@+id/statusPill"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+
+                <ImageView
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:alpha="0.85"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_devices" />
             </LinearLayout>
 
             <TextView
-                android:id="@+id/statusDetail"
-                style="@style/Secondary"
+                android:id="@+id/statusTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="24dp"
-                android:layout_marginTop="4dp" />
+                android:layout_marginTop="18dp"
+                android:fontFamily="sans-serif-medium"
+                android:textColor="#FFFFFFFF"
+                android:textSize="24sp" />
+
+            <TextView
+                android:id="@+id/statusDetail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="#D9FFFFFF"
+                android:textSize="14sp" />
+
+            <LinearLayout
+                android:id="@+id/sendClipboardButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/bg_button_white"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_send"
+                    android:tint="@color/brand_indigo" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Send clipboard to Mac"
+                    android:textColor="@color/brand_indigo"
+                    android:textSize="16sp" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- A file waiting on the Mac -->
@@ -239,63 +286,311 @@
         </LinearLayout>
 
         <!-- Quick actions -->
-        <LinearLayout style="@style/Card" android:id="@+id/actionsCard">
-            <TextView style="@style/CardTitle" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="Quick actions" />
+        <LinearLayout
+            android:id="@+id/actionsCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="-10dp"
+            android:orientation="horizontal">
 
-            <Button
-                android:id="@+id/sendClipboardButton"
-                style="@style/ButtonTonal"
-                android:text="Send clipboard to Mac" />
+            <LinearLayout
+                android:id="@+id/historyRow"
+                android:layout_width="0dp"
+                android:layout_height="112dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/bg_tile"
+                android:orientation="vertical"
+                android:padding="14dp">
 
-            <TextView
-                android:id="@+id/sendHint"
-                style="@style/Secondary"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="After copying on the phone, tap Send to Mac (here, in Quick Settings, or Share → Send to Mac). Mac → phone is automatic."
-                android:visibility="gone" />
+                <ImageView
+                    
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_icon_soft"
+                    android:contentDescription="@null"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_history"
+                    android:tint="@color/accent" />
 
-            <Button
+                <View android:layout_width="1dp" android:layout_height="0dp" android:layout_weight="1" />
+
+                <TextView
+                    
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="2"
+                    android:text="Clipboard history"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+            <LinearLayout
                 android:id="@+id/addTileButton"
-                style="@style/ButtonTonal"
-                android:layout_marginTop="8dp"
-                android:text="Add Send to Mac to Quick Settings"
-                android:visibility="gone" />
+                android:layout_width="0dp"
+                android:layout_height="112dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/bg_tile"
+                android:orientation="vertical"
+                android:padding="14dp" android:visibility="gone">
 
-            <Button
-                android:id="@+id/pauseButton"
-                style="@style/ButtonTonal"
-                android:layout_marginTop="8dp" />
+                <ImageView
+                    
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_icon_soft"
+                    android:contentDescription="@null"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_tile"
+                    android:tint="@color/accent" />
+
+                <View android:layout_width="1dp" android:layout_height="0dp" android:layout_weight="1" />
+
+                <TextView
+                    
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="2"
+                    android:text="Add to Quick Settings"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/pauseTile"
+                android:layout_width="0dp"
+                android:layout_height="112dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/bg_tile"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <ImageView
+                    android:id="@+id/pauseIcon"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_icon_soft"
+                    android:contentDescription="@null"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_pause"
+                    android:tint="@color/accent" />
+
+                <View android:layout_width="1dp" android:layout_height="0dp" android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/pauseButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="2"
+                    android:text="Pause syncing"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+            </LinearLayout>
         </LinearLayout>
 
-        <!-- More -->
-        <LinearLayout style="@style/Card" android:paddingTop="10dp" android:paddingBottom="10dp">
-            <TextView
-                android:id="@+id/historyRow"
-                style="@style/Row"
-                android:text="Clipboard history" />
+        <!-- Settings -->
+        <TextView
+            style="@style/CardTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:paddingStart="8dp"
+            android:text="Settings" />
 
-            <TextView
+        <LinearLayout style="@style/Card" android:layout_marginTop="8dp" android:paddingTop="8dp" android:paddingBottom="8dp"
+            android:paddingStart="10dp" android:paddingEnd="10dp">
+            <LinearLayout
                 android:id="@+id/macGuideRow"
-                style="@style/Row"
-                android:text="Mac app setup guide" />
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="60dp"
+                android:background="@drawable/bg_row"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="10dp"
+                android:paddingEnd="8dp">
 
-            <TextView
+                <ImageView
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_icon_soft"
+                    android:contentDescription="@null"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_book"
+                    android:tint="@color/accent" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Body"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Mac app setup guide"
+                        android:textSize="16sp" />
+                    <TextView
+                        style="@style/Secondary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Download and pair the Mac app" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron"
+                    android:tint="@color/text_secondary" />
+            </LinearLayout>
+            <LinearLayout
                 android:id="@+id/repairRow"
-                style="@style/Row"
-                android:text="Pair with a different Mac" />
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="60dp"
+                android:background="@drawable/bg_row"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="10dp"
+                android:paddingEnd="8dp">
 
-            <TextView
+                <ImageView
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_icon_soft"
+                    android:contentDescription="@null"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_link"
+                    android:tint="@color/accent" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Body"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Pair with a different Mac"
+                        android:textSize="16sp" />
+                    <TextView
+                        style="@style/Secondary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Scan a new QR code" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron"
+                    android:tint="@color/text_secondary" />
+            </LinearLayout>
+            <LinearLayout
                 android:id="@+id/batteryRow"
-                style="@style/Row"
-                android:text="Let ClipBridge run in the background" />
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="60dp"
+                android:background="@drawable/bg_row"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="10dp"
+                android:paddingEnd="8dp">
 
-            <TextView
+                <ImageView
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_icon_soft"
+                    android:contentDescription="@null"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_battery"
+                    android:tint="@color/accent" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Body"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Run in the background"
+                        android:textSize="16sp" />
+                    <TextView
+                        style="@style/Secondary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Keep ClipBridge connected" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron"
+                    android:tint="@color/text_secondary" />
+            </LinearLayout>
+            <LinearLayout
                 android:id="@+id/autoCopyRow"
-                style="@style/Row"
-                android:text="Automatic copy settings" />
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="60dp"
+                android:background="@drawable/bg_row"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="10dp"
+                android:paddingEnd="8dp">
+
+                <ImageView
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_icon_soft"
+                    android:contentDescription="@null"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_sparkle"
+                    android:tint="@color/accent" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Body"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Automatic copy"
+                        android:textSize="16sp" />
+                    <TextView
+                        style="@style/Secondary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Send what you copy, by itself" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron"
+                    android:tint="@color/text_secondary" />
+            </LinearLayout>
         </LinearLayout>
 
         <TextView
@@ -303,8 +598,9 @@
             style="@style/Secondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp" />
+            android:layout_marginTop="18dp"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp" />
     </LinearLayout>
 </ScrollView>

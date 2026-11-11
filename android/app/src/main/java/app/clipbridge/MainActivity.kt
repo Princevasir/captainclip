@@ -45,7 +45,7 @@ class MainActivity : Activity() {
     private lateinit var setupHelp: TextView
     private lateinit var setupButton: Button
     private lateinit var setupNotNow: Button
-    private lateinit var pauseButton: Button
+    private lateinit var pauseButton: TextView
 
     /** Result of the last in-app save, shown on the offer card until the offer changes. */
     private var saved: Pair<String, Uri>? = null
@@ -119,9 +119,8 @@ class MainActivity : Activity() {
         saveButton.setOnClickListener { saveOffer() }
         shareButton.setOnClickListener { shareOffers() }
         setupButton.setOnClickListener { onSetupAction() }
-        pauseButton.setOnClickListener { toggleSync() }
+        findViewById<View>(R.id.pauseTile).setOnClickListener { toggleSync() }
         findViewById<View>(R.id.sendClipboardButton).setOnClickListener { sendClipboard() }
-        if (!Edition.AUTO_COPY) findViewById<View>(R.id.sendHint).visibility = View.VISIBLE
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             findViewById<View>(R.id.addTileButton).apply { visibility = View.VISIBLE; setOnClickListener { addTile() } }
         }
@@ -147,7 +146,9 @@ class MainActivity : Activity() {
         renderSetup()
         val enabled = Prefs.syncEnabled(this)
         pauseButton.text = if (enabled) "Pause syncing" else "Resume syncing"
-        pauseButton.isEnabled = Prefs.pairing(this) != null
+        findViewById<ImageView>(R.id.pauseIcon).setImageResource(if (enabled) R.drawable.ic_pause else R.drawable.ic_play)
+        val paired = Prefs.pairing(this) != null
+        findViewById<View>(R.id.pauseTile).apply { isEnabled = paired; alpha = if (paired) 1f else 0.5f }
     }
 
     /** "Recent clips": the newest 3 history entries; tap to copy, See all → the history screen. */
@@ -173,27 +174,43 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.recentSeeAll).setOnClickListener { startActivity(Intent(this, HistoryActivity::class.java)) }
     }
 
+    private class Look(val colors: IntArray, val pill: String, val title: String, val detail: String)
+
+    private companion object {
+        val BRAND = intArrayOf(0xFF0EA5A4.toInt(), 0xFF4F46E5.toInt())
+        val AMBER = intArrayOf(0xFFF59E0B.toInt(), 0xFFEA580C.toInt())
+        val RED = intArrayOf(0xFFEF4444.toInt(), 0xFFB91C1C.toInt())
+        val SLATE = intArrayOf(0xFF64748B.toInt(), 0xFF334155.toInt())
+    }
+
     private fun renderStatus() {
         val paired = Prefs.pairing(this) != null
-        val (color, title, detail) = when {
-            !paired -> Triple(R.color.idle, "Not paired yet", "Scan the QR code from ClipBridge on your Mac")
-            !Prefs.syncEnabled(this) -> Triple(R.color.idle, "Syncing paused", "Copies stay on this phone until you resume")
+        val connected = paired && Prefs.syncEnabled(this) && SyncService.state == SyncLoop.Status.CONNECTED
+        // (card colours, pill, title, detail)
+        val look = when {
+            !paired -> Look(SLATE, "Not paired", "Pair with your Mac", "Scan the QR code from ClipBridge on your Mac")
+            !Prefs.syncEnabled(this) -> Look(SLATE, "Paused", "Syncing is paused", "Copies stay on this phone until you resume")
             else -> when (SyncService.state) {
-                SyncLoop.Status.CONNECTED -> Triple(R.color.ok,
-                    SyncService.macName?.let { "Connected to $it" } ?: "Connected to your Mac",
-                    if (SyncService.onBluetooth) "Via Bluetooth · end-to-end encrypted · files up to 5 MB"
+                SyncLoop.Status.CONNECTED -> Look(BRAND, "Connected", SyncService.macName ?: "Your Mac",
+                    if (SyncService.onBluetooth) "Bluetooth · end-to-end encrypted · files up to 5 MB"
                     else "Same Wi-Fi · end-to-end encrypted")
-                SyncLoop.Status.SEARCHING, SyncLoop.Status.RETRYING -> Triple(R.color.busy,
-                    "Looking for your Mac…", "Make sure ClipBridge is running on the Mac and both are on the same Wi-Fi")
-                SyncLoop.Status.PAIRING_INVALID -> Triple(R.color.bad,
+                SyncLoop.Status.SEARCHING, SyncLoop.Status.RETRYING -> Look(AMBER, "Searching",
+                    "Looking for your Mac…", "Make sure ClipBridge is running on the Mac and both are nearby or on the same Wi-Fi")
+                SyncLoop.Status.PAIRING_INVALID -> Look(RED, "Pairing needed",
                     "Your Mac doesn't recognise this phone", "Its pairing was reset — scan the QR code again")
-                else -> Triple(R.color.idle, "Starting…", "")
+                else -> Look(SLATE, "Starting", "Starting…", "")
             }
         }
-        statusDot.background.mutate().setTint(getColor(color))
-        statusTitle.text = title
-        statusDetail.text = detail
-        statusDetail.visibility = if (detail.isEmpty()) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.statusCard).background = android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TL_BR, look.colors).apply {
+            cornerRadius = 28 * resources.displayMetrics.density
+        }
+        statusDot.background.mutate().setTint(if (connected) 0xFF4ADE80.toInt() else 0xFFFFFFFF.toInt())
+        findViewById<TextView>(R.id.statusPill).text = look.pill
+        statusTitle.text = look.title
+        statusDetail.text = look.detail
+        statusDetail.visibility = if (look.detail.isEmpty()) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.sendClipboardButton).visibility = if (paired && Prefs.syncEnabled(this)) View.VISIBLE else View.GONE
     }
 
     private fun renderOffer() {
