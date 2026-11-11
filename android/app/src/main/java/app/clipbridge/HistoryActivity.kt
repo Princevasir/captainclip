@@ -2,8 +2,6 @@ package app.clipbridge
 
 import android.app.Activity
 import android.app.AlertDialog
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -14,7 +12,6 @@ import android.widget.EditText
 import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
-import app.clipbridge.capture.OwnWrites
 import app.clipbridge.history.Direction
 import app.clipbridge.history.HistoryEntry
 import app.clipbridge.history.HistoryHub
@@ -26,21 +23,34 @@ import app.clipbridge.sync.SyncService
 class HistoryActivity : Activity() {
     private val store by lazy { HistoryHub.store(this) }
     private var shown: List<HistoryEntry> = emptyList()
+    /** Rows on screen: a day header ("Today"…) or an entry. */
+    private var rows: List<Any> = emptyList()
     private lateinit var search: EditText
     private lateinit var list: ListView
     private lateinit var empty: TextView
     private lateinit var summary: TextView
 
     private val adapter = object : BaseAdapter() {
-        override fun getCount() = shown.size
-        override fun getItem(position: Int) = shown[position]
+        override fun getCount() = rows.size
+        override fun getItem(position: Int) = rows[position]
         override fun getItemId(position: Int) = position.toLong()
+        override fun getViewTypeCount() = 2
+        override fun getItemViewType(position: Int) = if (rows[position] is String) 0 else 1
+        override fun isEnabled(position: Int) = rows[position] is HistoryEntry
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+            val row = rows[position]
+            if (row is String) {
+                val v = (convertView as? TextView) ?: layoutInflater.inflate(R.layout.item_history_header, parent, false) as TextView
+                v.text = row
+                return v
+            }
+            val e = row as HistoryEntry
             val v = convertView ?: layoutInflater.inflate(R.layout.item_history, parent, false)
-            val e = shown[position]
+            HistoryUi.bindBadge(v.findViewById(R.id.badge), e)
             val dir = if (e.direction == Direction.FROM_MAC) "From Mac" else "To Mac"
             v.findViewById<TextView>(R.id.meta).text = "$dir · ${UiText.ago(System.currentTimeMillis() - e.at)}"
-            v.findViewById<TextView>(R.id.preview).text = UiText.historyPreview(e)
+            v.findViewById<TextView>(R.id.preview).text =
+                if (e.isFile) "${e.fileName} · ${UiText.size(e.size)}" else UiText.historyPreview(e)
             return v
         }
     }
@@ -53,8 +63,10 @@ class HistoryActivity : Activity() {
         empty = findViewById(R.id.empty)
         summary = findViewById(R.id.summary)
         list.adapter = adapter
-        list.setOnItemClickListener { _, _, pos, _ -> copy(shown[pos]) }
-        list.setOnItemLongClickListener { _, _, pos, _ -> actions(shown[pos]); true }
+        list.setOnItemClickListener { _, _, pos, _ -> (rows[pos] as? HistoryEntry)?.let { HistoryUi.copy(this, it) } }
+        list.setOnItemLongClickListener { _, _, pos, _ -> (rows[pos] as? HistoryEntry)?.let { actions(it) }; true }
+        findViewById<View>(R.id.back).setOnClickListener { finish() }
+        findViewById<View>(R.id.clearSearch).setOnClickListener { search.setText("") }
         search.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
@@ -86,7 +98,17 @@ class HistoryActivity : Activity() {
     private fun refresh() {
         val query = search.text.toString()
         shown = store.search(query)
+        val now = System.currentTimeMillis()
+        rows = buildList {
+            var group: String? = null
+            for (e in shown) {
+                val g = UiText.dayGroup(e.at, now)
+                if (g != group) { add(g); group = g }
+                add(e)
+            }
+        }
         adapter.notifyDataSetChanged()
+        findViewById<View>(R.id.clearSearch).visibility = if (query.isEmpty()) View.GONE else View.VISIBLE
         val total = store.entries().size
         val l = store.limits
         summary.text = if (!store.enabled) "History is off"
@@ -101,19 +123,10 @@ class HistoryActivity : Activity() {
         }
     }
 
-    private fun copy(e: HistoryEntry) {
-        if (e.isFile) { toast("Only the file's name is kept — its contents aren't stored"); return }
-        val text = e.text ?: return
-        OwnWrites.markNow()  // ClipBridge Pro: don't send this back to the Mac by itself
-        val clip = if (e.html != null) ClipData.newHtmlText("ClipBridge", text, e.html) else ClipData.newPlainText("ClipBridge", text)
-        getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
-        toast("Copied")
-    }
-
     private fun actions(e: HistoryEntry) {
         val options = mutableListOf<Pair<String, () -> Unit>>()
         if (!e.isFile) {
-            options += "Copy" to { copy(e) }
+            options += "Copy" to { HistoryUi.copy(this, e) }
             if (SyncService.isConnected) options += "Send to Mac" to {
                 val ok = SyncService.send(e.text ?: "", e.html, userInitiated = true)
                 toast(if (ok) "Sent to Mac" else "Couldn't send — not connected to your Mac")

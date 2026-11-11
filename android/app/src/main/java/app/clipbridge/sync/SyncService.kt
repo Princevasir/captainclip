@@ -99,7 +99,7 @@ class SyncService : Service() {
         fun send(text: String, html: String? = null, userInitiated: Boolean = false): Boolean {
             val service = instance ?: return false
             val sent = service.loop?.send(text, html, userInitiated) ?: false
-            if (sent) service.history().recordText(text, html, Direction.TO_MAC)  // it crossed: keep it in history
+            if (sent) { service.history().recordText(text, html, Direction.TO_MAC); service.historyChanged() }  // it crossed
             return sent
         }
 
@@ -381,7 +381,11 @@ class SyncService : Service() {
      *  before the fetch, so a Mac copy that replaces the offer meanwhile doesn't lose the entry. */
     private fun recordFetched(offer: app.clipbridge.core.Message.Offer) {
         history().recordFile(offer.id, offer.name, offer.mime, offer.size, Direction.FROM_MAC)
+        historyChanged()
     }
+
+    /** Lets an open main screen refresh its "Recent clips" card. */
+    private fun historyChanged() { main.post { onStatusChanged?.invoke() } }
 
     private fun transferNotice(text: String, tap: PendingIntent?, ongoing: Boolean = false) {
         runCatching {
@@ -404,7 +408,7 @@ class SyncService : Service() {
                 val clip = if (html != null) ClipData.newHtmlText("ClipBridge", text, html) else ClipData.newPlainText("ClipBridge", text)
                 markFromMac(clip.description)
                 getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
-            }.onSuccess { history().recordText(text, html, Direction.FROM_MAC) }  // on the phone's clipboard: it crossed
+            }.onSuccess { history().recordText(text, html, Direction.FROM_MAC); historyChanged() }  // on the phone's clipboard: it crossed
         }
     }
 

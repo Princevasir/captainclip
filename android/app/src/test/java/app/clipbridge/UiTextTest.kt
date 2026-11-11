@@ -59,4 +59,21 @@ class UiTextTest {
         val file = app.clipbridge.history.HistoryEntry("2", 0, app.clipbridge.history.Direction.TO_MAC, fileName = "Invoice.pdf", mime = "application/pdf", size = 430_080)
         assertEquals("📄 Invoice.pdf · 420 KB", UiText.historyPreview(file))
     }
+
+    @Test fun historyGroupsByCalendarDay() {
+        val zone = java.time.ZoneId.of("Asia/Kolkata")
+        val now = java.time.ZonedDateTime.of(2026, 11, 12, 9, 0, 0, 0, zone).toInstant().toEpochMilli()
+        fun at(day: Int, hour: Int) = java.time.ZonedDateTime.of(2026, 11, day, hour, 0, 0, 0, zone).toInstant().toEpochMilli()
+        assertEquals("Today", UiText.dayGroup(at(12, 0), now, zone))
+        assertEquals("Yesterday", UiText.dayGroup(at(11, 23), now, zone))
+        assertEquals("Earlier", UiText.dayGroup(at(10, 23), now, zone))
+    }
+
+    @Test fun shortAgoForCompactRows() {
+        assertEquals("now", UiText.agoShort(20_000))
+        assertEquals("5 min", UiText.agoShort(5 * 60_000L))
+        assertEquals("2 h", UiText.agoShort(2 * 3_600_000L))
+        assertEquals("Yesterday", UiText.agoShort(30 * 3_600_000L))
+        assertEquals("3 d", UiText.agoShort(3 * 86_400_000L))
+    }
 }

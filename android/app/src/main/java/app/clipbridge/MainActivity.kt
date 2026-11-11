@@ -143,10 +143,34 @@ class MainActivity : Activity() {
     private fun refresh() {
         renderStatus()
         renderOffer()
+        renderRecent()
         renderSetup()
         val enabled = Prefs.syncEnabled(this)
         pauseButton.text = if (enabled) "Pause syncing" else "Resume syncing"
         pauseButton.isEnabled = Prefs.pairing(this) != null
+    }
+
+    /** "Recent clips": the newest 3 history entries; tap to copy, See all → the history screen. */
+    private fun renderRecent() {
+        val card = findViewById<View>(R.id.recentCard)
+        val store = app.clipbridge.history.HistoryHub.store(this)
+        if (Prefs.pairing(this) == null || !store.enabled) { card.visibility = View.GONE; return }
+        card.visibility = View.VISIBLE
+        val recent = store.entries().take(3)
+        val list = findViewById<android.widget.LinearLayout>(R.id.recentList)
+        list.removeAllViews()
+        val now = System.currentTimeMillis()
+        for (e in recent) {
+            val row = layoutInflater.inflate(R.layout.item_recent, list, false)
+            HistoryUi.bindBadge(row.findViewById(R.id.badge), e)
+            row.findViewById<TextView>(R.id.preview).text = UiText.historyPreview(e)
+            row.findViewById<TextView>(R.id.time).text = UiText.agoShort(now - e.at)
+            row.setOnClickListener { HistoryUi.copy(this, e) }
+            row.setOnLongClickListener { startActivity(Intent(this, HistoryActivity::class.java)); true }
+            list.addView(row)
+        }
+        findViewById<View>(R.id.recentEmpty).visibility = if (recent.isEmpty()) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.recentSeeAll).setOnClickListener { startActivity(Intent(this, HistoryActivity::class.java)) }
     }
 
     private fun renderStatus() {

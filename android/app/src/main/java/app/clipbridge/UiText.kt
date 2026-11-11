@@ -37,6 +37,31 @@ object UiText {
         }
     }
 
+    /** History section header: "Today", "Yesterday" or "Earlier", by calendar day in [zone]. */
+    fun dayGroup(at: Long, now: Long, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String {
+        val day = java.time.Instant.ofEpochMilli(at).atZone(zone).toLocalDate()
+        val today = java.time.Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        return when (day) {
+            today -> "Today"
+            today.minusDays(1) -> "Yesterday"
+            else -> "Earlier"
+        }
+    }
+
+    /** Compact time for list rows: "now", "5 min", "2 h", "Yesterday", "3 d". */
+    fun agoShort(msAgo: Long): String {
+        val min = msAgo / 60_000
+        val hours = msAgo / 3_600_000
+        val days = msAgo / 86_400_000
+        return when {
+            min < 1 -> "now"
+            hours < 1 -> "$min min"
+            hours < 24 -> "$hours h"
+            days < 2 -> "Yesterday"
+            else -> "$days d"
+        }
+    }
+
     /** One compact paragraph (≤ 140 chars + "…") for a history row; files as "📄 name · size". */
     fun historyPreview(entry: app.clipbridge.history.HistoryEntry): String {
         if (entry.isFile) return "📄 ${entry.fileName} · ${size(entry.size)}"
