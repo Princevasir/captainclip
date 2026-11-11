@@ -10,6 +10,8 @@ enum class SetupStep(val title: String, val help: String) {
     BLUETOOTH("Allow Bluetooth fallback",
         "Keeps ClipBridge connected when your phone and Mac aren't on the same Wi-Fi. " +
             "Android asks for \"Nearby devices\" — ClipBridge only uses it to find your own Mac."),
+    QUICK_TOGGLE("Add Send to Mac to your notification panel",
+        "A one-tap toggle next to Torch and Auto rotate: copy on your phone, swipe down, tap Send to Mac."),
     DONE("All set", "Copy on one device, paste on the other.");
 
     enum class PermissionAction { ASK, OPEN_APP_INFO }
@@ -23,10 +25,12 @@ enum class SetupStep(val title: String, val help: String) {
         fun bluetoothFallbackAvailable(sdk: Int, hasLocationPermission: Boolean): Boolean = sdk >= 31 || hasLocationPermission
 
         fun next(paired: Boolean, autoCopyOn: Boolean, bluetoothAllowed: Boolean = true, bluetoothDismissed: Boolean = false,
-                 autoCopyAvailable: Boolean = true, bluetoothAvailable: Boolean = true): SetupStep = when {
+                 autoCopyAvailable: Boolean = true, bluetoothAvailable: Boolean = true,
+                 tileAdded: Boolean = true, tileDismissed: Boolean = false): SetupStep = when {
             !paired -> PAIR
             autoCopyAvailable && !autoCopyOn -> AUTO_COPY
             bluetoothAvailable && !bluetoothAllowed && !bluetoothDismissed -> BLUETOOTH
+            !tileAdded && !tileDismissed -> QUICK_TOGGLE
             else -> DONE
         }
     }

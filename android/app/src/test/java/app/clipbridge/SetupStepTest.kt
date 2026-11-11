@@ -61,4 +61,15 @@ class SetupStepTest {
     @Test fun noBluetoothStepWhereBluetoothCantWork() {
         assertEquals(SetupStep.DONE, SetupStep.next(paired = true, autoCopyOn = true, bluetoothAllowed = false, bluetoothAvailable = false))
     }
+
+    @Test fun offersTheQuickToggleLast() {
+        assertEquals(SetupStep.QUICK_TOGGLE, SetupStep.next(paired = true, autoCopyOn = true, tileAdded = false))
+        // after Bluetooth, which is more important
+        assertEquals(SetupStep.BLUETOOTH, SetupStep.next(paired = true, autoCopyOn = true, bluetoothAllowed = false, tileAdded = false))
+    }
+
+    @Test fun quickToggleStepGoesAwayWhenAddedOrDismissed() {
+        assertEquals(SetupStep.DONE, SetupStep.next(paired = true, autoCopyOn = true, tileAdded = true))
+        assertEquals(SetupStep.DONE, SetupStep.next(paired = true, autoCopyOn = true, tileAdded = false, tileDismissed = true))
+    }
 }

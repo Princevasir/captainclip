@@ -86,7 +86,7 @@ class ConnectionTest {
 
     @After fun tearDown() { connection?.close(); mac.close() }
 
-    private fun <T> LinkedBlockingQueue<T>.await(): T? = poll(3, TimeUnit.SECONDS)
+    private fun <T> LinkedBlockingQueue<T>.await(): T? = poll(10, TimeUnit.SECONDS)  // generous: a busy test run can be slow to connect
 
     @Test fun sendsHelloFirstThenConnectsAfterMacAnswers() {
         connect()

@@ -19,6 +19,12 @@ object Prefs {
 
     fun setBluetoothDismissed(ctx: Context) = prefs(ctx).edit().putBoolean("bluetoothDismissed", true).apply()
 
+    /** Whether the Send to Mac toggle is in Quick Settings (Android tells the tile when it's added/removed). */
+    fun tileAdded(ctx: Context): Boolean = prefs(ctx).getBoolean("tileAdded", false)
+    fun setTileAdded(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("tileAdded", on).apply()
+    fun tileDismissed(ctx: Context): Boolean = prefs(ctx).getBoolean("tileDismissed", false)
+    fun setTileDismissed(ctx: Context) = prefs(ctx).edit().putBoolean("tileDismissed", true).apply()
+
     fun historyEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean("historyEnabled", true)
     fun setHistoryEnabled(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("historyEnabled", on).apply()
     fun historyMaxItems(ctx: Context): Int = prefs(ctx).getInt("historyMaxItems", 50)

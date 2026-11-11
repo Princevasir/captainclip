@@ -14,6 +14,10 @@ import app.clipbridge.sync.SyncService
 
 /** Quick Settings tile: one tap sends the current clipboard to the Mac. */
 class SendTileService : TileService() {
+    override fun onTileAdded() { app.clipbridge.sync.Prefs.setTileAdded(this, true) }
+
+    override fun onTileRemoved() { app.clipbridge.sync.Prefs.setTileAdded(this, false) }
+
     /** Lit (like Location) while the Mac is connected, dim otherwise; the second line says how. */
     override fun onStartListening() {
         val tile = qsTile ?: return
