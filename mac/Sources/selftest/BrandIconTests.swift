@@ -26,4 +26,19 @@ func brandIconTests() {
     check(!app.isTemplate, "app icon is full colour")
     let filled = opaquePixels(app, side: 256)
     check(filled > 256 * 256 / 2 && filled < 256 * 256, "app icon is a rounded tile with transparent corners (\(filled) px)")
+
+    // Google Play graphics: fully opaque (Play rejects transparency in the feature graphic and masks the icon itself).
+    let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("cb-play-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: tmp) }
+    do {
+        try BrandIcon.writePlayGraphics(to: tmp)
+        let icon = NSBitmapImageRep(data: (try? Data(contentsOf: tmp.appendingPathComponent("icon-512.png"))) ?? Data())
+        check(icon?.pixelsWide == 512 && icon?.pixelsHigh == 512, "Play icon is 512×512 px")
+        check((icon?.colorAt(x: 0, y: 0)?.alphaComponent ?? 0) > 0.99, "Play icon is full-bleed (opaque corners)")
+        let feature = NSBitmapImageRep(data: (try? Data(contentsOf: tmp.appendingPathComponent("feature-graphic.png"))) ?? Data())
+        check(feature?.pixelsWide == 1024 && feature?.pixelsHigh == 500, "Play feature graphic is 1024×500 px")
+        check(!(feature?.hasAlpha ?? true), "Play feature graphic has no transparency")
+    } catch {
+        check(false, "Play graphics written: \(error)")
+    }
 }

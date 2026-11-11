@@ -1,8 +1,12 @@
 import AppKit
 import ClipBridgeCore
 
-// Usage: iconmaker <out.iconset> [preview.png]
+// Usage: iconmaker <out.iconset> [preview.png]   |   iconmaker --play <folder>  (Google Play icon + feature graphic)
 let args = CommandLine.arguments
+if args.count == 3, args[1] == "--play" {
+    try BrandIcon.writePlayGraphics(to: URL(fileURLWithPath: args[2]))
+    exit(0)
+}
 guard args.count >= 2 else { print("usage: iconmaker <out.iconset> [preview.png]"); exit(2) }
 try BrandIcon.writeIconset(to: URL(fileURLWithPath: args[1]))
 if args.count >= 3 {
