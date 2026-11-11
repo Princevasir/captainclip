@@ -12,9 +12,9 @@ help people with disabilities, so Pro would very likely be rejected.
 | Privacy policy URL | `https://github.com/Princevasir/clipbridge/blob/main/PRIVACY.md` (live once pushed) |
 | App icon 512 × 512 | `docs/play-store/icon-512.png` |
 | Feature graphic 1024 × 500 | `docs/play-store/feature-graphic.png` |
-| Phone screenshots — upload these 5 (1440 × 2880) | `docs/play-store/store-screenshots/store-1…5-*.png` — headline + phone. Regenerate: `cd mac && swift run iconmaker --store ../docs/play-store/screenshots ../docs/play-store/store-screenshots` |
+| Phone screenshots — upload these 6 (1440 × 2880) | `docs/play-store/store-screenshots/store-1…6-*.png` — headline + phone. Regenerate: `cd mac && swift run iconmaker --store ../docs/play-store/screenshots ../docs/play-store/store-screenshots` |
 | Raw app screenshots (used inside the panels) | `docs/play-store/screenshots/` |
-| Trailer video (27.8 s, 1920 × 1080, silent) | `docs/play-store/trailer.mp4` — not in git; regenerate with `cd mac && swift run iconmaker --trailer ../docs/play-store/screenshots ../docs/play-store/trailer.mp4` |
+| Trailer video (32 s, 1920 × 1080, silent) | `docs/play-store/trailer.mp4` — not in git; regenerate with `cd mac && swift run iconmaker --trailer ../docs/play-store/screenshots ../docs/play-store/trailer.mp4` |
 | Store text, Data safety, declarations | below |
 
 ## Your steps in Play Console (only you can do these)

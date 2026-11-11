@@ -110,15 +110,124 @@ enum StoreArt {
         text(title, f, primary ? .white : BrandIcon.indigo, at: NSPoint(x: r.midX - size.width / 2, y: r.midY - size.height / 2))
     }
 
-    /// App header + connection card, as in the app.
-    static func header(in s: NSRect, detail: String) {
-        BrandIcon.app(side: 120).draw(in: NSRect(x: s.minX + 40, y: s.minY + 120, width: 120, height: 120))
-        text("ClipBridge", NSFont.systemFont(ofSize: 54, weight: .bold), ink, at: NSPoint(x: s.minX + 180, y: s.minY + 128))
-        text("Mac ↔ phone clipboard", NSFont.systemFont(ofSize: 32), grey, at: NSPoint(x: s.minX + 182, y: s.minY + 196))
-        let c = card(in: s, y: 290, height: 200)
-        green.setFill()
-        NSBezierPath(ovalIn: NSRect(x: c.minX + 44, y: c.minY + 62, width: 30, height: 30)).fill()
-        text("Connected to MacBook Air", NSFont.systemFont(ofSize: 42, weight: .semibold), ink, at: NSPoint(x: c.minX + 100, y: c.minY + 48))
-        text(detail, NSFont.systemFont(ofSize: 32), grey, at: NSPoint(x: c.minX + 100, y: c.minY + 112))
+    static let soft = NSColor(srgbRed: 0xE8 / 255, green: 0xE7 / 255, blue: 0xFD / 255, alpha: 1)
+
+    /// The app's top: logo row, then the colour status card with the white "Send clipboard to Mac" button.
+    /// Returns the y (screen coordinates) just below it.
+    @discardableResult
+    static func header(in s: NSRect, pill: String = "Connected", title: String = "MacBook Air",
+                       detail: String = "Same Wi-Fi · end-to-end encrypted", send: Bool = true) -> CGFloat {
+        BrandIcon.app(side: 92).draw(in: NSRect(x: s.minX + 44, y: s.minY + 110, width: 92, height: 92))
+        text("ClipBridge", NSFont.systemFont(ofSize: 46, weight: .semibold), ink, at: NSPoint(x: s.minX + 150, y: s.minY + 126))
+        let h: CGFloat = send ? 470 : 330
+        let hero = NSRect(x: s.minX + 40, y: s.minY + 240, width: s.width - 80, height: h)
+        NSGradient(starting: BrandIcon.teal, ending: BrandIcon.indigo)?.draw(in: NSBezierPath(roundedRect: hero, xRadius: 56, yRadius: 56), angle: -35)
+        // pill
+        let pw = (pill as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 28, weight: .semibold)]).width + 80
+        let pillR = NSRect(x: hero.minX + 44, y: hero.minY + 44, width: pw, height: 62)
+        NSColor(white: 1, alpha: 0.2).setFill(); NSBezierPath(roundedRect: pillR, xRadius: 31, yRadius: 31).fill()
+        NSColor(srgbRed: 0x4A / 255, green: 0xDE / 255, blue: 0x80 / 255, alpha: 1).setFill()
+        NSBezierPath(ovalIn: NSRect(x: pillR.minX + 24, y: pillR.midY - 10, width: 20, height: 20)).fill()
+        text(pill, NSFont.systemFont(ofSize: 28, weight: .semibold), .white, at: NSPoint(x: pillR.minX + 56, y: pillR.minY + 13))
+        devicesGlyph(NSRect(x: hero.maxX - 130, y: hero.minY + 36, width: 86, height: 86))
+        text(title, NSFont.systemFont(ofSize: 56, weight: .bold), .white, at: NSPoint(x: hero.minX + 44, y: hero.minY + 140))
+        text(detail, NSFont.systemFont(ofSize: 31), NSColor(white: 1, alpha: 0.88), at: NSPoint(x: hero.minX + 46, y: hero.minY + 222))
+        if send {
+            let b = NSRect(x: hero.minX + 44, y: hero.maxY - 150, width: hero.width - 88, height: 108)
+            NSColor.white.setFill(); NSBezierPath(roundedRect: b, xRadius: 54, yRadius: 54).fill()
+            let f = NSFont.systemFont(ofSize: 34, weight: .semibold)
+            let label = "↑  Send clipboard to Mac"
+            let size = (label as NSString).size(withAttributes: [.font: f])
+            text(label, f, BrandIcon.indigo, at: NSPoint(x: b.midX - size.width / 2, y: b.midY - size.height / 2))
+        }
+        return hero.maxY + 36
     }
+
+    /// Phone + laptop outline, white.
+    static func devicesGlyph(_ r: NSRect) {
+        let u = r.width / 24
+        let p = NSBezierPath()
+        p.appendRoundedRect(NSRect(x: r.minX + 2.5 * u, y: r.minY + 7.5 * u, width: 7 * u, height: 12.5 * u), xRadius: u, yRadius: u)
+        p.appendRoundedRect(NSRect(x: r.minX + 12.5 * u, y: r.minY + 5 * u, width: 9 * u, height: 10 * u), xRadius: u, yRadius: u)
+        p.move(to: NSPoint(x: r.minX + 11 * u, y: r.minY + 18.5 * u)); p.line(to: NSPoint(x: r.minX + 23 * u, y: r.minY + 18.5 * u))
+        p.lineWidth = 1.8 * u; p.lineCapStyle = .round
+        NSColor(white: 1, alpha: 0.85).setStroke(); p.stroke()
+    }
+
+    enum Kind { case fromMac, toMac, file }
+
+    /// Round badge with an arrow (from/to Mac) or a page (file), like the app's history rows.
+    static func badge(_ kind: Kind, center c: NSPoint, size: CGFloat) {
+        let color: NSColor = kind == .fromMac ? BrandIcon.teal : kind == .toMac ? BrandIcon.indigo : grey
+        color.withAlphaComponent(0.16).setFill()
+        NSBezierPath(ovalIn: NSRect(x: c.x - size / 2, y: c.y - size / 2, width: size, height: size)).fill()
+        let u = size / 40
+        let p = NSBezierPath()
+        switch kind {
+        case .fromMac:
+            p.move(to: NSPoint(x: c.x, y: c.y - 9 * u)); p.line(to: NSPoint(x: c.x, y: c.y + 4 * u))
+            p.move(to: NSPoint(x: c.x - 6 * u, y: c.y - 2 * u)); p.line(to: NSPoint(x: c.x, y: c.y + 4 * u)); p.line(to: NSPoint(x: c.x + 6 * u, y: c.y - 2 * u))
+            p.move(to: NSPoint(x: c.x - 9 * u, y: c.y + 10 * u)); p.line(to: NSPoint(x: c.x + 9 * u, y: c.y + 10 * u))
+        case .toMac:
+            p.move(to: NSPoint(x: c.x, y: c.y + 4 * u)); p.line(to: NSPoint(x: c.x, y: c.y - 9 * u))
+            p.move(to: NSPoint(x: c.x - 6 * u, y: c.y - 3 * u)); p.line(to: NSPoint(x: c.x, y: c.y - 9 * u)); p.line(to: NSPoint(x: c.x + 6 * u, y: c.y - 3 * u))
+            p.move(to: NSPoint(x: c.x - 9 * u, y: c.y + 10 * u)); p.line(to: NSPoint(x: c.x + 9 * u, y: c.y + 10 * u))
+        case .file:
+            p.appendRoundedRect(NSRect(x: c.x - 7 * u, y: c.y - 10 * u, width: 14 * u, height: 20 * u), xRadius: 2 * u, yRadius: 2 * u)
+        }
+        p.lineWidth = 3.2 * u; p.lineCapStyle = .round; p.lineJoinStyle = .round
+        color.setStroke(); p.stroke()
+    }
+
+    /// The three quick-action tiles. Returns the y below them.
+    @discardableResult
+    static func tiles(in s: NSRect, y: CGFloat, labels: [String] = ["Clipboard history", "In Quick Settings ✓", "Pause syncing"]) -> CGFloat {
+        let gap: CGFloat = 22, w = (s.width - 96 - 2 * gap) / 3, h: CGFloat = 230
+        for (i, label) in labels.enumerated() {
+            let r = NSRect(x: s.minX + 48 + CGFloat(i) * (w + gap), y: s.minY + y, width: w, height: h)
+            NSColor.white.setFill(); NSBezierPath(roundedRect: r, xRadius: 44, yRadius: 44).fill()
+            soft.setFill(); NSBezierPath(ovalIn: NSRect(x: r.minX + 28, y: r.minY + 28, width: 76, height: 76)).fill()
+            tileGlyph(i, center: NSPoint(x: r.minX + 66, y: r.minY + 66))
+            NSAttributedString(string: label, attributes: [.font: NSFont.systemFont(ofSize: 29, weight: .semibold), .foregroundColor: ink])
+                .draw(with: NSRect(x: r.minX + 28, y: r.minY + 130, width: r.width - 48, height: 90), options: [.usesLineFragmentOrigin])
+        }
+        return y + h + 36
+    }
+
+    /// Clock (history), grid (Quick Settings), pause — line icons like the app's.
+    static func tileGlyph(_ i: Int, center c: NSPoint) {
+        let p = NSBezierPath()
+        switch i {
+        case 0:
+            p.appendOval(in: NSRect(x: c.x - 19, y: c.y - 19, width: 38, height: 38))
+            p.move(to: NSPoint(x: c.x, y: c.y - 10)); p.line(to: c); p.line(to: NSPoint(x: c.x + 8, y: c.y + 6))
+        case 1:
+            for (dx, dy) in [(-17, -17), (3, -17), (-17, 3)] { p.appendRect(NSRect(x: c.x + CGFloat(dx), y: c.y + CGFloat(dy), width: 14, height: 14)) }
+            p.move(to: NSPoint(x: c.x + 10, y: c.y + 3)); p.line(to: NSPoint(x: c.x + 10, y: c.y + 17))
+            p.move(to: NSPoint(x: c.x + 3, y: c.y + 10)); p.line(to: NSPoint(x: c.x + 17, y: c.y + 10))
+        default:
+            p.move(to: NSPoint(x: c.x - 7, y: c.y - 14)); p.line(to: NSPoint(x: c.x - 7, y: c.y + 14))
+            p.move(to: NSPoint(x: c.x + 7, y: c.y - 14)); p.line(to: NSPoint(x: c.x + 7, y: c.y + 14))
+        }
+        p.lineWidth = 4.5; p.lineCapStyle = .round; p.lineJoinStyle = .round
+        BrandIcon.indigo.setStroke(); p.stroke()
+    }
+
+    /// One history/recent row: badge, text, time.
+    static func clipRow(_ kind: Kind, _ title: String, _ time: String, in r: NSRect, meta: String? = nil) {
+        badge(kind, center: NSPoint(x: r.minX + 52, y: r.midY), size: 76)
+        let f = NSFont.systemFont(ofSize: 33)
+        let style = NSMutableParagraphStyle(); style.lineBreakMode = .byTruncatingTail
+        if let meta {
+            NSAttributedString(string: title, attributes: [.font: f, .foregroundColor: ink, .paragraphStyle: style])
+                .draw(with: NSRect(x: r.minX + 112, y: r.minY + 24, width: r.width - 140, height: 44), options: [.usesLineFragmentOrigin])
+            text(meta, NSFont.systemFont(ofSize: 27), grey, at: NSPoint(x: r.minX + 112, y: r.minY + 76))
+        } else {
+            NSAttributedString(string: title, attributes: [.font: f, .foregroundColor: ink, .paragraphStyle: style])
+                .draw(with: NSRect(x: r.minX + 112, y: r.midY - 22, width: r.width - 260, height: 44), options: [.usesLineFragmentOrigin])
+            let tw = (time as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 28)]).width
+            text(time, NSFont.systemFont(ofSize: 28), grey, at: NSPoint(x: r.maxX - 30 - tw, y: r.midY - 18))
+        }
+    }
+
 }

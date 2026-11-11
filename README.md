@@ -25,7 +25,8 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
 
 - **Text, Mac → phone:** copy on the Mac, paste on the phone. Automatic.
 - **Text, phone → Mac:** copy in most Android apps and it's on the Mac clipboard. Where an app copies
-  silently, use the **Send to Mac** Quick Settings tile, **Share → Send to Mac**, or **Send clipboard to Mac** in the app.
+  silently, use the **Send to Mac** toggle in your notification panel, **Share → Send to Mac**, or the big
+  **Send clipboard to Mac** button on ClipBridge's main screen.
 - **Files, Mac → phone (up to 25 MB each, up to 20 at once):** ⌘C one or several files in Finder. The phone only
   learns their names and sizes; the files themselves move **only when you use them**: open ClipBridge and tap
   **Share…** (attaches them in Gmail, WhatsApp, Drive…) or **Save to Downloads**. Images can also simply be pasted.
@@ -40,6 +41,9 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
   straight onto the Mac clipboard — ⌘V in Notes, Messages, Slack.
 - **Files, phone → Mac:** **Share → Send to Mac** from any app. Files land in your Mac's **Downloads** and on its
   clipboard, ready for ⌘V in Finder or Mail.
+- **Clipboard history (phone):** **Recent clips** on the main screen and a searchable **Clipboard history** of
+  what crossed between your devices — grouped by day; tap to copy again, long-press to send to the Mac again.
+  Kept only on the phone, encrypted; 25/50/100 clips for 1/7/30 days, or off.
 - **Private by design:** a direct encrypted connection on your own Wi-Fi (AES-256-GCM with a key that only ever
   travels in the pairing QR code). Passwords copied from password managers are never sent.
 
@@ -106,11 +110,12 @@ never screen content — and sends only to your paired Mac.
 
 - **Bluetooth fallback:** in ClipBridge, tap **Allow Bluetooth** on the setup card and allow **Nearby devices**.
   Without it, ClipBridge simply stays Wi-Fi-only.
-- **"Send to Mac" quick toggle** (next to Torch, Auto rotate…): in ClipBridge tap **Add Send to Mac to Quick
-  Settings** → **Add** (Android 13+). Samsung places new toggles at the bottom of the panel: tap ✏️ and drag
-  **Send to Mac** up into the grid. On Android 10–12, swipe down twice → ✏️ → drag **Send to Mac** in.
-  The toggle lights up with **Ready** while your Mac is connected; tap it after copying to send your clipboard.
-- **Battery:** in ClipBridge, tap **Let ClipBridge run in the background**, so Android doesn't pause it.
+- **"Send to Mac" quick toggle** (next to Torch, Auto rotate…): in ClipBridge tap the **Add to Quick Settings**
+  tile — a short guide with **Add it now** (Android 13+; tap **Add**). Samsung places new toggles at the end of
+  the panel: tap ✏️ and drag **Send to Mac** up into the grid. On Android 10–12 the guide shows how to add it by
+  hand. The toggle lights up with **Ready** while your Mac is connected; tap it after copying to send your
+  clipboard. Once it's in place, the tile says **In Quick Settings ✓**.
+- **Battery:** in ClipBridge → Settings, tap **Run in the background**, so Android doesn't pause it.
 - **Notifications** are optional. With them off, everything still works; use the ClipBridge screen for
   **Save to Downloads**.
 
@@ -119,12 +124,14 @@ never screen content — and sends only to your paired Mac.
 | You want to… | Do this |
 |---|---|
 | Send text Mac → phone | Copy on the Mac. Paste on the phone. |
-| Send text phone → Mac | Copy on the phone (automatic copy on), or tap the **Send to Mac** tile. Paste on the Mac. |
+| Send text phone → Mac | Copy on the phone, then tap **Send to Mac** in your notification panel (or **Send clipboard to Mac** in the app; ClipBridge Pro sends by itself). Paste on the Mac. |
+| Find something you sent earlier | ClipBridge → **Recent clips**, or **Clipboard history** to search. Tap to copy; long-press → **Send to Mac**. |
 | Send files Mac → phone | ⌘C one or several files in Finder. On the phone open ClipBridge → **Share…** and pick Gmail, WhatsApp, Drive… **or** **Save to Downloads** (saved in *Download/ClipBridge*). |
 | Send a file phone → Mac | **Share → Send to Mac**. It's in **Downloads** on the Mac; ⌘V pastes it. |
 | Send a screenshot Mac → phone | ⌃⇧⌘4 (copies to the clipboard), then paste on the phone or **Save to Downloads**. |
 | Send an image phone → Mac | Copy it on the phone (Chrome: long-press → **Copy image**), then ⌘V on the Mac. |
-| Pause syncing | Mac menu → **Pause syncing**, or ClipBridge → **Pause syncing** on the phone. |
+| Pause syncing | Mac menu → **Pause syncing**, or the **Pause syncing** tile in ClipBridge on the phone. |
+| Clear or turn off history | ClipBridge → **Clipboard history** → ⋮ → **Clear history** / **Settings**. |
 | Pair a new phone / revoke the old one | Mac menu → **Reset pairing…**, then scan the new code. |
 
 Note: most Android apps (Gmail included) accept **pasted images** but ignore other pasted files such as PDFs —
