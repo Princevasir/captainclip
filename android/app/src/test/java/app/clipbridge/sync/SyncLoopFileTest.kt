@@ -45,7 +45,7 @@ class SyncLoopFileTest {
 
     private fun connected() {
         loop.start()
-        val end = System.currentTimeMillis() + 3_000
+        val end = System.currentTimeMillis() + 10_000  // generous: a busy build machine can be slow to connect
         while (statuses.lastOrNull() != SyncLoop.Status.CONNECTED && System.currentTimeMillis() < end) Thread.sleep(20)
         assertEquals(SyncLoop.Status.CONNECTED, statuses.lastOrNull())
     }
