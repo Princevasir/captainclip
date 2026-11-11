@@ -13,3 +13,5 @@ dist/
 
 # Play Store trailer (≈20 MB, regenerate: cd mac && swift run iconmaker --trailer ../docs/play-store/screenshots ../docs/play-store/trailer.mp4)
 docs/play-store/trailer.mp4
+# Play upload bundle (built: cd android && ./gradlew bundleStandardRelease)
+docs/play-store/ClipBridge-play.aab
