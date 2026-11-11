@@ -37,9 +37,8 @@ help people with disabilities, so Pro would very likely be rejected.
 > upload key. Consequence: the Play version can't update a ClipBridge installed from GitHub (different
 > signature) — users switching uninstall once and pair again.
 
-> Target API: Play requires a recent `targetSdk` (new apps: within about a year of the newest Android). The
-> app targets API 35. If Play Console says a higher level is required, the build needs the newer Android SDK
-> platform installed — ask and it's a small change.
+> Target API: the app targets Android 16 (API 36), which Google Play requires for new apps since
+> 31 August 2026.
 
 ---
 
