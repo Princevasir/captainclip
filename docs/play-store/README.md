@@ -59,6 +59,7 @@ ClipBridge links your Android phone and your Mac so copy and paste just works be
 • Screenshots and images: take a screenshot on the Mac and paste it on the phone.
 • Files: copy up to 20 files in Finder, then share them to Gmail, WhatsApp or Drive, or save them to Downloads — nothing is downloaded until you do.
 • Phone to Mac files: Share → Send to Mac from any app; they land in the Mac's Downloads.
+• Clipboard history: search and reuse recent clips you moved between your devices — kept only on your phone, encrypted.
 • Works on the same Wi-Fi, and over Bluetooth when there's no shared Wi-Fi (Android 12+).
 
 Private by design
