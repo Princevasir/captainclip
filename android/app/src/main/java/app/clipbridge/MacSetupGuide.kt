@@ -14,5 +14,9 @@ object MacSetupGuide {
         "Click that icon → Pair phone…, then on this phone tap Scan QR code and point it at the code.",
     )
 
+    /** A drawn macOS picture for each step (generated: cd mac && swift run iconmaker --guide <res/drawable-nodpi>). */
+    val pictures = listOf(R.drawable.guide_mac_1, R.drawable.guide_mac_2, R.drawable.guide_mac_3, R.drawable.guide_mac_4,
+        R.drawable.guide_mac_5)
+
     val shareText = "ClipBridge for Mac — download ClipBridge-mac.zip from $DOWNLOAD_URL"
 }

@@ -19,6 +19,7 @@ class MacSetupActivity : Activity() {
             val row = layoutInflater.inflate(R.layout.item_setup_step, list, false)
             row.findViewById<TextView>(R.id.stepNumber).text = "${i + 1}"
             row.findViewById<TextView>(R.id.stepText).text = step
+            row.findViewById<android.widget.ImageView>(R.id.stepPicture).setImageResource(MacSetupGuide.pictures[i])
             list.addView(row)
         }
         findViewById<TextView>(R.id.linkText).text = MacSetupGuide.DOWNLOAD_URL

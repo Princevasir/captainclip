@@ -8,6 +8,11 @@ if args.count == 3, args[1] == "--play" {
     exit(0)
 }
 // iconmaker --store <screenshots folder with 1-connected.png, 2-quick-toggle.png> <out folder>
+// iconmaker --guide <out folder>  (pictures for the phone's "Set up your Mac" guide)
+if args.count == 3, args[1] == "--guide" {
+    try GuideArt.writeAll(to: URL(fileURLWithPath: args[2]))
+    exit(0)
+}
 // iconmaker --trailer <screenshots folder> <out.mp4> [stills folder]
 if args.count >= 4, args[1] == "--trailer" {
     let panels = StorePanels.all(screenshots: URL(fileURLWithPath: args[2]))

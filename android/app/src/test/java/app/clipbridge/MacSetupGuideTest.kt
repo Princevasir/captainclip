@@ -21,4 +21,9 @@ class MacSetupGuideTest {
     @Test fun shareTextCarriesTheLink() {
         assertTrue(MacSetupGuide.shareText.contains(MacSetupGuide.DOWNLOAD_URL))
     }
+
+    @Test fun everyStepHasAPicture() {
+        assertEquals(MacSetupGuide.steps.size, MacSetupGuide.pictures.size)
+        assertEquals(MacSetupGuide.pictures.size, MacSetupGuide.pictures.toSet().size)  // all different
+    }
 }
