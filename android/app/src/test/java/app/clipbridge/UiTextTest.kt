@@ -76,4 +76,10 @@ class UiTextTest {
         assertEquals("Yesterday", UiText.agoShort(30 * 3_600_000L))
         assertEquals("3 d", UiText.agoShort(3 * 86_400_000L))
     }
+
+    @Test fun ownCopiedMessageOnlyBeforeAndroid13() {
+        // Android 13+ shows its own "Copied" confirmation for every clipboard write; a second one is noise.
+        assertEquals(true, UiText.showOwnCopiedMessage(sdk = 32))
+        assertEquals(false, UiText.showOwnCopiedMessage(sdk = 33))
+    }
 }

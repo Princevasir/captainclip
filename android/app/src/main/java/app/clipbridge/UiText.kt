@@ -5,6 +5,9 @@ import kotlin.math.roundToLong
 
 /** Small, user-facing wording helpers (unit-tested). */
 object UiText {
+    /** Android 13+ confirms every clipboard write itself ("Copied"); our own message would be a second pop-up. */
+    fun showOwnCopiedMessage(sdk: Int): Boolean = sdk < 33
+
     /** Second line under the "Send to Mac" quick toggle. */
     fun tileSubtitle(connected: Boolean, bluetooth: Boolean): String = when {
         !connected -> "Mac not connected"
