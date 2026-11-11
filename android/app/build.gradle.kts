@@ -15,12 +15,12 @@ val signingProps = Properties().apply { if (signingFile.exists()) signingFile.in
 
 android {
     namespace = "app.clipbridge"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "app.clipbridge"
         minSdk = 29
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 6
         versionName = "0.4.0"
     }
