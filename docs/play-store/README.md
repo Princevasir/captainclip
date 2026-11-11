@@ -12,7 +12,7 @@ help people with disabilities, so Pro would very likely be rejected.
 | Privacy policy URL | `https://github.com/Princevasir/clipbridge/blob/main/PRIVACY.md` (live once pushed) |
 | App icon 512 × 512 | `docs/play-store/icon-512.png` |
 | Feature graphic 1024 × 500 | `docs/play-store/feature-graphic.png` |
-| Phone screenshots | `docs/play-store/screenshots/` (to be captured from your phone) |
+| Phone screenshots (1440 × 2880) | `docs/play-store/screenshots/` — main screen, and the Send to Mac quick toggle |
 | Store text, Data safety, declarations | below |
 
 ## Your steps in Play Console (only you can do these)
