@@ -26,6 +26,12 @@ data class HistoryLimits(val maxItems: Int = 50, val maxAgeMs: Long = 7 * DAY_MS
         val ITEM_CHOICES = listOf(25, 50, 100)
         val DAY_CHOICES = listOf(1, 7, 30)
         const val MAX_HTML_BYTES = 65_536
+
+        /** From saved settings; values outside the offered choices fall back to the defaults (50, 7 days). */
+        fun from(items: Int, days: Int): HistoryLimits = HistoryLimits(
+            maxItems = items.takeIf { it in ITEM_CHOICES } ?: 50,
+            maxAgeMs = (days.takeIf { it in DAY_CHOICES } ?: 7) * DAY_MS,
+        )
     }
 }
 
