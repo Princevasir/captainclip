@@ -41,4 +41,22 @@ class UiTextTest {
         assertEquals("Via Bluetooth", UiText.tileSubtitle(connected = true, bluetooth = true))
         assertEquals("Mac not connected", UiText.tileSubtitle(connected = false, bluetooth = false))
     }
+
+    @Test fun agoReadsNaturally() {
+        assertEquals("Just now", UiText.ago(30_000))
+        assertEquals("5 min ago", UiText.ago(5 * 60_000L + 10_000))
+        assertEquals("2 h ago", UiText.ago(2 * 3_600_000L + 60_000))
+        assertEquals("Yesterday", UiText.ago(30 * 3_600_000L))
+        assertEquals("3 days ago", UiText.ago(3 * 86_400_000L + 1))
+    }
+
+    @Test fun historyPreviewIsCompact() {
+        val long = "line one\n\nline two " + "x".repeat(200)
+        val text = UiText.historyPreview(app.clipbridge.history.HistoryEntry("1", 0, app.clipbridge.history.Direction.FROM_MAC, text = long))
+        assertEquals(141, text.length)
+        assertEquals(true, text.startsWith("line one line two"))
+        assertEquals(true, text.endsWith("…"))
+        val file = app.clipbridge.history.HistoryEntry("2", 0, app.clipbridge.history.Direction.TO_MAC, fileName = "Invoice.pdf", mime = "application/pdf", size = 430_080)
+        assertEquals("📄 Invoice.pdf · 420 KB", UiText.historyPreview(file))
+    }
 }

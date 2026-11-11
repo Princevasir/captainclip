@@ -23,6 +23,27 @@ object UiText {
 
     private const val OFFER_LIFETIME_MS = 10 * 60_000L
 
+    /** "Just now", "5 min ago", "2 h ago", "Yesterday", "3 days ago". */
+    fun ago(msAgo: Long): String {
+        val min = msAgo / 60_000
+        val hours = msAgo / 3_600_000
+        val days = msAgo / 86_400_000
+        return when {
+            min < 1 -> "Just now"
+            hours < 1 -> "$min min ago"
+            hours < 24 -> "$hours h ago"
+            days < 2 -> "Yesterday"
+            else -> "$days days ago"
+        }
+    }
+
+    /** One compact paragraph (≤ 140 chars + "…") for a history row; files as "📄 name · size". */
+    fun historyPreview(entry: app.clipbridge.history.HistoryEntry): String {
+        if (entry.isFile) return "📄 ${entry.fileName} · ${size(entry.size)}"
+        val flat = (entry.text ?: "").replace(Regex("\\s+"), " ").trim()
+        return if (flat.length <= 140) flat else flat.take(140) + "…"
+    }
+
     fun size(bytes: Long): String {
         if (bytes < 1024) return "$bytes B"
         val kb = bytes / 1024.0

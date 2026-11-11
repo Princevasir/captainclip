@@ -231,6 +231,11 @@
         <!-- More -->
         <LinearLayout style="@style/Card" android:paddingTop="10dp" android:paddingBottom="10dp">
             <TextView
+                android:id="@+id/historyRow"
+                style="@style/Row"
+                android:text="Clipboard history" />
+
+            <TextView
                 android:id="@+id/macGuideRow"
                 style="@style/Row"
                 android:text="Mac app setup guide" />

@@ -126,6 +126,7 @@ class MainActivity : Activity() {
             findViewById<View>(R.id.addTileButton).apply { visibility = View.VISIBLE; setOnClickListener { addTile() } }
         }
         findViewById<View>(R.id.repairRow).setOnClickListener { scanQr() }
+        findViewById<View>(R.id.historyRow).setOnClickListener { startActivity(Intent(this, HistoryActivity::class.java)) }
         findViewById<View>(R.id.macGuideRow).setOnClickListener { startActivity(Intent(this, MacSetupActivity::class.java)) }
         findViewById<View>(R.id.setupMacGuide).setOnClickListener { startActivity(Intent(this, MacSetupActivity::class.java)) }
         findViewById<View>(R.id.batteryRow).setOnClickListener {
