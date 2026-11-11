@@ -14,6 +14,7 @@ help people with disabilities, so Pro would very likely be rejected.
 | Feature graphic 1024 × 500 | `docs/play-store/feature-graphic.png` |
 | Phone screenshots — upload these 5 (1440 × 2880) | `docs/play-store/store-screenshots/store-1…5-*.png` — headline + phone. Regenerate: `cd mac && swift run iconmaker --store ../docs/play-store/screenshots ../docs/play-store/store-screenshots` |
 | Raw app screenshots (used inside the panels) | `docs/play-store/screenshots/` |
+| Trailer video (27.8 s, 1920 × 1080, silent) | `docs/play-store/trailer.mp4` — not in git; regenerate with `cd mac && swift run iconmaker --trailer ../docs/play-store/screenshots ../docs/play-store/trailer.mp4` |
 | Store text, Data safety, declarations | below |
 
 ## Your steps in Play Console (only you can do these)
@@ -24,6 +25,9 @@ help people with disabilities, so Pro would very likely be rejected.
 3. **Set up your app** (dashboard checklist) — answers below: privacy policy, app access, ads, content rating,
    target audience, data safety, government apps (no), financial features (none), health (no).
 4. **Store listing** — paste the text below, upload icon, feature graphic, screenshots. Category: *Productivity*.
+   **Video:** Play takes a YouTube link, not a file. Upload `trailer.mp4` to YouTube as **Unlisted** (or
+   Public), optionally add a track from YouTube Studio → Audio Library (free to use), turn off ads on it, and
+   paste the link into *Store listing → Video*.
 5. **Closed testing** (required for new personal accounts): create a closed track, upload the `.aab`, add
    **at least 12 testers** (their Google account emails) and keep it running **14 days** with them opted in.
 6. **Apply for production** from the dashboard after the 14 days, answer Google's short questionnaire about the

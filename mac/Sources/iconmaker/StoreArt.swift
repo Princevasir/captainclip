@@ -22,7 +22,7 @@ enum StoreArt {
         let highlight: String  // highlighted word (white pill)
         let sub: String
         let screen: Screen
-        var spotlight: NSPoint? = nil  // circle this point (canvas coordinates)
+        var spotlight: NSPoint? = nil  // outline around this point, in phone coordinates (phone is 1000 × 2080)
     }
 
     static func write(panels: [Panel], to folder: URL) throws {
@@ -54,29 +54,38 @@ enum StoreArt {
                                                                   .foregroundColor: NSColor(white: 1, alpha: 0.9)])
         sub.draw(with: NSRect(x: 124, y: 700, width: 1200, height: 200), options: [.usesLineFragmentOrigin])
         // Phone (runs off the bottom edge)
-        let phone = NSRect(x: 220, y: 960, width: 1000, height: 2080)
-        NSColor(white: 0.08, alpha: 1).setFill()
-        NSBezierPath(roundedRect: phone, xRadius: 120, yRadius: 120).fill()
-        let screen = phone.insetBy(dx: 26, dy: 26)
-        NSGraphicsContext.saveGraphicsState()
-        NSBezierPath(roundedRect: screen, xRadius: 96, yRadius: 96).addClip()
-        switch p.screen {
-        case .image(let url):
-            if let img = NSImage(contentsOf: url) {
-                let h = screen.width * img.size.height / img.size.width
-                img.draw(in: NSRect(x: screen.minX, y: screen.minY, width: screen.width, height: h),
-                         from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+        phoneImage(p).draw(in: NSRect(x: 220, y: 960, width: phoneSize.width, height: phoneSize.height),
+                           from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+    }
+
+    /// The phone (bezel + screen, plus the optional spotlight), at its native 1000 × 2080 size; scale it freely.
+    static let phoneSize = NSSize(width: 1000, height: 2080)
+    static func phoneImage(_ p: Panel) -> NSImage {
+        NSImage(size: phoneSize, flipped: true) { phone in
+            NSColor(white: 0.08, alpha: 1).setFill()
+            NSBezierPath(roundedRect: phone, xRadius: 120, yRadius: 120).fill()
+            let screen = phone.insetBy(dx: 26, dy: 26)
+            NSGraphicsContext.saveGraphicsState()
+            NSBezierPath(roundedRect: screen, xRadius: 96, yRadius: 96).addClip()
+            switch p.screen {
+            case .image(let url):
+                if let img = NSImage(contentsOf: url) {
+                    let h = screen.width * img.size.height / img.size.width
+                    img.draw(in: NSRect(x: screen.minX, y: screen.minY, width: screen.width, height: h),
+                             from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+                }
+            case .cards(let drawCards):
+                screenBg.setFill(); screen.fill()
+                drawCards(screen)
             }
-        case .cards(let drawCards):
-            screenBg.setFill(); screen.fill()
-            drawCards(screen)
-        }
-        NSGraphicsContext.restoreGraphicsState()
-        if let c = p.spotlight {
-            let ring = NSBezierPath(roundedRect: NSRect(x: c.x - 120, y: c.y - 140, width: 240, height: 290), xRadius: 56, yRadius: 56)
-            ring.lineWidth = 14
-            NSColor(srgbRed: 0xFA / 255, green: 0xCC / 255, blue: 0x15 / 255, alpha: 1).setStroke()
-            ring.stroke()
+            NSGraphicsContext.restoreGraphicsState()
+            if let c = p.spotlight {
+                let ring = NSBezierPath(roundedRect: NSRect(x: c.x - 120, y: c.y - 140, width: 240, height: 290), xRadius: 56, yRadius: 56)
+                ring.lineWidth = 14
+                NSColor(srgbRed: 0xFA / 255, green: 0xCC / 255, blue: 0x15 / 255, alpha: 1).setStroke()
+                ring.stroke()
+            }
+            return true
         }
     }
 

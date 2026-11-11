@@ -10,3 +10,6 @@ android/app/build/
 android/build/
 android/.kotlin/
 dist/
+
+# Play Store trailer (≈20 MB, regenerate: cd mac && swift run iconmaker --trailer ../docs/play-store/screenshots ../docs/play-store/trailer.mp4)
+docs/play-store/trailer.mp4

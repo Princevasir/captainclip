@@ -8,6 +8,16 @@ if args.count == 3, args[1] == "--play" {
     exit(0)
 }
 // iconmaker --store <screenshots folder with 1-connected.png, 2-quick-toggle.png> <out folder>
+// iconmaker --trailer <screenshots folder> <out.mp4> [stills folder]
+if args.count >= 4, args[1] == "--trailer" {
+    let panels = StorePanels.all(screenshots: URL(fileURLWithPath: args[2]))
+    if args.count == 5 {
+        try Trailer.stills(panels: panels, times: [1.6, 4.4, 5.6, 9.8, 13.8, 18.2, 22.4, 25.0], to: URL(fileURLWithPath: args[4]))
+    }
+    try Trailer.render(panels: panels, to: URL(fileURLWithPath: args[3]))
+    print(String(format: "trailer: %.1f s", Trailer.duration(panels)))
+    exit(0)
+}
 if args.count == 4, args[1] == "--store" {
     let shots = URL(fileURLWithPath: args[2])
     try StoreArt.write(panels: StorePanels.all(screenshots: shots), to: URL(fileURLWithPath: args[3]))

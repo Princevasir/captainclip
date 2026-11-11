@@ -11,7 +11,7 @@ enum StorePanels {
             .init(file: "store-2-one-tap.png", lead: "One tap.", plain: "Sent to", highlight: "Mac",
                   sub: "Add Send to Mac next to Torch in Quick Settings. Copy, tap, paste on your Mac.",
                   screen: .image(screenshots.appendingPathComponent("2-quick-toggle.png")),
-                  spotlight: NSPoint(x: 1017, y: 2590)),  // the Send to Mac toggle in that screenshot
+                  spotlight: NSPoint(x: 797, y: 1630)),  // the Send to Mac toggle in that screenshot
             .init(file: "store-3-files.png", lead: "Copy files.", plain: "Share", highlight: "anywhere",
                   sub: "⌘C up to 20 files on your Mac, then share them to Gmail, WhatsApp or Drive.",
                   screen: .cards(filesScreen)),
