@@ -25,7 +25,7 @@ class UiTextTest {
             UiText.tip(autoCopy = true, bluetooth = true))
     }
 
-    @Test fun tipForLiteSaysToTapSendToMac() {
+    @Test fun tipForStandardAppSaysToTapSendToMac() {
         assertEquals("After copying on the phone, tap the “Send to Mac” quick toggle or use Share → Send to Mac. " +
             "Same Wi-Fi, or Bluetooth when nearby · end-to-end encrypted.",
             UiText.tip(autoCopy = false, bluetooth = true))

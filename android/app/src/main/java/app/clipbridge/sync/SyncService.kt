@@ -176,7 +176,7 @@ class SyncService : Service() {
 
     /** Returns false if Android refused to let us run in the foreground. */
     // The manifest declares foregroundServiceType="connectedDevice" (checked in both built APKs); lint misreads it
-    // once the full/lite flavours exist.
+    // once the standard/pro flavours exist.
     @android.annotation.SuppressLint("ForegroundServiceType")
     private fun ensureRunning(): Boolean {
         if (loop != null) return true

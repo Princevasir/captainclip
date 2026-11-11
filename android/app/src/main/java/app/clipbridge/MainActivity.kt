@@ -119,7 +119,7 @@ class MainActivity : Activity() {
         setupButton.setOnClickListener { onSetupAction() }
         pauseButton.setOnClickListener { toggleSync() }
         findViewById<View>(R.id.sendClipboardButton).setOnClickListener { sendClipboard() }
-        if (!Edition.AUTO_COPY) findViewById<View>(R.id.liteHint).visibility = View.VISIBLE
+        if (!Edition.AUTO_COPY) findViewById<View>(R.id.sendHint).visibility = View.VISIBLE
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             findViewById<View>(R.id.addTileButton).apply { visibility = View.VISIBLE; setOnClickListener { addTile() } }
         }
@@ -129,7 +129,7 @@ class MainActivity : Activity() {
         }
         findViewById<TextView>(R.id.tipText).text = UiText.tip(Edition.AUTO_COPY,
             SetupStep.bluetoothFallbackAvailable(android.os.Build.VERSION.SDK_INT, Edition.LOCATION_FOR_BLUETOOTH))
-        if (!Edition.AUTO_COPY) findViewById<View>(R.id.autoCopyRow).visibility = View.GONE  // Lite has no automatic copy
+        if (!Edition.AUTO_COPY) findViewById<View>(R.id.autoCopyRow).visibility = View.GONE  // only ClipBridge Pro has automatic copy
         findViewById<View>(R.id.autoCopyRow).setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }

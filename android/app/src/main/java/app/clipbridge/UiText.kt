@@ -12,7 +12,7 @@ object UiText {
         else -> "Ready"
     }
 
-    /** The tip at the bottom of the main screen, worded for the full app or Lite. */
+    /** The tip at the bottom of the main screen, worded for ClipBridge Pro (automatic copy) or the standard app. */
     fun tip(autoCopy: Boolean, bluetooth: Boolean): String {
         val how = if (autoCopy) "Copies on the phone go to your Mac by themselves. The “Send to Mac” quick toggle and " +
             "Share → Send to Mac work too."

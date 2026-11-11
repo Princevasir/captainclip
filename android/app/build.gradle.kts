@@ -38,22 +38,23 @@ android {
 
     buildFeatures { buildConfig = true }
 
-    // full: automatic copy (accessibility service). lite: no accessibility service, so Play Protect
-    // doesn't block installs from the browser; phone → Mac uses the Send to Mac tile / Share / in-app button.
-    // Same package and signing key: either installs over the other and keeps the pairing.
+    // standard ("ClipBridge"): no accessibility service and no location, so Play Protect allows browser
+    // installs and it can go on Google Play (which only allows accessibility services for disability use).
+    // pro ("ClipBridge Pro"): adds automatic copy (accessibility service) and Bluetooth on Android 10-11 (location).
+    // Same package and signing key on GitHub: either installs over the other and keeps the pairing.
     flavorDimensions += "edition"
     productFlavors {
-        create("full") {
+        create("standard") {
             dimension = "edition"
-            buildConfigField("boolean", "AUTO_COPY", "true")
-            buildConfigField("boolean", "LOCATION_FOR_BLUETOOTH", "true")
-        }
-        create("lite") {
-            dimension = "edition"
-            versionNameSuffix = "-lite"
             buildConfigField("boolean", "AUTO_COPY", "false")
             // No location permission at all: Bluetooth fallback is Android 12+ only (Nearby devices).
             buildConfigField("boolean", "LOCATION_FOR_BLUETOOTH", "false")
+        }
+        create("pro") {
+            dimension = "edition"
+            versionNameSuffix = "-pro"
+            buildConfigField("boolean", "AUTO_COPY", "true")
+            buildConfigField("boolean", "LOCATION_FOR_BLUETOOTH", "true")
         }
     }
 

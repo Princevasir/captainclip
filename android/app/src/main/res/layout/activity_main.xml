@@ -200,12 +200,12 @@
                 android:text="Send clipboard to Mac" />
 
             <TextView
-                android:id="@+id/liteHint"
+                android:id="@+id/sendHint"
                 style="@style/Secondary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="ClipBridge Lite: after copying on the phone, tap Send to Mac (here, in Quick Settings, or Share → Send to Mac). Mac → phone is automatic."
+                android:text="After copying on the phone, tap Send to Mac (here, in Quick Settings, or Share → Send to Mac). Mac → phone is automatic."
                 android:visibility="gone" />
 
             <Button

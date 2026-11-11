@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Full edition only: automatic copy. Lite leaves this out so Play Protect allows browser installs. -->
+<!-- ClipBridge Pro only: automatic copy. the standard ClipBridge leaves this out so Play Protect allows browser installs. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <service
