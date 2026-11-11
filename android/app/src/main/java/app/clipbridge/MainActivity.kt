@@ -258,7 +258,7 @@ class MainActivity : Activity() {
         bar.requestAddTileService(
             android.content.ComponentName(this, app.clipbridge.capture.SendTileService::class.java),
             getString(R.string.tile_label),
-            android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_menu_send),
+            android.graphics.drawable.Icon.createWithResource(this, R.drawable.ic_tile_send),
             mainExecutor,
         ) { result ->
             if (result == android.app.StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED) toast("Send to Mac is already in Quick Settings")

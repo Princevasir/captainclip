@@ -35,4 +35,10 @@ class UiTextTest {
         assertEquals(false, UiText.tip(autoCopy = false, bluetooth = false).contains("Bluetooth"))
         assertEquals(true, UiText.tip(autoCopy = false, bluetooth = false).endsWith("Same Wi-Fi · end-to-end encrypted."))
     }
+
+    @Test fun quickToggleShowsTheConnection() {
+        assertEquals("Ready", UiText.tileSubtitle(connected = true, bluetooth = false))
+        assertEquals("Via Bluetooth", UiText.tileSubtitle(connected = true, bluetooth = true))
+        assertEquals("Mac not connected", UiText.tileSubtitle(connected = false, bluetooth = false))
+    }
 }
