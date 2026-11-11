@@ -7,15 +7,15 @@ directly and end-to-end encrypted. No account, no cloud, no server.
 | | |
 |---|---|
 | 🖥 **Mac app** | [**Download ClipBridge for Mac**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-mac.zip) · macOS 13 Ventura or later · Apple silicon and Intel |
-| 📱 **Android app** | [**Download ClipBridge for Android**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android.apk) · Android 10 or later |
-| 📱 **Android app — Lite** | [**Download ClipBridge Lite**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android-lite.apk) · no automatic copy and no location access, so Google Play Protect doesn't block the install (see below) |
+| 📱 **Android app** | [**Download ClipBridge for Android**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android.apk) · Android 10 or later · installs normally |
+| 📱 **Android app — Pro** | [**Download ClipBridge Pro**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android-pro.apk) · adds automatic copy (see below) |
 
-**Full or Lite?** Both do everything Mac → phone automatically. The full app also notices when you copy on the
-phone and sends it to the Mac by itself — that needs an Android *accessibility service*, which Play Protect
-blocks for apps installed from a browser in some countries. **ClipBridge Lite** leaves it out: after copying on
-the phone you tap **Send to Mac** (Quick Settings tile, Share, or the button in the app). Lite also has no
-location permission, so its Bluetooth fallback needs Android 12 or later. Either one installs over
-the other and keeps your pairing.
+**ClipBridge or ClipBridge Pro?** Both do everything Mac → phone automatically. **ClipBridge** sends from the
+phone when you tap **Send to Mac** (the quick toggle next to Torch, Share, or the button in the app); it asks for
+no location and no accessibility access, so it installs without warnings (Bluetooth fallback: Android 12+).
+**ClipBridge Pro** also notices when you copy on the phone and sends it by itself — that needs an Android
+*accessibility service*, which Google Play Protect blocks for apps installed from a browser in some countries
+(see the install steps). Either one installs over the other and keeps your pairing.
 
 All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge/releases).
 
@@ -63,23 +63,25 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
 ### 2. Android phone
 
 1. On the phone, open **[ClipBridge-android.apk](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android.apk)**
-   (download it in Chrome, or send it from the Mac with Quick Share / AirDrop).
+   — or **[ClipBridge-android-pro.apk](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android-pro.apk)**
+   for Pro (download it in Chrome, or send it from the Mac with Quick Share / AirDrop).
 2. Tap the downloaded file to install. If Android asks, allow **Install unknown apps** for Chrome or My Files.
    - **Samsung phones:** if installing is blocked, turn off **Settings → Security and privacy → Auto Blocker**
      while you install (you can turn it back on afterwards).
    - **Google Play Protect** may say the developer is unknown → **More details → Install anyway**.
-   - **"This app can request access to sensitive data" with only an OK button** — Play Protect blocks apps that
-     use an *accessibility service* (ClipBridge's automatic copy, which only reads the text of "Copy"/"Copied"
-     labels) when they're installed from a browser, chat app or file manager. In some countries (e.g. India,
+   - **ClipBridge Pro: "This app can request access to sensitive data" with only an OK button** — Play Protect
+     blocks apps that use an *accessibility service* (Pro's automatic copy, which only reads the text of
+     "Copy"/"Copied" labels) when they're installed from a browser, chat app or file manager. In some countries (e.g. India,
      Singapore, Thailand, Brazil) there's no "Install anyway". Install it from your Mac over USB instead — this
      block doesn't apply there, and later versions from this page install over it normally:
      1. On the phone: **Settings → About phone → Software information**, tap **Build number** 7 times, then
         **Settings → Developer options → USB debugging** on. Connect the phone to the Mac and allow the prompt.
      2. On the Mac, in Terminal (needs [Homebrew](https://brew.sh)):
-        `brew install android-platform-tools`, then `adb install ~/Downloads/ClipBridge-android.apk`
+        `brew install android-platform-tools`, then `adb install ~/Downloads/ClipBridge-android-pro.apk`
      3. Turn **Developer options** off again afterwards (banking apps often refuse to run while it's on).
 
-     Please don't turn Play Protect off to get around it — it protects you from other apps too.
+     Or use the standard **ClipBridge**, which installs normally. Please don't turn Play Protect off to get
+     around it — it protects you from other apps too.
 3. Open **ClipBridge**.
 
 ### 3. Pair (once)
@@ -88,7 +90,7 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
 2. On the phone: ClipBridge → **Scan QR code**, allow the camera, and point it at the QR code.
 3. The phone shows **Connected to ‹your Mac›** and the Mac menu shows **Connected to ‹your phone›**. Done.
 
-### 4. Turn on automatic copy (full app; Lite: skip this — use the Send to Mac tile)
+### 4. Turn on automatic copy (ClipBridge Pro only — with ClipBridge, use the Send to Mac toggle)
 
 This lets ClipBridge notice when you tap **Copy** in other apps, so phone → Mac works by itself.
 
@@ -182,19 +184,20 @@ Requirements: macOS 13+, Xcode Command Line Tools, Homebrew `openjdk@17`, Androi
 # Mac app → mac/build/ClipBridge.app (universal: Apple silicon + Intel)
 cd mac && ./build-app.sh
 
-# Android app → android/app/build/outputs/apk/{full,lite}/debug/app-{full,lite}-debug.apk
-cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleFullDebug assembleLiteDebug
+# Android app → android/app/build/outputs/apk/{standard,pro}/debug/app-{standard,pro}-debug.apk
+cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleStandardDebug assembleProDebug
 ```
 
 Tests:
 
 ```bash
 cd mac && swift run selftest
-cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew testFullDebugUnitTest testLiteDebugUnitTest
+cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew testStandardDebugUnitTest testProDebugUnitTest
 ```
 
 Release APKs are signed with a key kept outside the repo (`~/.config/clipbridge-release/keystore.properties`,
-or pass `-Pclipbridge.signing=/path/to/keystore.properties`). Without it, `assembleFullRelease` / `assembleLiteRelease` produce unsigned APKs.
+or pass `-Pclipbridge.signing=/path/to/keystore.properties`). Without it, `assembleStandardRelease` / `assembleProRelease` produce unsigned APKs. Google Play: `bundleStandardRelease`
+(see [docs/play-store](docs/play-store/README.md)).
 
 How it works: [`docs/`](docs/) has the design notes and the wire protocol (`docs/test-vector.txt` is the shared
 encryption test vector both apps check).
