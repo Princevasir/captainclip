@@ -46,7 +46,7 @@ class History(entries: List<HistoryEntry> = emptyList()) {
         val keptHtml = html?.takeIf { it.toByteArray(Charsets.UTF_8).size <= HistoryLimits.MAX_HTML_BYTES }
         val top = list.firstOrNull()
         if (top != null && !top.isFile && top.text == text) {
-            list[0] = top.copy(at = now, direction = direction, html = keptHtml ?: top.html)
+            list[0] = top.copy(at = now, direction = direction, html = keptHtml)  // the latest crossing wins
             return true
         }
         list.add(0, HistoryEntry(UUID.randomUUID().toString(), now, direction, text = text, html = keptHtml))

@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The pairing key must never leave the phone: no cloud backup, no device-to-device transfer. -->
+<!-- The pairing key and the clipboard history must never leave the phone: no cloud backup, no device-to-device transfer. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="history.bin" />
+        <exclude domain="file" path="history.bin.tmp" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="history.bin" />
+        <exclude domain="file" path="history.bin.tmp" />
     </device-transfer>
 </data-extraction-rules>

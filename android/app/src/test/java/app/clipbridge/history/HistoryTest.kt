@@ -89,4 +89,11 @@ class HistoryTest {
         h.clear()
         assertTrue(h.entries.isEmpty())
     }
+
+    @Test fun mergedEntryTakesTheLatestFormatting() {
+        val h = History()
+        h.addText("same", "<b>same</b>", FROM_MAC, now = 1)
+        h.addText("same", null, TO_MAC, now = 2)
+        assertNull("plain crossing → no old formatting", h.entries[0].html)
+    }
 }

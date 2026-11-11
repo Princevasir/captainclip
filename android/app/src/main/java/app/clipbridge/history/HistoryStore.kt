@@ -3,6 +3,8 @@ package app.clipbridge.history
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 
 /** Encrypts the history file at rest (Keystore AES-GCM on the phone; a fake in tests). */
 interface HistoryCipher {
@@ -39,8 +41,10 @@ object HistoryCodec {
 }
 
 /**
- * The phone's clip history: one per process (see HistoryHub). Every change prunes to [limits] and is written
- * encrypted, atomically. A file that can't be read is discarded — history starts empty, never a crash.
+ * The phone's clip history: one per process (see HistoryHub). Changes apply in memory at once; encrypting and
+ * writing happen on [writer] (a background thread in the app), coalesced, so callers on the main or connection
+ * thread never wait for disk or crypto. A file that is truly unreadable (wrong key, damaged) is discarded; a
+ * passing error (keystore busy) leaves it alone and this run keeps history in memory only.
  */
 class HistoryStore(
     private val file: File,
@@ -48,11 +52,16 @@ class HistoryStore(
     private val clock: () -> Long = System::currentTimeMillis,
     limits: HistoryLimits = HistoryLimits(),
     enabled: Boolean = true,
+    private val writer: Executor = Executors.newSingleThreadExecutor { r -> Thread(r, "clipbridge-history").apply { isDaemon = true } },
 ) {
     var limits: HistoryLimits = limits
         private set
     var enabled: Boolean = enabled
         private set
+    private val tmp = File(file.parentFile, file.name + ".tmp")
+    private var persist = true    // false after a passing load error: don't overwrite the history we couldn't read
+    private var version = 0L      // bumped on every change; a queued write that's out of date is skipped
+    private var pending = false
     private val history: History = History(load())
 
     @Synchronized fun entries(): List<HistoryEntry> { pruneAndMaybeSave(); return history.entries }
@@ -69,7 +78,11 @@ class HistoryStore(
 
     @Synchronized fun delete(id: String) { history.delete(id); save() }
 
-    @Synchronized fun clear() { history.clear(); file.delete() }
+    @Synchronized fun clear() {
+        history.clear()
+        version++
+        file.delete(); tmp.delete()
+    }
 
     @Synchronized fun setEnabled(on: Boolean) {
         enabled = on
@@ -84,19 +97,41 @@ class HistoryStore(
         if (history.entries.size != before) save()
     }
 
+    /** Called with the lock held: note the change and make sure one write is queued. */
     private fun save() {
         history.prune(limits, clock())
-        if (history.entries.isEmpty()) { file.delete(); return }
-        runCatching {
-            val tmp = File(file.parentFile, file.name + ".tmp")
-            tmp.writeBytes(cipher.encrypt(HistoryCodec.encode(history.entries)))
-            if (!tmp.renameTo(file)) { file.delete(); tmp.renameTo(file) }
+        version++
+        if (!persist || pending) return
+        pending = true
+        writer.execute { flush() }
+    }
+
+    /** On the writer: snapshot under the lock, encrypt outside it, write only if nothing newer happened since. */
+    private fun flush() {
+        val (snapshot, v) = synchronized(this) { pending = false; history.entries to version }
+        val bytes = if (snapshot.isEmpty()) null else runCatching { cipher.encrypt(HistoryCodec.encode(snapshot)) }.getOrNull()
+        synchronized(this) {
+            if (v != version || !persist) return
+            if (bytes == null) { file.delete(); return }
+            runCatching {
+                tmp.writeBytes(bytes)
+                if (!tmp.renameTo(file)) { file.delete(); tmp.renameTo(file) }
+            }
         }
     }
 
     private fun load(): List<HistoryEntry> {
         if (!file.exists()) return emptyList()
-        return runCatching { HistoryCodec.decode(cipher.decrypt(file.readBytes())) }
-            .getOrElse { file.delete(); emptyList() }
+        return try {
+            HistoryCodec.decode(cipher.decrypt(file.readBytes()))
+        } catch (e: Exception) {
+            if (unreadable(e)) file.delete() else persist = false
+            emptyList()
+        }
     }
+
+    /** Wrong key / damaged / not ours: safe to discard. Anything else may be a passing error. */
+    private fun unreadable(e: Exception): Boolean =
+        e is java.security.GeneralSecurityException || e is org.json.JSONException || e is IllegalArgumentException ||
+            e is java.io.EOFException
 }

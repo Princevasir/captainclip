@@ -107,10 +107,11 @@ class SyncService : Service() {
         fun fetchOffer(id: String, dir: File): File {
             val loop = instance?.loop ?: throw java.io.FileNotFoundException("not connected to your Mac")
             return try {
-                val size = Files.cache(instance!!).offer(id)?.size ?: 0L
+                val offer = Files.cache(instance!!).offer(id)
+                val size = offer?.size ?: 0L
                 val (total, first) = SyncLoop.fetchTimeouts(size, loop.isOnBluetooth)
                 loop.fetch(id, dir, timeoutMs = total, firstDataMs = first, size = size)  // the pasting app is waiting
-                    .also { instance?.recordFetched(id) }
+                    .also { offer?.let { o -> instance?.recordFetched(o) } }
             } catch (e: FileFetchException) {
                 instance?.toast(when (e.reason) {
                     "expired" -> "That file is no longer on your Mac's clipboard"
@@ -289,7 +290,7 @@ class SyncService : Service() {
                     val l = loop ?: throw FileFetchException("not-connected")
                     val (total, first) = SyncLoop.saveTimeouts(offer.size, l.isOnBluetooth)
                     cache.store(id, l.fetch(id, cache.fetchDir, timeoutMs = total, firstDataMs = first, size = offer.size))
-                    recordFetched(id)
+                    recordFetched(offer)
                 }
             }.exceptionOrNull()?.let {
                 when ((it as? FileFetchException)?.reason) {
@@ -318,7 +319,7 @@ class SyncService : Service() {
                     val l = loop!!
                     val (total, first) = SyncLoop.saveTimeouts(offer.size, l.isOnBluetooth)
                     l.fetch(id, cache.fetchDir, timeoutMs = total, firstDataMs = first, size = offer.size)
-                        .also { cache.store(id, it); recordFetched(id) }
+                        .also { cache.store(id, it); recordFetched(offer) }
                 }
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, offer.name)
@@ -376,10 +377,10 @@ class SyncService : Service() {
 
     private fun history() = app.clipbridge.history.HistoryHub.store(this)
 
-    /** A Mac file reached the phone: one history entry per offer id (repeat reads add nothing). */
-    private fun recordFetched(id: String) {
-        val offer = Files.cache(this).offer(id) ?: return
-        history().recordFile(id, offer.name, offer.mime, offer.size, Direction.FROM_MAC)
+    /** A Mac file reached the phone: one history entry per offer id (repeat reads add nothing). Details are captured
+     *  before the fetch, so a Mac copy that replaces the offer meanwhile doesn't lose the entry. */
+    private fun recordFetched(offer: app.clipbridge.core.Message.Offer) {
+        history().recordFile(offer.id, offer.name, offer.mime, offer.size, Direction.FROM_MAC)
     }
 
     private fun transferNotice(text: String, tap: PendingIntent?, ongoing: Boolean = false) {
@@ -397,14 +398,13 @@ class SyncService : Service() {
     }
 
     private fun writeClipboard(text: String, html: String?) {
-        history().recordText(text, html, Direction.FROM_MAC)  // it crossed: keep it in history
         main.post {
             runCatching {
                 OwnWrites.markNow()  // so copy detection ignores the system "Copied" overlay this causes
                 val clip = if (html != null) ClipData.newHtmlText("ClipBridge", text, html) else ClipData.newPlainText("ClipBridge", text)
                 markFromMac(clip.description)
                 getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
-            }
+            }.onSuccess { history().recordText(text, html, Direction.FROM_MAC) }  // on the phone's clipboard: it crossed
         }
     }
 

@@ -11,15 +11,30 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 
 /** Stands in for the Keystore cipher: reversible, and the output doesn't contain the plain text. */
-private class XorCipher : HistoryCipher {
-    override fun encrypt(plain: ByteArray) = ByteArray(plain.size) { (plain[it].toInt() xor 0x5A).toByte() }
-    override fun decrypt(box: ByteArray) = encrypt(box)
+private open class XorCipher : HistoryCipher {
+    var encrypts = 0
+    override fun encrypt(plain: ByteArray): ByteArray { encrypts++; return xor(plain) }
+    override fun decrypt(box: ByteArray) = xor(box)
+    private fun xor(b: ByteArray) = ByteArray(b.size) { (b[it].toInt() xor 0x5A).toByte() }
+}
+
+/** Keystore busy: decrypt fails for a reason other than a bad file. */
+private class BusyCipher : XorCipher() {
+    override fun decrypt(box: ByteArray): ByteArray = throw IllegalStateException("keystore busy")
+}
+
+/** Runs queued writes only when told to (a stand-in for the background writer thread). */
+private class ManualExecutor : java.util.concurrent.Executor {
+    val queue = ArrayDeque<Runnable>()
+    override fun execute(command: Runnable) { queue.add(command) }
+    fun runAll() { while (queue.isNotEmpty()) queue.removeFirst().run() }
 }
 
 class HistoryStoreTest {
     @get:Rule val tmp = TemporaryFolder()
     private var now = 1_000L
-    private fun store(file: File = File(tmp.root, "history.bin")) = HistoryStore(file, XorCipher(), clock = { now })
+    private fun store(file: File = File(tmp.root, "history.bin"), cipher: HistoryCipher = XorCipher()) =
+        HistoryStore(file, cipher, clock = { now }, writer = { it.run() })
 
     @Test fun codecRoundTripsAllFields() {
         val entries = listOf(
@@ -70,5 +85,35 @@ class HistoryStoreTest {
         val s = store()
         repeat(3) { s.recordFile("offer-9", "Invoice.pdf", "application/pdf", 420_000, FROM_MAC) }
         assertEquals(1, s.entries().size)
+    }
+
+    @Test fun writesHappenOnTheWriterNotTheCaller() {
+        val cipher = XorCipher()
+        val writer = ManualExecutor()
+        val s = HistoryStore(File(tmp.root, "history.bin"), cipher, clock = { now }, writer = writer)
+        s.recordText("one", null, FROM_MAC)
+        s.recordText("two", null, FROM_MAC)
+        assertEquals("caller never encrypts or writes", 0, cipher.encrypts)
+        assertEquals(listOf("two", "one"), s.entries().map { it.text })  // memory is up to date at once
+        writer.runAll()
+        assertEquals("a burst of changes is written once", 1, cipher.encrypts)
+        assertEquals(listOf("two", "one"), store().entries().map { it.text })
+    }
+
+    @Test fun clearWinsOverAWriteStillQueued() {
+        val writer = ManualExecutor()
+        val s = HistoryStore(File(tmp.root, "history.bin"), XorCipher(), clock = { now }, writer = writer)
+        s.recordText("soon gone", null, FROM_MAC)
+        s.clear()
+        writer.runAll()
+        assertFalse(File(tmp.root, "history.bin").exists())
+    }
+
+    @Test fun transientLoadErrorKeepsTheFile() {
+        store().recordText("keep me", null, TO_MAC)
+        val busy = store(cipher = BusyCipher())
+        assertTrue(busy.entries().isEmpty())
+        busy.recordText("while busy", null, FROM_MAC)
+        assertEquals("old history survives for the next start", listOf("keep me"), store().entries().map { it.text })
     }
 }
