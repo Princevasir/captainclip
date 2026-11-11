@@ -31,7 +31,9 @@ class MacSetupActivity : Activity() {
             startActivity(Intent.createChooser(send, "Send the link to your Mac"))
         }
         findViewById<View>(R.id.done).setOnClickListener { finish() }
-        val content = findViewById<View>(R.id.content)
+        // Keep clear of the status and navigation bars: pad the scroll view itself (which clips to its padding),
+        // so scrolled content never slides underneath the clock.
+        val content = (findViewById<View>(R.id.content).parent as View)
         val top = content.paddingTop
         val bottom = content.paddingBottom
         content.setOnApplyWindowInsetsListener { v, insets ->
