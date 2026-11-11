@@ -31,6 +31,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".MacSetupActivity" android:exported="false" android:label="Set up your Mac" />
+
         <provider
             android:name=".files.FileOfferProvider"
             android:authorities="app.clipbridge.files"

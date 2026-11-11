@@ -124,6 +124,8 @@ class MainActivity : Activity() {
             findViewById<View>(R.id.addTileButton).apply { visibility = View.VISIBLE; setOnClickListener { addTile() } }
         }
         findViewById<View>(R.id.repairRow).setOnClickListener { scanQr() }
+        findViewById<View>(R.id.macGuideRow).setOnClickListener { startActivity(Intent(this, MacSetupActivity::class.java)) }
+        findViewById<View>(R.id.setupMacGuide).setOnClickListener { startActivity(Intent(this, MacSetupActivity::class.java)) }
         findViewById<View>(R.id.batteryRow).setOnClickListener {
             startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
         }
@@ -209,6 +211,7 @@ class MainActivity : Activity() {
             SetupStep.DONE -> ""
         }
         setupNotNow.visibility = if (step == SetupStep.BLUETOOTH) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.setupMacGuide).visibility = if (step == SetupStep.PAIR) View.VISIBLE else View.GONE
     }
 
     private fun currentStep() = SetupStep.next(

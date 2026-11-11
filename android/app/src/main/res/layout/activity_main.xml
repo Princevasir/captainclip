@@ -182,6 +182,13 @@
                 style="@style/ButtonPrimary" />
 
             <Button
+                android:id="@+id/setupMacGuide"
+                style="@style/ButtonTonal"
+                android:layout_marginTop="8dp"
+                android:text="How do I set up my Mac?"
+                android:visibility="gone" />
+
+            <Button
                 android:id="@+id/setupNotNow"
                 style="@style/ButtonTonal"
                 android:layout_marginTop="8dp"
@@ -223,6 +230,11 @@
 
         <!-- More -->
         <LinearLayout style="@style/Card" android:paddingTop="10dp" android:paddingBottom="10dp">
+            <TextView
+                android:id="@+id/macGuideRow"
+                style="@style/Row"
+                android:text="Mac app setup guide" />
+
             <TextView
                 android:id="@+id/repairRow"
                 style="@style/Row"
