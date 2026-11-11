@@ -8,12 +8,13 @@ directly and end-to-end encrypted. No account, no cloud, no server.
 |---|---|
 | 🖥 **Mac app** | [**Download ClipBridge for Mac**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-mac.zip) · macOS 13 Ventura or later · Apple silicon and Intel |
 | 📱 **Android app** | [**Download ClipBridge for Android**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android.apk) · Android 10 or later |
-| 📱 **Android app — Lite** | [**Download ClipBridge Lite**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android-lite.apk) · no automatic copy, so Google Play Protect doesn't block the install (see below) |
+| 📱 **Android app — Lite** | [**Download ClipBridge Lite**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android-lite.apk) · no automatic copy and no location access, so Google Play Protect doesn't block the install (see below) |
 
 **Full or Lite?** Both do everything Mac → phone automatically. The full app also notices when you copy on the
 phone and sends it to the Mac by itself — that needs an Android *accessibility service*, which Play Protect
 blocks for apps installed from a browser in some countries. **ClipBridge Lite** leaves it out: after copying on
-the phone you tap **Send to Mac** (Quick Settings tile, Share, or the button in the app). Either one installs over
+the phone you tap **Send to Mac** (Quick Settings tile, Share, or the button in the app). Lite also has no
+location permission, so its Bluetooth fallback needs Android 12 or later. Either one installs over
 the other and keeps your pairing.
 
 All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge/releases).
@@ -103,7 +104,8 @@ never screen content — and sends only to your paired Mac.
 
 - **Bluetooth fallback:** in ClipBridge, tap **Allow Bluetooth** on the setup card and allow **Nearby devices**.
   Without it, ClipBridge simply stays Wi-Fi-only.
-- **Quick Settings tile:** swipe down twice → ✏️ → drag **Send to Mac** into your tiles.
+- **Quick Settings tile:** in ClipBridge tap **Add Send to Mac to Quick Settings** (Android 13+), or swipe down
+  twice → ✏️ (Samsung: ⋮ → Edit buttons) → drag **Send to Mac** next to Torch, Auto rotate…
 - **Battery:** in ClipBridge, tap **Let ClipBridge run in the background**, so Android doesn't pause it.
 - **Notifications** are optional. With them off, everything still works; use the ClipBridge screen for
   **Save to Downloads**.
