@@ -104,8 +104,10 @@ never screen content — and sends only to your paired Mac.
 
 - **Bluetooth fallback:** in ClipBridge, tap **Allow Bluetooth** on the setup card and allow **Nearby devices**.
   Without it, ClipBridge simply stays Wi-Fi-only.
-- **Quick Settings tile:** in ClipBridge tap **Add Send to Mac to Quick Settings** (Android 13+), or swipe down
-  twice → ✏️ (Samsung: ⋮ → Edit buttons) → drag **Send to Mac** next to Torch, Auto rotate…
+- **"Send to Mac" quick toggle** (next to Torch, Auto rotate…): in ClipBridge tap **Add Send to Mac to Quick
+  Settings** → **Add** (Android 13+). Samsung places new toggles at the bottom of the panel: tap ✏️ and drag
+  **Send to Mac** up into the grid. On Android 10–12, swipe down twice → ✏️ → drag **Send to Mac** in.
+  The toggle lights up with **Ready** while your Mac is connected; tap it after copying to send your clipboard.
 - **Battery:** in ClipBridge, tap **Let ClipBridge run in the background**, so Android doesn't pause it.
 - **Notifications** are optional. With them off, everything still works; use the ClipBridge screen for
   **Save to Downloads**.
