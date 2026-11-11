@@ -7,6 +7,12 @@ if args.count == 3, args[1] == "--play" {
     try BrandIcon.writePlayGraphics(to: URL(fileURLWithPath: args[2]))
     exit(0)
 }
+// iconmaker --store <screenshots folder with 1-connected.png, 2-quick-toggle.png> <out folder>
+if args.count == 4, args[1] == "--store" {
+    let shots = URL(fileURLWithPath: args[2])
+    try StoreArt.write(panels: StorePanels.all(screenshots: shots), to: URL(fileURLWithPath: args[3]))
+    exit(0)
+}
 guard args.count >= 2 else { print("usage: iconmaker <out.iconset> [preview.png]"); exit(2) }
 try BrandIcon.writeIconset(to: URL(fileURLWithPath: args[1]))
 if args.count >= 3 {

@@ -3,9 +3,9 @@ import AppKit
 /// The ClipBridge logo (same geometry as the Android adaptive icon): a clipboard whose content is a bridge
 /// joining two devices, on a teal → indigo gradient. Drawn in code so it stays sharp at every size.
 public enum BrandIcon {
-    static let teal = NSColor(srgbRed: 0x0E / 255, green: 0xA5 / 255, blue: 0xA4 / 255, alpha: 1)
-    static let indigo = NSColor(srgbRed: 0x4F / 255, green: 0x46 / 255, blue: 0xE5 / 255, alpha: 1)
-    static let lavender = NSColor(srgbRed: 0xC7 / 255, green: 0xD2 / 255, blue: 0xFE / 255, alpha: 1)
+    public static let teal = NSColor(srgbRed: 0x0E / 255, green: 0xA5 / 255, blue: 0xA4 / 255, alpha: 1)
+    public static let indigo = NSColor(srgbRed: 0x4F / 255, green: 0x46 / 255, blue: 0xE5 / 255, alpha: 1)
+    public static let lavender = NSColor(srgbRed: 0xC7 / 255, green: 0xD2 / 255, blue: 0xFE / 255, alpha: 1)
 
     /// 18×18 pt template image for the menu bar (outline style; macOS tints it).
     public static func menuBar() -> NSImage {
@@ -88,7 +88,7 @@ public enum BrandIcon {
     }
 
     /// Renders a flipped drawing into an exact-pixel PNG (`alpha: false` → no alpha channel at all).
-    private static func png(width: Int, height: Int, alpha: Bool, to url: URL, draw: (NSRect) -> Void) throws {
+    public static func png(width: Int, height: Int, alpha: Bool, to url: URL, draw: (NSRect) -> Void) throws {
         let info = alpha ? CGImageAlphaInfo.premultipliedLast : CGImageAlphaInfo.noneSkipLast
         guard let cg = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                  space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: info.rawValue)

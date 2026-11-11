@@ -12,7 +12,8 @@ help people with disabilities, so Pro would very likely be rejected.
 | Privacy policy URL | `https://github.com/Princevasir/clipbridge/blob/main/PRIVACY.md` (live once pushed) |
 | App icon 512 × 512 | `docs/play-store/icon-512.png` |
 | Feature graphic 1024 × 500 | `docs/play-store/feature-graphic.png` |
-| Phone screenshots (1440 × 2880) | `docs/play-store/screenshots/` — main screen, and the Send to Mac quick toggle |
+| Phone screenshots — upload these 5 (1440 × 2880) | `docs/play-store/store-screenshots/store-1…5-*.png` — headline + phone. Regenerate: `cd mac && swift run iconmaker --store ../docs/play-store/screenshots ../docs/play-store/store-screenshots` |
+| Raw app screenshots (used inside the panels) | `docs/play-store/screenshots/` |
 | Store text, Data safety, declarations | below |
 
 ## Your steps in Play Console (only you can do these)
