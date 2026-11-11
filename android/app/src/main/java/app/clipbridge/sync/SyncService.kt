@@ -95,7 +95,8 @@ class SyncService : Service() {
          * Send text to the Mac, in-process (no Intent, so no Binder size limit). Never starts the
          * service: if sync is stopped, nothing is sent. Returns true if queued for the Mac.
          */
-        fun send(text: String, html: String? = null): Boolean = instance?.loop?.send(text, html) ?: false
+        fun send(text: String, html: String? = null, userInitiated: Boolean = false): Boolean =
+            instance?.loop?.send(text, html, userInitiated) ?: false
 
         /** Fetch (and verify) the Mac's offered file. Blocking; used by FileOfferProvider on a binder thread. */
         fun fetchOffer(id: String, dir: File): File {

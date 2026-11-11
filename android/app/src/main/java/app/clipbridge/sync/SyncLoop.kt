@@ -136,9 +136,13 @@ class SyncLoop(
         synchronized(probeSignal) { probeNow = true; probeSignal.notifyAll() }
     }
 
-    /** Send text to the Mac. False if not connected, too large, or it is an echo of what the Mac sent. */
-    fun send(text: String, html: String? = null): Boolean {
-        if (!loopGuard.shouldSend(text)) return false
+    /**
+     * Send text to the Mac. False if not connected, too large, or it is an echo of what the Mac sent.
+     * [userInitiated] (an explicit "Send to Mac", e.g. from history) skips the echo check: the tap is the intent.
+     */
+    fun send(text: String, html: String? = null, userInitiated: Boolean = false): Boolean {
+        if (text.isEmpty()) return false
+        if (!userInitiated && !loopGuard.shouldSend(text)) return false
         val conn = connection ?: return false
         return conn.send(text, html).also { if (it) loopGuard.markSent(text) }
     }

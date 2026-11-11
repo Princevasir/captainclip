@@ -65,6 +65,17 @@ class SyncLoopTest {
         assertTrue(eventually { mac.received.any { it is app.clipbridge.core.Message.Clip && it.text == "from phone" } })
     }
 
+    @Test fun userInitiatedSendResendsTextJustReceivedFromMac() {
+        loop.start()
+        assertTrue(eventually { statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
+        mac.sendClip("again please")
+        assertTrue(eventually { clips.isNotEmpty() })
+        assertFalse("automatic echo is still blocked", loop.send("again please"))
+        assertTrue("an explicit Send to Mac goes through", loop.send("again please", userInitiated = true))
+        assertTrue(eventually { mac.received.any { it is app.clipbridge.core.Message.Clip && it.text == "again please" } })
+        assertFalse("still no empty sends", loop.send("", userInitiated = true))
+    }
+
     @Test fun stopDuringDiscoveryNeverConnects() {
         locateDelayMs = 300
         loop.start()
