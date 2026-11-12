@@ -30,6 +30,23 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity>
+
+        <!-- "Send to Mac" in every app's text-selection menu -->
+        <activity
+            android:name=".capture.SendSelectionActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/process_text_label"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.ClipBridge.Ghost">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
         <activity android:name=".HistoryActivity" android:exported="false" android:label="Clipboard history"
             android:windowSoftInputMode="adjustResize" />
