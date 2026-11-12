@@ -68,10 +68,12 @@ class GhostActivity : Activity() {
         val hasUri = clip?.getItemAt(0)?.uri != null
         if (ClipPolicy.shouldSend(text, sensitive, hasUri)) {
             val html = ClipHtml.of(clip?.getItemAt(0))
-            val sent = SyncService.send(text!!, html)
+            val announce = intent.getBooleanExtra(EXTRA_ANNOUNCE, false)
+            // A tap on Send to Mac (tile, widget, shortcut) always sends; automatic copies keep the echo guard.
+            val sent = SyncService.send(text!!, html, userInitiated = announce)
             android.util.Log.i("ClipBridgeFiles", "phone copy → Mac: text ${text.length} chars, html ${html?.length ?: 0} chars, sent=$sent")
-            if (intent.getBooleanExtra(EXTRA_ANNOUNCE, false)) {
-                Toast.makeText(this, if (sent) "Sent to Mac" else "Not connected to your Mac", Toast.LENGTH_SHORT).show()
+            if (announce) {
+                Toast.makeText(this, app.clipbridge.UiText.sendResult(sent, SyncService.isConnected), Toast.LENGTH_SHORT).show()
             }
         }
         finishQuietly()
