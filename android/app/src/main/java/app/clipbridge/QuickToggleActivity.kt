@@ -1,7 +1,6 @@
 package app.clipbridge
 
 import android.app.Activity
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -10,29 +9,24 @@ import android.widget.TextView
 import android.widget.Toast
 import app.clipbridge.sync.Prefs
 
-/** "Send to Mac toggle": what it is, Add it now (Android 13+), and how to place it on any phone. */
+/** "Notification panel": the two ClipBridge buttons (Send to Mac, ClipBridge on/off), each with Add / Added, plus tips. */
 class QuickToggleActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_quick_toggle)
-        findViewById<View>(R.id.preview).background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-            intArrayOf(0xFF0EA5A4.toInt(), 0xFF4F46E5.toInt())).apply { cornerRadius = 28 * resources.displayMetrics.density }
+        bindButton(R.id.sendButton, R.drawable.ic_tile_send, "Send to Mac",
+            "Sends what you just copied on your phone to your Mac.", onoff = false)
+        bindButton(R.id.switchButton, R.drawable.ic_devices, "ClipBridge",
+            "Turns syncing with your Mac on or off, like the Wi-Fi button.", onoff = true)
+        val sdk = Build.VERSION.SDK_INT
+        findViewById<TextView>(R.id.helpTitle).text = QuickToggleGuide.title(sdk)
         val list = findViewById<LinearLayout>(R.id.steps)
-        QuickToggleGuide.steps(Build.VERSION.SDK_INT).forEachIndexed { i, step ->
+        QuickToggleGuide.steps(sdk).forEachIndexed { i, step ->
             val row = layoutInflater.inflate(R.layout.item_setup_step, list, false)
             row.findViewById<TextView>(R.id.stepNumber).text = "${i + 1}"
             row.findViewById<TextView>(R.id.stepText).text = step
             row.findViewById<View>(R.id.stepPicture).visibility = View.GONE
             list.addView(row)
-        }
-        findViewById<View>(R.id.addNow).apply {
-            visibility = if (QuickToggleGuide.oneTap(Build.VERSION.SDK_INT)) View.VISIBLE else View.GONE
-            setOnClickListener {
-                QuickToggle.request(this@QuickToggleActivity) { added ->
-                    if (added) Toast.makeText(this@QuickToggleActivity, "Added — swipe down to see it", Toast.LENGTH_SHORT).show()
-                    render()
-                }
-            }
         }
         findViewById<View>(R.id.back).setOnClickListener { finish() }
         findViewById<View>(R.id.done).setOnClickListener { finish() }
@@ -57,8 +51,26 @@ class QuickToggleActivity : Activity() {
         render()
     }
 
+    private fun bindButton(id: Int, icon: Int, name: String, what: String, onoff: Boolean) {
+        val card = findViewById<View>(id)
+        card.findViewById<android.widget.ImageView>(R.id.buttonIcon).setImageResource(icon)
+        card.findViewById<TextView>(R.id.buttonName).text = name
+        card.findViewById<TextView>(R.id.buttonWhat).text = what
+        card.findViewById<View>(R.id.buttonAdd).setOnClickListener {
+            QuickToggle.request(this, onoff) { added ->
+                if (added) Toast.makeText(this, "Added — swipe down to see it", Toast.LENGTH_SHORT).show()
+                render()
+            }
+        }
+    }
+
     private fun render() {
-        findViewById<TextView>(R.id.status).text =
-            if (Prefs.tileAdded(this)) "✓ In your notification panel" else "Not added yet"
+        val oneTap = QuickToggleGuide.oneTap(Build.VERSION.SDK_INT)
+        for ((id, added) in listOf(R.id.sendButton to Prefs.tileAdded(this), R.id.switchButton to Prefs.switchTileAdded(this))) {
+            val card = findViewById<View>(id)
+            card.findViewById<View>(R.id.buttonAdded).visibility = if (added) View.VISIBLE else View.GONE
+            // Older Android can't add from the app: the steps below explain it instead.
+            card.findViewById<View>(R.id.buttonAdd).visibility = if (!added && oneTap) View.VISIBLE else View.GONE
+        }
     }
 }

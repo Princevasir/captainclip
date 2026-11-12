@@ -32,11 +32,31 @@ object UiText {
 
     /** The tip at the bottom of the main screen, worded for ClipBridge Pro (automatic copy) or the standard app. */
     fun tip(autoCopy: Boolean, bluetooth: Boolean): String {
-        val how = if (autoCopy) "Copies on the phone go to your Mac by themselves. The “Send to Mac” quick toggle and " +
+        val how = if (autoCopy) "Copies on the phone go to your Mac by themselves. The Send to Mac button in your notification panel and " +
             "Share → Send to Mac work too."
-        else "After copying on the phone, tap the “Send to Mac” quick toggle or use Share → Send to Mac."
+        else "After copying on the phone, tap Send to Mac in your notification panel or use Share → Send to Mac."
         val where = if (bluetooth) "Same Wi-Fi, or Bluetooth when nearby" else "Same Wi-Fi"
         return "$how $where · end-to-end encrypted."
+    }
+
+    /** Value line under "Notification panel buttons" on the main screen. */
+    fun panelSummary(sendAdded: Boolean, switchAdded: Boolean): String = when {
+        sendAdded && switchAdded -> "Both added"
+        sendAdded -> "Send to Mac added"
+        switchAdded -> "ClipBridge added"
+        else -> "Not added"
+    }
+
+    /** Value line under "Clipboard history". */
+    fun historySummary(enabled: Boolean, items: Int, days: Int, fromMac: Boolean = false): String =
+        if (!enabled) "Off"
+        else "On · last $items clips, $days ${if (days == 1) "day" else "days"}" + if (fromMac) " · incl. Mac copies" else ""
+
+    /** Value line under "Stay connected in the background". */
+    fun backgroundSummary(linked: Boolean, noBatteryLimits: Boolean): String = when {
+        linked -> "On — your Mac is linked"
+        noBatteryLimits -> "On — no battery limits"
+        else -> "Off — tap to turn on"
     }
 
     private const val OFFER_LIFETIME_MS = 10 * 60_000L

@@ -18,6 +18,9 @@ import app.clipbridge.sync.SyncService
 
 /** Quick Settings "ClipBridge" connection switch: on = syncing with your Mac, off = paused. */
 class ConnectionTileService : TileService() {
+    override fun onTileAdded() = Prefs.setSwitchTileAdded(this, true)
+    override fun onTileRemoved() = Prefs.setSwitchTileAdded(this, false)
+
     override fun onStartListening() {
         val tile = qsTile ?: return
         val paired = Prefs.pairing(this) != null

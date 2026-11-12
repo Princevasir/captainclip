@@ -14,7 +14,7 @@ enum class SetupStep(val title: String, val help: String) {
         "Link your Mac as a companion device, like a watch or earbuds: Android then lets ClipBridge stay connected " +
             "and reconnect in the background, without battery restrictions."),
     QUICK_TOGGLE("Add Send to Mac to your notification panel",
-        "A one-tap toggle next to Torch and Auto rotate: copy on your phone, swipe down, tap Send to Mac."),
+        "A button next to Torch when you swipe down: copy on your phone, swipe down, tap Send to Mac."),
     DONE("All set", "Copy on one device, paste on the other.");
 
     enum class PermissionAction { ASK, OPEN_APP_INFO }

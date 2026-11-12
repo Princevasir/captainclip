@@ -126,13 +126,13 @@ class MainActivity : Activity() {
         saveButton.setOnClickListener { saveOffer() }
         shareButton.setOnClickListener { shareOffers() }
         setupButton.setOnClickListener { onSetupAction() }
-        findViewById<View>(R.id.pauseTile).setOnClickListener { toggleSync() }
+        pauseButton.setOnClickListener { toggleSync() }
         findViewById<View>(R.id.sendClipboardButton).setOnClickListener { sendClipboard() }
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
-            findViewById<View>(R.id.addTileButton).visibility = View.VISIBLE
-        }
         findViewById<View>(R.id.repairRow).setOnClickListener { scanQr() }
         findViewById<View>(R.id.historyRow).setOnClickListener { startActivity(Intent(this, HistoryActivity::class.java)) }
+        findViewById<View>(R.id.featuresRow).setOnClickListener {
+            Prefs.setFeaturesSeen(this); startActivity(Intent(this, FeaturesActivity::class.java))
+        }
         findViewById<View>(R.id.macGuideRow).setOnClickListener { startActivity(Intent(this, MacSetupActivity::class.java)) }
         findViewById<View>(R.id.setupMacGuide).setOnClickListener {
             startActivity(Intent(this, if (currentStep() == SetupStep.QUICK_TOGGLE) QuickToggleActivity::class.java else MacSetupActivity::class.java))
@@ -161,9 +161,14 @@ class MainActivity : Activity() {
         renderSetup()
         val enabled = Prefs.syncEnabled(this)
         pauseButton.text = if (enabled) "Pause syncing" else "Resume syncing"
-        findViewById<ImageView>(R.id.pauseIcon).setImageResource(if (enabled) R.drawable.ic_pause else R.drawable.ic_play)
-        val paired = Prefs.pairing(this) != null
-        findViewById<View>(R.id.pauseTile).apply { isEnabled = paired; alpha = if (paired) 1f else 0.5f }
+        pauseButton.visibility = if (Prefs.pairing(this) != null) View.VISIBLE else View.GONE
+        // "This phone": each row shows its current value.
+        findViewById<TextView>(R.id.historyValue).text =
+            UiText.historySummary(Prefs.historyEnabled(this), Prefs.historyMaxItems(this), Prefs.historyMaxDays(this),
+                Prefs.historyFromMac(this))
+        findViewById<TextView>(R.id.panelValue).text = UiText.panelSummary(Prefs.tileAdded(this), Prefs.switchTileAdded(this))
+        findViewById<TextView>(R.id.batteryValue).text = UiText.backgroundSummary(app.clipbridge.sync.MacCompanion.linked(this),
+            getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(packageName))
     }
 
     /** "Recent clips": the newest 3 history entries; tap to copy, See all → the history screen. */
@@ -278,9 +283,6 @@ class MainActivity : Activity() {
                 View.VISIBLE else View.GONE
             text = if (step == SetupStep.QUICK_TOGGLE) "Show me how" else "How do I set up my Mac?"
         }
-        // The tile on the main screen says whether the toggle is already in place.
-        findViewById<View>(R.id.addTileButton).findViewWithTag<TextView>("tileLabel")?.text =
-            if (Prefs.tileAdded(this)) "In Quick Settings ✓" else "Add to Quick Settings"
     }
 
     private fun currentStep() = SetupStep.next(
@@ -455,6 +457,10 @@ class MainActivity : Activity() {
         SyncService.reconnect(this)
         toast("Paired with your Mac")
         refresh()
+        if (Features.showAfterPairing(Prefs.featuresSeen(this))) {
+            Prefs.setFeaturesSeen(this)
+            startActivity(Intent(this, FeaturesActivity::class.java))
+        }
     }
 
     private fun toggleSync() {

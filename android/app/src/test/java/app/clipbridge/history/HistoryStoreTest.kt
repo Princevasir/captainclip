@@ -33,8 +33,48 @@ private class ManualExecutor : java.util.concurrent.Executor {
 class HistoryStoreTest {
     @get:Rule val tmp = TemporaryFolder()
     private var now = 1_000L
-    private fun store(file: File = File(tmp.root, "history.bin"), cipher: HistoryCipher = XorCipher()) =
-        HistoryStore(file, cipher, clock = { now }, writer = { it.run() })
+    private fun store(file: File = File(tmp.root, "history.bin"), cipher: HistoryCipher = XorCipher(), fromMac: Boolean = true) =
+        HistoryStore(file, cipher, clock = { now }, writer = { it.run() }, includeFromMac = fromMac)
+
+    @Test fun macTextIsNotKeptByDefault() {
+        val s = HistoryStore(File(tmp.root, "history.bin"), XorCipher(), clock = { now }, writer = { it.run() })
+        s.recordText("copied on the Mac, never used here", null, FROM_MAC)
+        assertTrue(s.entries().isEmpty())
+    }
+
+    @Test fun withMacClipsOffPhoneSendsAndOpenedMacFilesAreStillKept() {
+        val s = store(fromMac = false)
+        s.recordText("sent from phone", null, TO_MAC)
+        s.recordText("mac password-ish", null, FROM_MAC)
+        s.recordFile("offer-1", "Invoice.pdf", "application/pdf", 10, FROM_MAC)
+        assertEquals(listOf("Invoice.pdf", null), s.entries().map { it.fileName })
+        assertEquals("sent from phone", s.entries().last().text)
+        assertEquals(2, store(fromMac = false).entries().size)
+    }
+
+    @Test fun turningMacClipsOffDeletesStoredMacText() {
+        val s = store()
+        s.recordText("mine", null, TO_MAC)
+        s.recordText("from mac", null, FROM_MAC)
+        s.recordFile("offer-1", "a.pdf", "application/pdf", 1, FROM_MAC)
+        s.setIncludeFromMac(false)
+        assertEquals(listOf("a.pdf", "mine"), s.entries().map { it.fileName ?: it.text })
+        assertEquals("gone from disk too", 2, store(fromMac = false).entries().size)
+        assertFalse(s.includeFromMac)
+    }
+
+    @Test fun startingWithMacClipsOffDropsMacTextSavedEarlier() {
+        store().apply { recordText("old mac clip", null, FROM_MAC); recordText("mine", null, TO_MAC) }
+        assertEquals(listOf("mine"), store(fromMac = false).entries().map { it.text })
+        assertEquals("rewritten on disk", listOf("mine"), store().entries().map { it.text })
+    }
+
+    @Test fun turningMacClipsBackOnKeepsThemAgain() {
+        val s = store(fromMac = false)
+        s.setIncludeFromMac(true)
+        s.recordText("from mac", null, FROM_MAC)
+        assertEquals("from mac", s.entries().single().text)
+    }
 
     @Test fun codecRoundTripsAllFields() {
         val entries = listOf(
@@ -91,8 +131,8 @@ class HistoryStoreTest {
         val cipher = XorCipher()
         val writer = ManualExecutor()
         val s = HistoryStore(File(tmp.root, "history.bin"), cipher, clock = { now }, writer = writer)
-        s.recordText("one", null, FROM_MAC)
-        s.recordText("two", null, FROM_MAC)
+        s.recordText("one", null, TO_MAC)
+        s.recordText("two", null, TO_MAC)
         assertEquals("caller never encrypts or writes", 0, cipher.encrypts)
         assertEquals(listOf("two", "one"), s.entries().map { it.text })  // memory is up to date at once
         writer.runAll()

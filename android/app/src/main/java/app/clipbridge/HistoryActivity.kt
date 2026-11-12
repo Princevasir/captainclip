@@ -119,7 +119,8 @@ class HistoryActivity : Activity() {
         empty.text = when {
             !store.enabled -> "History is off. Turn it on from ⋮ → Settings."
             query.isNotBlank() -> "No matches."
-            else -> "Nothing yet — clips you send between your Mac and phone appear here."
+            store.includeFromMac -> "Nothing yet — clips you send between your Mac and phone appear here."
+            else -> "Nothing yet — what you send to your Mac, and Mac files you open here, appear here."
         }
     }
 
@@ -152,6 +153,7 @@ class HistoryActivity : Activity() {
             "History: ${if (store.enabled) "On" else "Off"}",
             "Keep up to ${l.maxItems} clips",
             "Keep for ${l.maxAgeMs / HistoryLimits.DAY_MS} days",
+            "Include clips from your Mac: ${if (store.includeFromMac) "On" else "Off"}",
         )
         AlertDialog.Builder(this).setTitle("History settings").setItems(items) { _, i ->
             when (i) {
@@ -163,6 +165,7 @@ class HistoryActivity : Activity() {
                     HistoryLimits.DAY_CHOICES.indexOf((l.maxAgeMs / HistoryLimits.DAY_MS).toInt())) {
                     Prefs.setHistoryMaxDays(this, HistoryLimits.DAY_CHOICES[it]); applyLimits()
                 }
+                3 -> toggleFromMac()
             }
         }.show()
     }
@@ -175,6 +178,20 @@ class HistoryActivity : Activity() {
                 .setNegativeButton("Cancel", null).show()
         } else {
             Prefs.setHistoryEnabled(this, true); store.setEnabled(true); refresh()
+        }
+    }
+
+    private fun toggleFromMac() {
+        if (store.includeFromMac) {
+            Prefs.setHistoryFromMac(this, false); store.setIncludeFromMac(false); refresh()
+            toast("Mac copies removed from history")
+        } else {
+            AlertDialog.Builder(this).setTitle("Include clips from your Mac?")
+                .setMessage("Everything you copy on your Mac while connected will be kept here too, even if you " +
+                    "never paste it on this phone. Off by default; things you send from this phone, and Mac files " +
+                    "you open here, are always kept.")
+                .setPositiveButton("Include") { _, _ -> Prefs.setHistoryFromMac(this, true); store.setIncludeFromMac(true); refresh() }
+                .setNegativeButton("Cancel", null).show()
         }
     }
 
