@@ -114,7 +114,11 @@ class MainActivity : Activity() {
         setupButton = findViewById(R.id.setupButton)
         setupNotNow = findViewById(R.id.setupNotNow)
         setupNotNow.setOnClickListener {
-            if (currentStep() == SetupStep.QUICK_TOGGLE) Prefs.setTileDismissed(this) else Prefs.setBluetoothDismissed(this)
+            when (currentStep()) {
+                SetupStep.QUICK_TOGGLE -> Prefs.setTileDismissed(this)
+                SetupStep.COMPANION -> Prefs.setCompanionDismissed(this)
+                else -> Prefs.setBluetoothDismissed(this)
+            }
             refresh()
         }
         pauseButton = findViewById(R.id.pauseButton)
@@ -135,7 +139,12 @@ class MainActivity : Activity() {
         }
         findViewById<View>(R.id.addTileButton).setOnClickListener { startActivity(Intent(this, QuickToggleActivity::class.java)) }
         findViewById<View>(R.id.batteryRow).setOnClickListener {
-            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            val pairing = Prefs.pairing(this)
+            when {
+                app.clipbridge.sync.MacCompanion.linked(this) -> toast("Your Mac is linked — ClipBridge already runs in the background")
+                pairing != null && app.clipbridge.sync.MacCompanion.available(this) -> linkMac()
+                else -> startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            }
         }
         findViewById<TextView>(R.id.tipText).text = UiText.tip(Edition.AUTO_COPY,
             SetupStep.bluetoothFallbackAvailable(android.os.Build.VERSION.SDK_INT, Edition.LOCATION_FOR_BLUETOOTH))
@@ -258,10 +267,12 @@ class MainActivity : Activity() {
             SetupStep.PAIR -> "Scan QR code"
             SetupStep.AUTO_COPY -> "Open Accessibility settings"
             SetupStep.BLUETOOTH -> "Allow Bluetooth"
+            SetupStep.COMPANION -> "Link my Mac"
             SetupStep.QUICK_TOGGLE -> if (QuickToggleGuide.oneTap(android.os.Build.VERSION.SDK_INT)) "Add it now" else "Show me how"
             SetupStep.DONE -> ""
         }
-        setupNotNow.visibility = if (step == SetupStep.BLUETOOTH || step == SetupStep.QUICK_TOGGLE) View.VISIBLE else View.GONE
+        setupNotNow.visibility = if (step == SetupStep.BLUETOOTH || step == SetupStep.QUICK_TOGGLE || step == SetupStep.COMPANION)
+            View.VISIBLE else View.GONE
         findViewById<Button>(R.id.setupMacGuide).apply {
             visibility = if (step == SetupStep.PAIR || (step == SetupStep.QUICK_TOGGLE && QuickToggleGuide.oneTap(android.os.Build.VERSION.SDK_INT)))
                 View.VISIBLE else View.GONE
@@ -281,7 +292,15 @@ class MainActivity : Activity() {
         bluetoothDismissed = Prefs.bluetoothDismissed(this),
         tileAdded = Prefs.tileAdded(this),
         tileDismissed = Prefs.tileDismissed(this),
+        companionAvailable = app.clipbridge.sync.MacCompanion.available(this),
+        companionLinked = app.clipbridge.sync.MacCompanion.linked(this),
+        companionDismissed = Prefs.companionDismissed(this),
     )
+
+    private fun linkMac() {
+        val pairing = Prefs.pairing(this) ?: return
+        app.clipbridge.sync.MacCompanion.link(this, pairing.macId) { toast(it) }
+    }
 
     private fun bluetoothPermissionGranted(): Boolean {
         val needed = if (android.os.Build.VERSION.SDK_INT >= 31)
@@ -306,6 +325,7 @@ class MainActivity : Activity() {
                     }
                 }
             }
+            SetupStep.COMPANION -> linkMac()
             SetupStep.QUICK_TOGGLE ->
                 if (QuickToggleGuide.oneTap(android.os.Build.VERSION.SDK_INT)) QuickToggle.request(this) { refresh() }
                 else startActivity(Intent(this, QuickToggleActivity::class.java))
@@ -418,6 +438,14 @@ class MainActivity : Activity() {
 
     @Deprecated("Activity result API from the platform Activity")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == app.clipbridge.sync.MacCompanion.REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                Prefs.setCompanionLinked(this, true)
+                toast("Mac linked — ClipBridge can now stay connected in the background")
+            }
+            refresh()
+            return
+        }
         val result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
         if (result == null) { super.onActivityResult(requestCode, resultCode, data); return }
         val contents = result.contents ?: return

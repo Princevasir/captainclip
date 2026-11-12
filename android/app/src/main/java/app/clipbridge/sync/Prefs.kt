@@ -25,6 +25,12 @@ object Prefs {
     fun tileDismissed(ctx: Context): Boolean = prefs(ctx).getBoolean("tileDismissed", false)
     fun setTileDismissed(ctx: Context) = prefs(ctx).edit().putBoolean("tileDismissed", true).apply()
 
+    /** The Mac is linked as an Android companion device (background privileges). */
+    fun companionLinked(ctx: Context): Boolean = prefs(ctx).getBoolean("companionLinked", false)
+    fun setCompanionLinked(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("companionLinked", on).apply()
+    fun companionDismissed(ctx: Context): Boolean = prefs(ctx).getBoolean("companionDismissed", false)
+    fun setCompanionDismissed(ctx: Context) = prefs(ctx).edit().putBoolean("companionDismissed", true).apply()
+
     fun historyEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean("historyEnabled", true)
     fun setHistoryEnabled(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("historyEnabled", on).apply()
     fun historyMaxItems(ctx: Context): Int = prefs(ctx).getInt("historyMaxItems", 50)
