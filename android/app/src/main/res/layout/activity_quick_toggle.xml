@@ -35,104 +35,56 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="6dp"
-                android:text="Send to Mac toggle"
-                android:textSize="22sp"
-                android:fontFamily="sans-serif-medium" />
+                android:fontFamily="sans-serif-medium"
+                android:text="Notification panel"
+                android:textSize="22sp" />
         </LinearLayout>
 
         <TextView
-            style="@style/Secondary"
+            style="@style/Body"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="8dp"
             android:paddingStart="6dp"
-            android:text="Put Send to Mac in your notification panel, next to Torch and Auto rotate — the quickest way to send what you copied on your phone." />
+            android:paddingEnd="6dp"
+            android:text="Add ClipBridge buttons to the panel you get when you swipe down from the top of the screen — next to Torch and Wi-Fi. Then you can use ClipBridge without opening the app."
+            android:textColor="@color/text_secondary" />
 
-        <!-- What the toggle looks like -->
-        <LinearLayout
-            android:id="@+id/preview"
-            android:layout_width="match_parent"
+        <TextView
+            style="@style/CardTitle"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:padding="22dp">
+            android:layout_marginTop="22dp"
+            android:paddingStart="8dp"
+            android:text="Buttons" />
 
-            <ImageView
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:background="@drawable/bg_toggle_preview"
-                android:contentDescription="@null"
-                android:padding="16dp"
-                android:src="@drawable/ic_tile_send"
-                android:tint="@color/brand_indigo" />
+        <include
+            android:id="@+id/sendButton"
+            layout="@layout/item_panel_button" />
 
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="16dp"
-                android:orientation="vertical">
+        <include
+            android:id="@+id/switchButton"
+            layout="@layout/item_panel_button" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans-serif-medium"
-                    android:text="Send to Mac"
-                    android:textColor="#FFFFFFFF"
-                    android:textSize="18sp" />
-
-                <TextView
-                    android:id="@+id/status"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:textColor="#D9FFFFFF"
-                    android:textSize="14sp" />
-            </LinearLayout>
-        </LinearLayout>
+        <TextView
+            android:id="@+id/helpTitle"
+            style="@style/CardTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:paddingStart="8dp" />
 
         <LinearLayout
-            android:id="@+id/addNow"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginTop="16dp"
-            android:background="@drawable/bg_button_primary"
-            android:gravity="center"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_tile"
-                android:tint="@color/on_accent" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:fontFamily="sans-serif-medium"
-                android:text="Add it now"
-                android:textColor="@color/on_accent"
-                android:textSize="16sp" />
-        </LinearLayout>
-
-        <LinearLayout style="@style/Card">
-            <TextView style="@style/CardTitle" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="How to add it" />
-
-            <LinearLayout
-                android:id="@+id/steps"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:orientation="vertical" />
-        </LinearLayout>
+            android:id="@+id/steps"
+            style="@style/Card"
+            android:layout_marginTop="8dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp" />
 
         <Button
             android:id="@+id/done"
             style="@style/ButtonTonal"
+            android:layout_marginTop="20dp"
             android:text="Done" />
     </LinearLayout>
 </ScrollView>

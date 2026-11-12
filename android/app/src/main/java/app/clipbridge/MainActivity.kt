@@ -114,7 +114,11 @@ class MainActivity : Activity() {
         setupButton = findViewById(R.id.setupButton)
         setupNotNow = findViewById(R.id.setupNotNow)
         setupNotNow.setOnClickListener {
-            if (currentStep() == SetupStep.QUICK_TOGGLE) Prefs.setTileDismissed(this) else Prefs.setBluetoothDismissed(this)
+            when (currentStep()) {
+                SetupStep.QUICK_TOGGLE -> Prefs.setTileDismissed(this)
+                SetupStep.COMPANION -> Prefs.setCompanionDismissed(this)
+                else -> Prefs.setBluetoothDismissed(this)
+            }
             refresh()
         }
         pauseButton = findViewById(R.id.pauseButton)
@@ -122,20 +126,25 @@ class MainActivity : Activity() {
         saveButton.setOnClickListener { saveOffer() }
         shareButton.setOnClickListener { shareOffers() }
         setupButton.setOnClickListener { onSetupAction() }
-        findViewById<View>(R.id.pauseTile).setOnClickListener { toggleSync() }
+        pauseButton.setOnClickListener { toggleSync() }
         findViewById<View>(R.id.sendClipboardButton).setOnClickListener { sendClipboard() }
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
-            findViewById<View>(R.id.addTileButton).visibility = View.VISIBLE
-        }
         findViewById<View>(R.id.repairRow).setOnClickListener { scanQr() }
         findViewById<View>(R.id.historyRow).setOnClickListener { startActivity(Intent(this, HistoryActivity::class.java)) }
+        findViewById<View>(R.id.featuresRow).setOnClickListener {
+            Prefs.setFeaturesSeen(this); startActivity(Intent(this, FeaturesActivity::class.java))
+        }
         findViewById<View>(R.id.macGuideRow).setOnClickListener { startActivity(Intent(this, MacSetupActivity::class.java)) }
         findViewById<View>(R.id.setupMacGuide).setOnClickListener {
             startActivity(Intent(this, if (currentStep() == SetupStep.QUICK_TOGGLE) QuickToggleActivity::class.java else MacSetupActivity::class.java))
         }
         findViewById<View>(R.id.addTileButton).setOnClickListener { startActivity(Intent(this, QuickToggleActivity::class.java)) }
         findViewById<View>(R.id.batteryRow).setOnClickListener {
-            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            val pairing = Prefs.pairing(this)
+            when {
+                app.clipbridge.sync.MacCompanion.linked(this) -> toast("Your Mac is linked — ClipBridge already runs in the background")
+                pairing != null && app.clipbridge.sync.MacCompanion.available(this) -> linkMac()
+                else -> startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            }
         }
         findViewById<TextView>(R.id.tipText).text = UiText.tip(Edition.AUTO_COPY,
             SetupStep.bluetoothFallbackAvailable(android.os.Build.VERSION.SDK_INT, Edition.LOCATION_FOR_BLUETOOTH))
@@ -152,9 +161,14 @@ class MainActivity : Activity() {
         renderSetup()
         val enabled = Prefs.syncEnabled(this)
         pauseButton.text = if (enabled) "Pause syncing" else "Resume syncing"
-        findViewById<ImageView>(R.id.pauseIcon).setImageResource(if (enabled) R.drawable.ic_pause else R.drawable.ic_play)
-        val paired = Prefs.pairing(this) != null
-        findViewById<View>(R.id.pauseTile).apply { isEnabled = paired; alpha = if (paired) 1f else 0.5f }
+        pauseButton.visibility = if (Prefs.pairing(this) != null) View.VISIBLE else View.GONE
+        // "This phone": each row shows its current value.
+        findViewById<TextView>(R.id.historyValue).text =
+            UiText.historySummary(Prefs.historyEnabled(this), Prefs.historyMaxItems(this), Prefs.historyMaxDays(this),
+                Prefs.historyFromMac(this))
+        findViewById<TextView>(R.id.panelValue).text = UiText.panelSummary(Prefs.tileAdded(this), Prefs.switchTileAdded(this))
+        findViewById<TextView>(R.id.batteryValue).text = UiText.backgroundSummary(app.clipbridge.sync.MacCompanion.linked(this),
+            getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(packageName))
     }
 
     /** "Recent clips": the newest 3 history entries; tap to copy, See all → the history screen. */
@@ -258,18 +272,17 @@ class MainActivity : Activity() {
             SetupStep.PAIR -> "Scan QR code"
             SetupStep.AUTO_COPY -> "Open Accessibility settings"
             SetupStep.BLUETOOTH -> "Allow Bluetooth"
+            SetupStep.COMPANION -> "Link my Mac"
             SetupStep.QUICK_TOGGLE -> if (QuickToggleGuide.oneTap(android.os.Build.VERSION.SDK_INT)) "Add it now" else "Show me how"
             SetupStep.DONE -> ""
         }
-        setupNotNow.visibility = if (step == SetupStep.BLUETOOTH || step == SetupStep.QUICK_TOGGLE) View.VISIBLE else View.GONE
+        setupNotNow.visibility = if (step == SetupStep.BLUETOOTH || step == SetupStep.QUICK_TOGGLE || step == SetupStep.COMPANION)
+            View.VISIBLE else View.GONE
         findViewById<Button>(R.id.setupMacGuide).apply {
             visibility = if (step == SetupStep.PAIR || (step == SetupStep.QUICK_TOGGLE && QuickToggleGuide.oneTap(android.os.Build.VERSION.SDK_INT)))
                 View.VISIBLE else View.GONE
             text = if (step == SetupStep.QUICK_TOGGLE) "Show me how" else "How do I set up my Mac?"
         }
-        // The tile on the main screen says whether the toggle is already in place.
-        findViewById<View>(R.id.addTileButton).findViewWithTag<TextView>("tileLabel")?.text =
-            if (Prefs.tileAdded(this)) "In Quick Settings ✓" else "Add to Quick Settings"
     }
 
     private fun currentStep() = SetupStep.next(
@@ -281,7 +294,15 @@ class MainActivity : Activity() {
         bluetoothDismissed = Prefs.bluetoothDismissed(this),
         tileAdded = Prefs.tileAdded(this),
         tileDismissed = Prefs.tileDismissed(this),
+        companionAvailable = app.clipbridge.sync.MacCompanion.available(this),
+        companionLinked = app.clipbridge.sync.MacCompanion.linked(this),
+        companionDismissed = Prefs.companionDismissed(this),
     )
+
+    private fun linkMac() {
+        val pairing = Prefs.pairing(this) ?: return
+        app.clipbridge.sync.MacCompanion.link(this, pairing.macId) { toast(it) }
+    }
 
     private fun bluetoothPermissionGranted(): Boolean {
         val needed = if (android.os.Build.VERSION.SDK_INT >= 31)
@@ -306,6 +327,7 @@ class MainActivity : Activity() {
                     }
                 }
             }
+            SetupStep.COMPANION -> linkMac()
             SetupStep.QUICK_TOGGLE ->
                 if (QuickToggleGuide.oneTap(android.os.Build.VERSION.SDK_INT)) QuickToggle.request(this) { refresh() }
                 else startActivity(Intent(this, QuickToggleActivity::class.java))
@@ -397,8 +419,8 @@ class MainActivity : Activity() {
         }
         toast(when {
             !ClipPolicy.shouldSend(text, sensitive) -> if (sensitive) "Passwords aren't sent" else "Your clipboard is empty"
-            SyncService.send(text!!, app.clipbridge.capture.ClipHtml.of(item)) -> "Sent to Mac"
-            else -> "Not connected to your Mac (or already sent)"
+            SyncService.send(text!!, app.clipbridge.capture.ClipHtml.of(item), userInitiated = true) -> "Sent to Mac"
+            else -> UiText.sendResult(sent = false, connected = SyncService.isConnected)
         })
     }
 
@@ -418,6 +440,14 @@ class MainActivity : Activity() {
 
     @Deprecated("Activity result API from the platform Activity")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == app.clipbridge.sync.MacCompanion.REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                Prefs.setCompanionLinked(this, true)
+                toast("Mac linked — ClipBridge can now stay connected in the background")
+            }
+            refresh()
+            return
+        }
         val result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
         if (result == null) { super.onActivityResult(requestCode, resultCode, data); return }
         val contents = result.contents ?: return
@@ -427,6 +457,10 @@ class MainActivity : Activity() {
         SyncService.reconnect(this)
         toast("Paired with your Mac")
         refresh()
+        if (Features.showAfterPairing(Prefs.featuresSeen(this))) {
+            Prefs.setFeaturesSeen(this)
+            startActivity(Intent(this, FeaturesActivity::class.java))
+        }
     }
 
     private fun toggleSync() {

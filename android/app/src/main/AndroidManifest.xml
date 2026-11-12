@@ -16,6 +16,10 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+    <!-- Linking the Mac as a companion device: no battery restrictions, background reconnects -->
+    <uses-feature android:name="android.software.companion_device_setup" android:required="false" />
+    <uses-permission android:name="android.permission.REQUEST_COMPANION_RUN_IN_BACKGROUND" />
+    <uses-permission android:name="android.permission.REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND" />
 
     <application
         android:allowBackup="false"
@@ -30,10 +34,28 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity>
+
+        <!-- "Send to Mac" in every app's text-selection menu -->
+        <activity
+            android:name=".capture.SendSelectionActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/process_text_label"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.ClipBridge.Ghost">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
         <activity android:name=".HistoryActivity" android:exported="false" android:label="Clipboard history"
             android:windowSoftInputMode="adjustResize" />
         <activity android:name=".QuickToggleActivity" android:exported="false" android:label="Send to Mac toggle" />
+        <activity android:name=".FeaturesActivity" android:exported="false" android:label="What ClipBridge does" />
         <activity android:name=".MacSetupActivity" android:exported="false" android:label="Set up your Mac" />
 
         <provider
@@ -83,6 +105,26 @@
             </intent-filter>
         </activity>
 
+
+        <service
+            android:name=".capture.ConnectionTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_devices"
+            android:label="@string/connection_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <!-- No TILE_CATEGORY: Samsung One UI hides third-party tiles filed under "connectivity" from its edit list. -->
+            <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="true" />
+        </service>
+
+        <receiver android:name=".SendWidget" android:exported="false" android:label="Send to Mac">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_send_info" />
+        </receiver>
 
         <service
             android:name=".capture.SendTileService"

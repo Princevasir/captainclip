@@ -52,11 +52,18 @@ class HistoryStore(
     private val clock: () -> Long = System::currentTimeMillis,
     limits: HistoryLimits = HistoryLimits(),
     enabled: Boolean = true,
+    includeFromMac: Boolean = false,
     private val writer: Executor = Executors.newSingleThreadExecutor { r -> Thread(r, "clipbridge-history").apply { isDaemon = true } },
 ) {
     var limits: HistoryLimits = limits
         private set
     var enabled: Boolean = enabled
+        private set
+    /**
+     * Whether text that arrives from the Mac is kept. Android can't tell whether it was ever pasted on the phone,
+     * so by default it isn't: everything copied on the Mac would otherwise pile up here.
+     */
+    var includeFromMac: Boolean = includeFromMac
         private set
     private val tmp = File(file.parentFile, file.name + ".tmp")
     private var persist = true    // false after a passing load error: don't overwrite the history we couldn't read
@@ -64,11 +71,14 @@ class HistoryStore(
     private var pending = false
     private val history: History = History(load())
 
+    init { if (!includeFromMac && history.removeMacText()) save() }
+
     @Synchronized fun entries(): List<HistoryEntry> { pruneAndMaybeSave(); return history.entries }
 
     @Synchronized fun search(query: String): List<HistoryEntry> { pruneAndMaybeSave(); return history.search(query) }
 
     @Synchronized fun recordText(text: String, html: String?, direction: Direction, sensitive: Boolean = false) {
+        if (direction == Direction.FROM_MAC && !includeFromMac) return
         if (enabled && history.addText(text, html, direction, clock(), sensitive)) save()
     }
 
@@ -87,6 +97,11 @@ class HistoryStore(
     @Synchronized fun setEnabled(on: Boolean) {
         enabled = on
         if (!on) clear()
+    }
+
+    @Synchronized fun setIncludeFromMac(on: Boolean) {
+        includeFromMac = on
+        if (!on && history.removeMacText()) save()
     }
 
     @Synchronized fun applyLimits(new: HistoryLimits) { limits = new; save() }

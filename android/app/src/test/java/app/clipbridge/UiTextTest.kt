@@ -20,13 +20,13 @@ class UiTextTest {
     }
 
     @Test fun tipForTheFullApp() {
-        assertEquals("Copies on the phone go to your Mac by themselves. The “Send to Mac” quick toggle and " +
+        assertEquals("Copies on the phone go to your Mac by themselves. The Send to Mac button in your notification panel and " +
             "Share → Send to Mac work too. Same Wi-Fi, or Bluetooth when nearby · end-to-end encrypted.",
             UiText.tip(autoCopy = true, bluetooth = true))
     }
 
     @Test fun tipForStandardAppSaysToTapSendToMac() {
-        assertEquals("After copying on the phone, tap the “Send to Mac” quick toggle or use Share → Send to Mac. " +
+        assertEquals("After copying on the phone, tap Send to Mac in your notification panel or use Share → Send to Mac. " +
             "Same Wi-Fi, or Bluetooth when nearby · end-to-end encrypted.",
             UiText.tip(autoCopy = false, bluetooth = true))
     }
@@ -81,5 +81,49 @@ class UiTextTest {
         // Android 13+ shows its own "Copied" confirmation for every clipboard write; a second one is noise.
         assertEquals(true, UiText.showOwnCopiedMessage(sdk = 32))
         assertEquals(false, UiText.showOwnCopiedMessage(sdk = 33))
+    }
+
+    @Test fun widgetAndToggleSayHowYouAreConnected() {
+        assertEquals("MacBook Air" to "Connected · Wi-Fi", UiText.connectionLine(paired = true, syncOn = true, connected = true, macName = "MacBook Air", bluetooth = false))
+        assertEquals("MacBook Air" to "Connected · Bluetooth", UiText.connectionLine(paired = true, syncOn = true, connected = true, macName = "MacBook Air", bluetooth = true))
+        assertEquals("Your Mac" to "Looking for your Mac…", UiText.connectionLine(paired = true, syncOn = true, connected = false, macName = null, bluetooth = false))
+        assertEquals("ClipBridge" to "Paused", UiText.connectionLine(paired = true, syncOn = false, connected = false, macName = "MacBook Air", bluetooth = false))
+        assertEquals("ClipBridge" to "Not paired", UiText.connectionLine(paired = false, syncOn = true, connected = false, macName = null, bluetooth = false))
+    }
+
+    @Test fun sendResultSaysWhatReallyHappened() {
+        assertEquals("Sent to Mac", UiText.sendResult(sent = true, connected = true))
+        assertEquals("Not connected to your Mac", UiText.sendResult(sent = false, connected = false))
+        assertEquals("Couldn't send — try again", UiText.sendResult(sent = false, connected = true))
+    }
+
+    @Test fun panelSummarySaysWhichButtonsAreInThePanel() {
+        assertEquals("Both added", UiText.panelSummary(sendAdded = true, switchAdded = true))
+        assertEquals("Send to Mac added", UiText.panelSummary(sendAdded = true, switchAdded = false))
+        assertEquals("ClipBridge added", UiText.panelSummary(sendAdded = false, switchAdded = true))
+        assertEquals("Not added", UiText.panelSummary(sendAdded = false, switchAdded = false))
+    }
+
+    @Test fun historySummaryShowsTheWindow() {
+        assertEquals("On · last 50 clips, 7 days", UiText.historySummary(enabled = true, items = 50, days = 7))
+        assertEquals("On · last 25 clips, 1 day", UiText.historySummary(enabled = true, items = 25, days = 1))
+        assertEquals("Off", UiText.historySummary(enabled = false, items = 50, days = 7))
+    }
+
+    @Test fun historySummarySaysWhenMacClipsAreKept() {
+        assertEquals("On · last 50 clips, 7 days · incl. Mac copies", UiText.historySummary(enabled = true, items = 50, days = 7, fromMac = true))
+        assertEquals("Off", UiText.historySummary(enabled = false, items = 50, days = 7, fromMac = true))
+    }
+
+    @Test fun backgroundSummary() {
+        assertEquals("On — your Mac is linked", UiText.backgroundSummary(linked = true, noBatteryLimits = false))
+        assertEquals("On — your Mac is linked", UiText.backgroundSummary(linked = true, noBatteryLimits = true))
+        assertEquals("On — no battery limits", UiText.backgroundSummary(linked = false, noBatteryLimits = true))
+        assertEquals("Off — tap to turn on", UiText.backgroundSummary(linked = false, noBatteryLimits = false))
+    }
+
+    @Test fun noQuickSettingsJargonInTips() {
+        for (auto in listOf(true, false)) for (bt in listOf(true, false))
+            assertEquals(false, UiText.tip(auto, bt).contains("quick toggle", ignoreCase = true))
     }
 }

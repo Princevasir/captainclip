@@ -212,6 +212,8 @@ class SyncService : Service() {
                     state = status
                     setStatus(describe(status))
                     app.clipbridge.capture.SendTileService.refresh(this@SyncService)
+                    app.clipbridge.capture.ConnectionTileService.refresh(this@SyncService)
+                    app.clipbridge.SendWidget.refresh(this@SyncService)
                 }
                 override fun onClip(text: String) = writeClipboard(text, null)
                 override fun onClip(text: String, html: String?) = writeClipboard(text, html)

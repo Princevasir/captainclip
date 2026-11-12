@@ -13,6 +13,7 @@ object HistoryHub {
             File(ctx.applicationContext.filesDir, "history.bin"), KeystoreCipher(),
             limits = HistoryLimits.from(Prefs.historyMaxItems(ctx), Prefs.historyMaxDays(ctx)),
             enabled = Prefs.historyEnabled(ctx),
+            includeFromMac = Prefs.historyFromMac(ctx),
         ).also { store = it }
     }
 }

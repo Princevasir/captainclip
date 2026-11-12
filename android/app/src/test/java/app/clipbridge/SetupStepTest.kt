@@ -72,4 +72,20 @@ class SetupStepTest {
         assertEquals(SetupStep.DONE, SetupStep.next(paired = true, autoCopyOn = true, tileAdded = true))
         assertEquals(SetupStep.DONE, SetupStep.next(paired = true, autoCopyOn = true, tileAdded = false, tileDismissed = true))
     }
+
+    @Test fun offersTheCompanionStepAfterBluetooth() {
+        assertEquals(SetupStep.COMPANION, SetupStep.next(paired = true, autoCopyOn = true, companionAvailable = true, companionLinked = false))
+        assertEquals(SetupStep.BLUETOOTH, SetupStep.next(paired = true, autoCopyOn = true, bluetoothAllowed = false,
+            companionAvailable = true, companionLinked = false))
+        // and before the quick toggle
+        assertEquals(SetupStep.COMPANION, SetupStep.next(paired = true, autoCopyOn = true, tileAdded = false,
+            companionAvailable = true, companionLinked = false))
+    }
+
+    @Test fun companionStepGoesAwayWhenLinkedDismissedOrUnavailable() {
+        assertEquals(SetupStep.DONE, SetupStep.next(paired = true, autoCopyOn = true, companionAvailable = true, companionLinked = true))
+        assertEquals(SetupStep.DONE, SetupStep.next(paired = true, autoCopyOn = true, companionAvailable = true,
+            companionLinked = false, companionDismissed = true))
+        assertEquals(SetupStep.DONE, SetupStep.next(paired = true, autoCopyOn = true, companionAvailable = false, companionLinked = false))
+    }
 }

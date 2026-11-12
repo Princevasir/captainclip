@@ -73,5 +73,8 @@ class History(entries: List<HistoryEntry> = emptyList()) {
 
     fun delete(id: String) { list.removeAll { it.id == id } }
 
+    /** Drops text that only arrived from the Mac (files from the Mac were opened on the phone, so they stay). */
+    fun removeMacText(): Boolean = list.removeAll { !it.isFile && it.direction == Direction.FROM_MAC }
+
     fun clear() = list.clear()
 }

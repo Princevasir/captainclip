@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the ClipBridge icon. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="send_clipboard"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_send"
+        android:shortcutShortLabel="@string/shortcut_send_short"
+        android:shortcutLongLabel="@string/shortcut_send_long">
+        <intent
+            android:action="app.clipbridge.GHOST_READ"
+            android:targetPackage="app.clipbridge"
+            android:targetClass="app.clipbridge.capture.GhostActivity">
+            <extra android:name="announce" android:value="true" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="history"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_history"
+        android:shortcutShortLabel="@string/shortcut_history_short"
+        android:shortcutLongLabel="@string/shortcut_history_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="app.clipbridge"
+            android:targetClass="app.clipbridge.HistoryActivity" />
+    </shortcut>
+</shortcuts>

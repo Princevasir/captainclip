@@ -1,10 +1,10 @@
 import AppKit
 import ClipBridgeCore
 
-/// Google Play phone screenshots (1440 × 2880): a two-part headline with one highlighted word, a short line, and
+/// Google Play phone screenshots (1440 × 2560, 9:16): a two-part headline with one highlighted word, a short line, and
 /// a phone showing the real app screen (or the app's own cards, drawn with the same text the app shows).
 enum StoreArt {
-    static let width = 1440, height = 2880
+    static let width = 1440, height = 2560  // 9:16 — Play requires 16:9 or 9:16
     static let ink = NSColor(srgbRed: 0x1F / 255, green: 0x29 / 255, blue: 0x37 / 255, alpha: 1)
     static let grey = NSColor(srgbRed: 0x6B / 255, green: 0x72 / 255, blue: 0x80 / 255, alpha: 1)
     static let screenBg = NSColor(srgbRed: 0xF3 / 255, green: 0xF4 / 255, blue: 0xF8 / 255, alpha: 1)
@@ -54,7 +54,9 @@ enum StoreArt {
                                                                   .foregroundColor: NSColor(white: 1, alpha: 0.9)])
         sub.draw(with: NSRect(x: 124, y: 700, width: 1200, height: 200), options: [.usesLineFragmentOrigin])
         // Phone (runs off the bottom edge)
-        phoneImage(p).draw(in: NSRect(x: 220, y: 960, width: phoneSize.width, height: phoneSize.height),
+        let scale: CGFloat = 0.85
+        phoneImage(p).draw(in: NSRect(x: (CGFloat(width) - phoneSize.width * scale) / 2, y: 930,
+                                      width: phoneSize.width * scale, height: phoneSize.height * scale),
                            from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
     }
 
@@ -116,10 +118,10 @@ enum StoreArt {
     /// Returns the y (screen coordinates) just below it.
     @discardableResult
     static func header(in s: NSRect, pill: String = "Connected", title: String = "MacBook Air",
-                       detail: String = "Same Wi-Fi · end-to-end encrypted", send: Bool = true) -> CGFloat {
+                       detail: String = "Same Wi-Fi · end-to-end encrypted", send: Bool = true, pause: Bool = true) -> CGFloat {
         BrandIcon.app(side: 92).draw(in: NSRect(x: s.minX + 44, y: s.minY + 110, width: 92, height: 92))
         text("ClipBridge", NSFont.systemFont(ofSize: 46, weight: .semibold), ink, at: NSPoint(x: s.minX + 150, y: s.minY + 126))
-        let h: CGFloat = send ? 470 : 330
+        let h: CGFloat = send ? (pause ? 560 : 470) : 330
         let hero = NSRect(x: s.minX + 40, y: s.minY + 240, width: s.width - 80, height: h)
         NSGradient(starting: BrandIcon.teal, ending: BrandIcon.indigo)?.draw(in: NSBezierPath(roundedRect: hero, xRadius: 56, yRadius: 56), angle: -35)
         // pill
@@ -133,12 +135,17 @@ enum StoreArt {
         text(title, NSFont.systemFont(ofSize: 56, weight: .bold), .white, at: NSPoint(x: hero.minX + 44, y: hero.minY + 140))
         text(detail, NSFont.systemFont(ofSize: 31), NSColor(white: 1, alpha: 0.88), at: NSPoint(x: hero.minX + 46, y: hero.minY + 222))
         if send {
-            let b = NSRect(x: hero.minX + 44, y: hero.maxY - 150, width: hero.width - 88, height: 108)
+            let b = NSRect(x: hero.minX + 44, y: hero.minY + 320, width: hero.width - 88, height: 108)
             NSColor.white.setFill(); NSBezierPath(roundedRect: b, xRadius: 54, yRadius: 54).fill()
             let f = NSFont.systemFont(ofSize: 34, weight: .semibold)
             let label = "↑  Send clipboard to Mac"
             let size = (label as NSString).size(withAttributes: [.font: f])
             text(label, f, BrandIcon.indigo, at: NSPoint(x: b.midX - size.width / 2, y: b.midY - size.height / 2))
+            if pause {
+                let pf = NSFont.systemFont(ofSize: 31, weight: .semibold), pl = "Pause syncing"
+                let pw = (pl as NSString).size(withAttributes: [.font: pf]).width
+                text(pl, pf, .white, at: NSPoint(x: hero.midX - pw / 2, y: b.maxY + 26))
+            }
         }
         return hero.maxY + 36
     }
@@ -179,35 +186,41 @@ enum StoreArt {
         color.setStroke(); p.stroke()
     }
 
-    /// The three quick-action tiles. Returns the y below them.
+    /// A settings section like the app's: grey heading, then a white card of rows (icon, title, current value).
+    /// Returns the y below it.
     @discardableResult
-    static func tiles(in s: NSRect, y: CGFloat, labels: [String] = ["Clipboard history", "In Quick Settings ✓", "Pause syncing"]) -> CGFloat {
-        let gap: CGFloat = 22, w = (s.width - 96 - 2 * gap) / 3, h: CGFloat = 230
-        for (i, label) in labels.enumerated() {
-            let r = NSRect(x: s.minX + 48 + CGFloat(i) * (w + gap), y: s.minY + y, width: w, height: h)
-            NSColor.white.setFill(); NSBezierPath(roundedRect: r, xRadius: 44, yRadius: 44).fill()
-            soft.setFill(); NSBezierPath(ovalIn: NSRect(x: r.minX + 28, y: r.minY + 28, width: 76, height: 76)).fill()
-            tileGlyph(i, center: NSPoint(x: r.minX + 66, y: r.minY + 66))
-            NSAttributedString(string: label, attributes: [.font: NSFont.systemFont(ofSize: 29, weight: .semibold), .foregroundColor: ink])
-                .draw(with: NSRect(x: r.minX + 28, y: r.minY + 130, width: r.width - 48, height: 90), options: [.usesLineFragmentOrigin])
+    static func section(in s: NSRect, y: CGFloat, title: String, rows: [(Glyph, String, String)]) -> CGFloat {
+        text(title, NSFont.systemFont(ofSize: 28, weight: .semibold), grey, at: NSPoint(x: s.minX + 72, y: s.minY + y))
+        let rowH: CGFloat = 132
+        let c = card(in: s, y: y + 56, height: CGFloat(rows.count) * rowH + 24)
+        for (i, r) in rows.enumerated() {
+            let top = c.minY + 12 + CGFloat(i) * rowH
+            let center = NSPoint(x: c.minX + 82, y: top + rowH / 2)
+            soft.setFill(); NSBezierPath(ovalIn: NSRect(x: center.x - 38, y: center.y - 38, width: 76, height: 76)).fill()
+            glyph(r.0, center: center)
+            text(r.1, NSFont.systemFont(ofSize: 34, weight: .semibold), ink, at: NSPoint(x: c.minX + 150, y: top + 24))
+            text(r.2, NSFont.systemFont(ofSize: 28), grey, at: NSPoint(x: c.minX + 150, y: top + 72))
+            text("›", NSFont.systemFont(ofSize: 44), grey, at: NSPoint(x: c.maxX - 62, y: top + 36))
         }
-        return y + h + 36
+        return y + 56 + c.height + 36
     }
 
-    /// Clock (history), grid (Quick Settings), pause — line icons like the app's.
-    static func tileGlyph(_ i: Int, center c: NSPoint) {
+    enum Glyph { case history, panel, link }
+
+    /// Clock (history), grid with plus (notification panel buttons), link (background connection) — line icons like the app's.
+    static func glyph(_ g: Glyph, center c: NSPoint) {
         let p = NSBezierPath()
-        switch i {
-        case 0:
+        switch g {
+        case .history:
             p.appendOval(in: NSRect(x: c.x - 19, y: c.y - 19, width: 38, height: 38))
             p.move(to: NSPoint(x: c.x, y: c.y - 10)); p.line(to: c); p.line(to: NSPoint(x: c.x + 8, y: c.y + 6))
-        case 1:
+        case .panel:
             for (dx, dy) in [(-17, -17), (3, -17), (-17, 3)] { p.appendRect(NSRect(x: c.x + CGFloat(dx), y: c.y + CGFloat(dy), width: 14, height: 14)) }
             p.move(to: NSPoint(x: c.x + 10, y: c.y + 3)); p.line(to: NSPoint(x: c.x + 10, y: c.y + 17))
             p.move(to: NSPoint(x: c.x + 3, y: c.y + 10)); p.line(to: NSPoint(x: c.x + 17, y: c.y + 10))
-        default:
-            p.move(to: NSPoint(x: c.x - 7, y: c.y - 14)); p.line(to: NSPoint(x: c.x - 7, y: c.y + 14))
-            p.move(to: NSPoint(x: c.x + 7, y: c.y - 14)); p.line(to: NSPoint(x: c.x + 7, y: c.y + 14))
+        case .link:
+            p.appendRoundedRect(NSRect(x: c.x - 20, y: c.y - 8, width: 22, height: 16), xRadius: 8, yRadius: 8)
+            p.appendRoundedRect(NSRect(x: c.x - 2, y: c.y - 8, width: 22, height: 16), xRadius: 8, yRadius: 8)
         }
         p.lineWidth = 4.5; p.lineCapStyle = .round; p.lineJoinStyle = .round
         BrandIcon.indigo.setStroke(); p.stroke()

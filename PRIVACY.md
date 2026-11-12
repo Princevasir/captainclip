@@ -13,7 +13,7 @@ any of your data.**
 | Text you copy (and its formatting) | When you copy on the Mac, or when you send it from the phone (Send to Mac toggle, Share, the in-app button — or automatically in ClipBridge Pro) | Only to your paired device |
 | Images and files | Only when you paste, share or save them | Only to your paired device |
 | Your devices' names (e.g. "Pixel 9", "MacBook Air") | While connected | Only to your paired device, to show "Connected to …" |
-| Clipboard history (phone) | Clips that crossed between your devices: text, and the names and sizes of files (never file contents) | Kept **only on your phone**, encrypted (see below) |
+| Clipboard history (phone) | What you sent from the phone, and Mac files you opened on it (Mac text only if you turn that on): text, and the names and sizes of files (never file contents) | Kept **only on your phone**, encrypted (see below) |
 
 - Everything travels **directly between your two devices** over your local Wi-Fi or Bluetooth, encrypted
   end-to-end with AES-256-GCM. The encryption key is created on your Mac and reaches your phone only through
@@ -25,7 +25,11 @@ any of your data.**
 
 ## Clipboard history (Android)
 
-- The phone keeps a short history of what crossed between your devices, so you can find and reuse it.
+- The phone keeps a short history of what you send from the phone to your Mac, and of Mac files you open on the
+  phone, so you can find and reuse them.
+- Text copied on your Mac is **not** kept by default, because the phone can't tell whether you ever used it there.
+  You can include it with **Clipboard history → ⋮ → Settings → Include clips from your Mac**; turning that off
+  again deletes those entries.
 - It's stored only on your phone, encrypted with AES-256-GCM using a key held in Android's secure keystore.
   It is never uploaded, never sent anywhere else and not included in backups.
 - Only the last 25, 50 or 100 clips (your choice; 50 by default) are kept, and nothing older than 1, 7 or

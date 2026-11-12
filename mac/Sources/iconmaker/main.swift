@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import ClipBridgeCore
 
 // Usage: iconmaker <out.iconset> [preview.png]   |   iconmaker --play <folder>  (Google Play icon + feature graphic)
@@ -11,6 +12,19 @@ if args.count == 3, args[1] == "--play" {
 // iconmaker --guide <out folder>  (pictures for the phone's "Set up your Mac" guide)
 if args.count == 3, args[1] == "--guide" {
     try GuideArt.writeAll(to: URL(fileURLWithPath: args[2]))
+    exit(0)
+}
+// iconmaker --score <video.mp4> <out.mp4> [whoosh times] [tap times]   (times comma-separated, seconds)
+// Adds the original soundtrack (see Soundtrack.swift) under an existing video.
+if args.count >= 4, args[1] == "--score" {
+    let video = URL(fileURLWithPath: args[2])
+    let secs = CMTimeGetSeconds(AVURLAsset(url: video).duration)
+    func times(_ i: Int) -> [Double] { args.count > i ? args[i].split(separator: ",").compactMap { Double($0) } : [] }
+    let m4a = FileManager.default.temporaryDirectory.appendingPathComponent("clipbridge-score.m4a")
+    try Soundtrack.write(Soundtrack.render(seconds: secs, whooshes: times(4), taps: times(5)), to: m4a)
+    try Soundtrack.mux(video: video, audio: m4a, to: URL(fileURLWithPath: args[3]))
+    try? FileManager.default.removeItem(at: m4a)
+    print(String(format: "scored: %.1f s", secs))
     exit(0)
 }
 // iconmaker --trailer <screenshots folder> <out.mp4> [stills folder]

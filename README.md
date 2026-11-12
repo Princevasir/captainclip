@@ -42,7 +42,8 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
 - **Files, phone → Mac:** **Share → Send to Mac** from any app. Files land in your Mac's **Downloads** and on its
   clipboard, ready for ⌘V in Finder or Mail.
 - **Clipboard history (phone):** **Recent clips** on the main screen and a searchable **Clipboard history** of
-  what crossed between your devices — grouped by day; tap to copy again, long-press to send to the Mac again.
+  what you sent from the phone and the Mac files you opened on it — grouped by day; tap to copy again, long-press
+  to send to the Mac again. Text copied on the Mac is left out unless you turn on **Include clips from your Mac**.
   Kept only on the phone, encrypted; 25/50/100 clips for 1/7/30 days, or off.
 - **Private by design:** a direct encrypted connection on your own Wi-Fi (AES-256-GCM with a key that only ever
   travels in the pairing QR code). Passwords copied from password managers are never sent.
