@@ -15,3 +15,6 @@ dist/
 docs/play-store/trailer.mp4
 # Play upload bundle (built: cd android && ./gradlew bundleStandardRelease)
 docs/play-store/ClipBridge-play.aab
+
+# Design notes, plans and Play Store material are kept privately, not in this repository.
+docs/

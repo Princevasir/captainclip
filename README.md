@@ -203,11 +203,7 @@ cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew testStandardDebug
 ```
 
 Release APKs are signed with a key kept outside the repo (`~/.config/clipbridge-release/keystore.properties`,
-or pass `-Pclipbridge.signing=/path/to/keystore.properties`). Without it, `assembleStandardRelease` / `assembleProRelease` produce unsigned APKs. Google Play: `bundleStandardRelease`
-(see [docs/play-store](docs/play-store/README.md)).
-
-How it works: [`docs/`](docs/) has the design notes and the wire protocol (`docs/test-vector.txt` is the shared
-encryption test vector both apps check).
+or pass `-Pclipbridge.signing=/path/to/keystore.properties`). Without it, `assembleStandardRelease` / `assembleProRelease` produce unsigned APKs. Google Play: `bundleStandardRelease`.
 
 ## License
 
