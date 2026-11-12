@@ -82,4 +82,12 @@ class UiTextTest {
         assertEquals(true, UiText.showOwnCopiedMessage(sdk = 32))
         assertEquals(false, UiText.showOwnCopiedMessage(sdk = 33))
     }
+
+    @Test fun widgetAndToggleSayHowYouAreConnected() {
+        assertEquals("MacBook Air" to "Connected · Wi-Fi", UiText.connectionLine(paired = true, syncOn = true, connected = true, macName = "MacBook Air", bluetooth = false))
+        assertEquals("MacBook Air" to "Connected · Bluetooth", UiText.connectionLine(paired = true, syncOn = true, connected = true, macName = "MacBook Air", bluetooth = true))
+        assertEquals("Your Mac" to "Looking for your Mac…", UiText.connectionLine(paired = true, syncOn = true, connected = false, macName = null, bluetooth = false))
+        assertEquals("ClipBridge" to "Paused", UiText.connectionLine(paired = true, syncOn = false, connected = false, macName = "MacBook Air", bluetooth = false))
+        assertEquals("ClipBridge" to "Not paired", UiText.connectionLine(paired = false, syncOn = true, connected = false, macName = null, bluetooth = false))
+    }
 }

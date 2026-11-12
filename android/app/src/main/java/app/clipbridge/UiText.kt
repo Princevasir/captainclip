@@ -5,6 +5,14 @@ import kotlin.math.roundToLong
 
 /** Small, user-facing wording helpers (unit-tested). */
 object UiText {
+    /** (title, subtitle) for the home-screen widget and the connection toggle. */
+    fun connectionLine(paired: Boolean, syncOn: Boolean, connected: Boolean, macName: String?, bluetooth: Boolean): Pair<String, String> = when {
+        !paired -> "ClipBridge" to "Not paired"
+        !syncOn -> "ClipBridge" to "Paused"
+        connected -> (macName ?: "Your Mac") to (if (bluetooth) "Connected · Bluetooth" else "Connected · Wi-Fi")
+        else -> (macName ?: "Your Mac") to "Looking for your Mac…"
+    }
+
     /** Android 13+ confirms every clipboard write itself ("Copied"); our own message would be a second pop-up. */
     fun showOwnCopiedMessage(sdk: Int): Boolean = sdk < 33
 
