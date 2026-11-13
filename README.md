@@ -50,6 +50,13 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
 - **Pause:** pause for 15 minutes, 1 hour or until you resume, from the Mac menu or the phone.
 - **Check connection:** a screen on the phone with a report you can copy when something isn't working.
   It never contains clipboard text or network addresses.
+- **One-time codes stay private:** a copied code (4–8 digits, like a login or delivery code) still syncs, but on
+  the receiving device it's hidden from previews and clipboard managers, never kept in Clipboard history, and
+  cleared after 1 minute if you haven't copied anything newer. The device you copied it on is left alone.
+  Older Mac apps keep working; they just don't hide or clear codes.
+- **Cleaner links:** with **Remove tracking from links** (on by default), a copied web link loses tracking tags
+  (`utm_*`, `fbclid`, `gclid` and similar) on the phone, both when sending and receiving. Formatted (rich-text)
+  copies are left as they are.
 - **Private by design:** a direct encrypted connection on your own Wi-Fi (AES-256-GCM with a key that only ever
   travels in the pairing QR code). Passwords copied from password managers are never sent.
 
@@ -137,6 +144,7 @@ never screen content — and sends only to your paired Mac.
 | Send a screenshot Mac → phone | ⌃⇧⌘4 (copies to the clipboard), then paste on the phone or **Save to Downloads**. |
 | Send an image phone → Mac | Copy it on the phone (Chrome: long-press → **Copy image**), then ⌘V on the Mac. |
 | Pause syncing | Mac menu → **Pause syncing**, or the **Pause syncing** tile in ClipBridge on the phone. |
+| Change privacy options | Phone: ClipBridge main screen → **This phone → Privacy**: **Remove tracking from links**, and **Put Mac copies on this phone's clipboard** (turn it off and Mac copies go only to Clipboard history; one-time codes aren't kept). |
 | Clear or turn off history | ClipBridge → **Clipboard history** → ⋮ → **Clear history** / **Settings**. |
 | Pair a new phone / revoke the old one | Mac menu → **Reset pairing…**, then scan the new code. |
 

@@ -1,6 +1,6 @@
 # ClipBridge privacy policy
 
-_Effective 12 November 2026 · applies to ClipBridge and ClipBridge Pro for Android, and ClipBridge for Mac._
+_Effective 13 November 2026 · applies to ClipBridge and ClipBridge Pro for Android, and ClipBridge for Mac._
 
 **Short version: ClipBridge has no servers, no accounts, no analytics and no ads. What you copy goes only
 from your phone to your own paired Mac (and back), encrypted, and nowhere else. The developer never receives
@@ -20,6 +20,17 @@ any of your data.**
   the pairing QR code; it never leaves your two devices.
 - Nothing is uploaded to the internet, to the developer, or to any third party.
 - Copies marked as sensitive (for example passwords from a password manager) are never sent.
+- **One-time codes** (a copy that is just 4–8 digits, optionally split once by a space or dash) still go to your
+  paired device. On the receiving device they are hidden (Android marks the clip sensitive; the Mac marks it
+  concealed so clipboard managers skip it), are never kept in Clipboard history, and are cleared after 1 minute
+  if nothing newer was copied. The device where you copied the code is not changed. Older Mac apps keep
+  working but don't hide or clear codes.
+- **Tracking removed from links:** when a copy is a single web link, tracking tags (`utm_*`, `fbclid`, `gclid`
+  and similar) are removed on the phone, when sending and when receiving. Formatted (HTML) copies are left alone.
+  You can turn this off in **This phone → Privacy → Remove tracking from links** (on by default).
+- **Mac copies on the phone's clipboard:** by default text copied on the Mac is placed on the phone's clipboard.
+  Turn off **This phone → Privacy → Put Mac copies on this phone's clipboard** and Mac copies go only to
+  Clipboard history on the phone; one-time codes aren't kept.
 - Files from your Mac are kept on the phone only temporarily (at most 10 minutes, or until your next copy),
   unless you save or share them yourself. Files you send to the Mac are saved in its Downloads folder.
 - If you send something to your Mac while it isn't connected or syncing is paused, it waits on this phone only: the
