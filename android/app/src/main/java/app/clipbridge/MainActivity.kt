@@ -138,6 +138,14 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.featuresRow).setOnClickListener {
             Prefs.setFeaturesSeen(this); startActivity(Intent(this, FeaturesActivity::class.java))
         }
+        val openCheck = View.OnClickListener { startActivity(Intent(this, ConnectionCheckActivity::class.java)) }
+        findViewById<View>(R.id.checkConnectionRow).setOnClickListener(openCheck)
+        findViewById<View>(R.id.checkLink).setOnClickListener(openCheck)
+        findViewById<View>(R.id.droppingText).setOnClickListener(openCheck)
+        findViewById<View>(R.id.droppingDismiss).setOnClickListener {
+            app.clipbridge.sync.ConnectionLogHub.log.dismissPrompt()
+            renderStatus()
+        }
         findViewById<View>(R.id.macGuideRow).setOnClickListener { startActivity(Intent(this, MacSetupActivity::class.java)) }
         findViewById<View>(R.id.setupMacGuide).setOnClickListener {
             startActivity(Intent(this, if (currentStep() == SetupStep.QUICK_TOGGLE) QuickToggleActivity::class.java else MacSetupActivity::class.java))
@@ -242,6 +250,11 @@ class MainActivity : Activity() {
         statusDetail.text = look.detail
         statusDetail.visibility = if (look.detail.isEmpty()) View.GONE else View.VISIBLE
         findViewById<View>(R.id.sendClipboardButton).visibility = if (paired && Prefs.syncEnabled(this)) View.VISIBLE else View.GONE
+        val paused = pausedLine != null || !Prefs.syncEnabled(this)
+        val dropping = paired && app.clipbridge.sync.ConnectionLogHub.log.keepsDropping()
+        findViewById<View>(R.id.droppingRow).visibility = if (dropping) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.checkLink).visibility =
+            if (paired && !paused && !connected && !dropping) View.VISIBLE else View.GONE
     }
 
     private fun renderOffer() {
