@@ -43,6 +43,7 @@ object ConnectionCheck {
     }
 
     private fun mac(f: CheckFacts) = when {
+        f.connected && f.path == SyncLoop.Path.WIFI -> CheckLine("Mac on this Wi-Fi", Severity.OK, "All good — connected to your Mac over Wi-Fi.")
         !f.onWifi -> CheckLine("Mac on this Wi-Fi", Severity.WARN, "Can't look for your Mac without Wi-Fi — join your Mac's Wi-Fi, or use Bluetooth.")
         f.macVisible && f.macReachable -> CheckLine("Mac on this Wi-Fi", Severity.OK, "All good — your Mac is on this Wi-Fi and answering.")
         f.macVisible -> CheckLine("Mac on this Wi-Fi", Severity.PROBLEM, "Your Mac is here but can't be reached — guest, hotel or office Wi-Fi often blocks this, so use Bluetooth or a different Wi-Fi.")

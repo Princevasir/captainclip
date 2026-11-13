@@ -45,6 +45,13 @@ class ConnectionCheckTest {
         assertEquals("Your Wi-Fi hides devices from each other, but your Mac's last address works.", mac.detail)
     }
 
+    @Test fun connectedOverWifiMacLineIsOk() {
+        val f = good.copy(connected = true, path = SyncLoop.Path.WIFI, macVisible = false, macReachable = true)
+        val mac = ConnectionCheck.lines(f).first { it.title == "Mac on this Wi-Fi" }
+        assertEquals(Severity.OK, mac.severity)
+        assertEquals("All good — connected to your Mac over Wi-Fi.", mac.detail)
+    }
+
     @Test fun pairingInvalidWins() {
         val f = good.copy(pairingInvalid = true, macVisible = false, onWifi = false)
         assertEquals("Your Mac was paired again — scan its new QR code", ConnectionCheck.headline(f))
