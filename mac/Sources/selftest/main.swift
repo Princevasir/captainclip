@@ -50,6 +50,7 @@ do {
     networkInfoTests()
     try bridgeTests()
     try textLimitTests()
+    try clearAfterTests()
     try bridgeSkipsHugeCopy()
 } catch {
     failures += 1

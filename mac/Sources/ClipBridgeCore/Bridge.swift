@@ -8,6 +8,8 @@ public final class Bridge {
     public var paused = false
     /// Paused until this time (a timed pause); nil when none.
     public var pausedUntil: Date?
+    /// How long a one-time code from the phone stays on the Mac clipboard (if nothing newer is copied).
+    public var sensitiveClearDelay: TimeInterval = 60
     public var now: () -> Date = Date.init
     public var isPaused: Bool { PauseWindow.isActive(manual: paused, until: pausedUntil, now: now()) }
     public var onStatus: ((Server.Status) -> Void)?
@@ -66,11 +68,22 @@ public final class Bridge {
             self.watcher.onFile?(url)
         }
         watcher.onIgnoredFiles = { [weak self] in self?.clearOffer() }
-        server.onRichClip = { [weak self] text, html in
+        server.onRichClip = { [weak self] text, html, sensitive in
             DispatchQueue.main.async {
                 guard let self, !self.isPaused else { return }
                 self.clearOffer()  // the Mac clipboard no longer holds the offered file
                 self.loopGuard.markReceived(text)
+                if sensitive {
+                    // Concealed, never reported onward or announced; cleared later unless something newer was copied.
+                    let written = self.watcher.write(text, html: html, concealed: true)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + self.sensitiveClearDelay) { [weak self] in
+                        guard let self,
+                              ClearAfter.shouldClear(writtenChangeCount: written, currentChangeCount: self.watcher.changeCount)
+                        else { return }
+                        self.watcher.clear()
+                    }
+                    return
+                }
                 if let html { self.watcher.write(text, html: html) } else { self.watcher.write(text) }
                 self.onReceived?(text)
             }
