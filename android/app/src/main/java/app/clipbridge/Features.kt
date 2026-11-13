@@ -1,6 +1,6 @@
 package app.clipbridge
 
-/** What ClipBridge does, in the order the store listing uses (shown on FeaturesActivity). */
+/** What CaptainClip does, in the order the store listing uses (shown on FeaturesActivity). */
 object Features {
     data class Feature(val icon: Int, val title: String, val body: String)
 
@@ -12,7 +12,7 @@ object Features {
                 "Select text in any app and tap Send to Mac in the menu, right next to Copy. Or use Share → Send to Mac."),
             Feature(R.drawable.ic_tile_send, "One tap, wherever you are",
                 "Send what you copied from the notification panel button, the home-screen widget, or long-press the " +
-                    "ClipBridge icon."),
+                    "CaptainClip icon."),
             Feature(R.drawable.ic_image, "Screenshots and pictures",
                 "Take a screenshot or copy a picture on your Mac, then paste it into any app here."),
             Feature(R.drawable.ic_file, "Files, both ways",

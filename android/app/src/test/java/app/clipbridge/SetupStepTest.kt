@@ -45,7 +45,7 @@ class SetupStepTest {
     }
 
     @Test fun standardAppNeverAsksForAutomaticCopy() {
-        // The standard ClipBridge has no accessibility service, so there's nothing to turn on.
+        // The standard CaptainClip has no accessibility service, so there's nothing to turn on.
         assertEquals(SetupStep.DONE, SetupStep.next(paired = true, autoCopyOn = false, autoCopyAvailable = false))
         assertEquals(SetupStep.BLUETOOTH,
             SetupStep.next(paired = true, autoCopyOn = false, autoCopyAvailable = false, bluetoothAllowed = false))

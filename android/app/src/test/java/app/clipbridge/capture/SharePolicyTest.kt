@@ -11,7 +11,7 @@ class SharePolicyTest {
     }
 
     @Test fun rawFilePathsAreRefused() {
-        // file:///data/data/app.clipbridge/... would let any app make ClipBridge send its private files
+        // file:///data/data/app.clipbridge/... would let any app make CaptainClip send its private files
         assertFalse(SharePolicy.accepts("file", null))
     }
 

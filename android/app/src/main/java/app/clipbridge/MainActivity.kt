@@ -155,14 +155,14 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.batteryRow).setOnClickListener {
             val pairing = Prefs.pairing(this)
             when {
-                app.clipbridge.sync.MacCompanion.linked(this) -> toast("Your Mac is linked — ClipBridge already runs in the background")
+                app.clipbridge.sync.MacCompanion.linked(this) -> toast("Your Mac is linked — CaptainClip already runs in the background")
                 pairing != null && app.clipbridge.sync.MacCompanion.available(this) -> linkMac()
                 else -> startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
             }
         }
         findViewById<TextView>(R.id.tipText).text = UiText.tip(Edition.AUTO_COPY,
             SetupStep.bluetoothFallbackAvailable(android.os.Build.VERSION.SDK_INT, Edition.LOCATION_FOR_BLUETOOTH))
-        if (!Edition.AUTO_COPY) findViewById<View>(R.id.autoCopyRow).visibility = View.GONE  // only ClipBridge Pro has automatic copy
+        if (!Edition.AUTO_COPY) findViewById<View>(R.id.autoCopyRow).visibility = View.GONE  // only CaptainClip Pro has automatic copy
         findViewById<View>(R.id.autoCopyRow).setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
@@ -229,7 +229,7 @@ class MainActivity : Activity() {
         }
         // (card colours, pill, title, detail)
         val look = when {
-            !paired -> Look(SLATE, "Not paired", "Pair with your Mac", "Scan the QR code from ClipBridge on your Mac")
+            !paired -> Look(SLATE, "Not paired", "Pair with your Mac", "Scan the QR code from CaptainClip on your Mac")
             pausedLine != null -> Look(SLATE, "Paused", "Syncing is paused", pausedLine)
             !Prefs.syncEnabled(this) -> Look(SLATE, "Paused", "Syncing is paused", "Copies stay on this phone until you resume")
             else -> when (SyncService.state) {
@@ -237,7 +237,7 @@ class MainActivity : Activity() {
                     if (SyncService.onBluetooth) "Bluetooth · end-to-end encrypted · files up to 5 MB"
                     else "Same Wi-Fi · end-to-end encrypted")
                 SyncLoop.Status.SEARCHING, SyncLoop.Status.RETRYING -> Look(AMBER, "Searching",
-                    "Looking for your Mac…", "Make sure ClipBridge is running on the Mac and both are nearby or on the same Wi-Fi")
+                    "Looking for your Mac…", "Make sure CaptainClip is running on the Mac and both are nearby or on the same Wi-Fi")
                 SyncLoop.Status.PAIRING_INVALID -> Look(RED, "Pairing needed",
                     "Your Mac doesn't recognise this phone", "Its pairing was reset — scan the QR code again")
                 else -> Look(SLATE, "Starting", "Starting…", "")
@@ -286,7 +286,7 @@ class MainActivity : Activity() {
         savedText.visibility = if (done == null) View.GONE else View.VISIBLE
         openButton.visibility = if (done != null && offers.size == 1) View.VISIBLE else View.GONE
         if (done != null) {
-            savedText.text = if (offers.size == 1) "Saved to Download/ClipBridge" else "Saved ${offers.size} files to Download/ClipBridge"
+            savedText.text = if (offers.size == 1) "Saved to Download/CaptainClip" else "Saved ${offers.size} files to Download/CaptainClip"
             openButton.setOnClickListener { open(done.second, offer.mime) }
         }
     }
@@ -460,7 +460,7 @@ class MainActivity : Activity() {
     private fun scanQr() {
         IntentIntegrator(this)
             .setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
-            .setPrompt("Scan the QR code shown by ClipBridge on your Mac")
+            .setPrompt("Scan the QR code shown by CaptainClip on your Mac")
             .setBeepEnabled(false)
             .setOrientationLocked(false)
             .initiateScan()
@@ -471,7 +471,7 @@ class MainActivity : Activity() {
         if (requestCode == app.clipbridge.sync.MacCompanion.REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
                 Prefs.setCompanionLinked(this, true)
-                toast("Mac linked — ClipBridge can now stay connected in the background")
+                toast("Mac linked — CaptainClip can now stay connected in the background")
             }
             refresh()
             return
@@ -479,7 +479,7 @@ class MainActivity : Activity() {
         val result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
         if (result == null) { super.onActivityResult(requestCode, resultCode, data); return }
         val contents = result.contents ?: return
-        val info = PairingInfo.parse(contents) ?: return toast("Not a ClipBridge code")
+        val info = PairingInfo.parse(contents) ?: return toast("Not a CaptainClip code")
         val newMac = Prefs.savePairing(this, info)  // a different Mac: forgets the old Mac's address
         Prefs.setPausedUntil(this, 0)  // a fresh pairing never starts out paused
         Prefs.setSyncEnabled(this, true)

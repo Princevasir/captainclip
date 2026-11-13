@@ -31,7 +31,7 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 
 /**
- * Bluetooth fallback, phone side: a BLE GATT client to the Mac's ClipBridge service, exposed as a byte-stream
+ * Bluetooth fallback, phone side: a BLE GATT client to the Mac's CaptainClip service, exposed as a byte-stream
  * [Link]. The encrypted session on top is exactly the same as over Wi-Fi. Radio code only — verified on device.
  */
 @SuppressLint("MissingPermission")  // every entry point checks [allowed] first

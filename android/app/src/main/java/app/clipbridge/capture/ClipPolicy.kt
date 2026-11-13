@@ -7,12 +7,12 @@ object ClipPolicy {
     /** Extra password managers set on Android 13+ (ClipDescription.EXTRA_IS_SENSITIVE). */
     const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
 
-    /** [hasUri]: the clip carries a content URI (a file, an image, or ClipBridge's own placeholder) — never sent as text. */
+    /** [hasUri]: the clip carries a content URI (a file, an image, or CaptainClip's own placeholder) — never sent as text. */
     fun shouldSend(text: String?, sensitive: Boolean, hasUri: Boolean = false): Boolean =
         !text.isNullOrEmpty() && !sensitive && !hasUri
 }
 
-/** Remembers when ClipBridge itself last wrote the clipboard, so copy detection can ignore it. */
+/** Remembers when CaptainClip itself last wrote the clipboard, so copy detection can ignore it. */
 class OwnWriteWindow(private val windowMs: Long = 2_000, private val clock: () -> Long) {
     @Volatile private var lastWrite: Long? = null
 

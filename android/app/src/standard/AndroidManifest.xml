@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Standard ClipBridge: no location at all. Android 10-11 need it to scan for Bluetooth, so its Bluetooth
+<!-- Standard CaptainClip: no location at all. Android 10-11 need it to scan for Bluetooth, so its Bluetooth
      fallback works on Android 12+ only (where "Nearby devices" is enough). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">

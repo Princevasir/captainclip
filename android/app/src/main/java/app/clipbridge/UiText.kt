@@ -15,9 +15,9 @@ object UiText {
     /** (title, subtitle) for the home-screen widget and the connection toggle. */
     fun connectionLine(paired: Boolean, syncOn: Boolean, connected: Boolean, macName: String?, bluetooth: Boolean,
                        pausedLine: String? = null): Pair<String, String> = when {
-        !paired -> "ClipBridge" to "Not paired"
+        !paired -> "CaptainClip" to "Not paired"
         pausedLine != null -> "Paused" to pausedLine
-        !syncOn -> "ClipBridge" to "Paused"
+        !syncOn -> "CaptainClip" to "Paused"
         connected -> (macName ?: "Your Mac") to (if (bluetooth) "Connected · Bluetooth" else "Connected · Wi-Fi")
         else -> (macName ?: "Your Mac") to "Looking for your Mac…"
     }
@@ -40,7 +40,7 @@ object UiText {
         else -> "Ready"
     }
 
-    /** The tip at the bottom of the main screen, worded for ClipBridge Pro (automatic copy) or the standard app. */
+    /** The tip at the bottom of the main screen, worded for CaptainClip Pro (automatic copy) or the standard app. */
     fun tip(autoCopy: Boolean, bluetooth: Boolean): String {
         val how = if (autoCopy) "Copies on the phone go to your Mac by themselves. The Send to Mac button in your notification panel and " +
             "Share → Send to Mac work too."
@@ -53,7 +53,7 @@ object UiText {
     fun panelSummary(sendAdded: Boolean, switchAdded: Boolean): String = when {
         sendAdded && switchAdded -> "Both added"
         sendAdded -> "Send to Mac added"
-        switchAdded -> "ClipBridge added"
+        switchAdded -> "CaptainClip added"
         else -> "Not added"
     }
 

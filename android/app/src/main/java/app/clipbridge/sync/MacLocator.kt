@@ -48,7 +48,7 @@ class MacLocator(context: Context) {
         return result.get()
     }
 
-    private companion object {
+    internal companion object {
         const val SERVICE_TYPE = "_clipbridge._tcp."
     }
 }

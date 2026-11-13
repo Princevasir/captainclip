@@ -18,7 +18,7 @@ import app.clipbridge.core.PairingTag
 import java.util.regex.Pattern
 
 /**
- * Links the paired Mac as an Android *companion device* (like a watch or earbuds). Android then exempts ClipBridge
+ * Links the paired Mac as an Android *companion device* (like a watch or earbuds). Android then exempts CaptainClip
  * from battery restrictions and lets it start its connection from the background (REQUEST_COMPANION_* permissions).
  * The system dialog finds the Mac over Bluetooth by its advertised pairing tag.
  */
@@ -55,7 +55,7 @@ object MacCompanion {
             @Deprecated("Android < 13") override fun onDeviceFound(sender: IntentSender) = show(sender)
             override fun onAssociationCreated(info: AssociationInfo) { Prefs.setCompanionLinked(activity, true) }
             override fun onFailure(error: CharSequence?) {
-                onError("Couldn't find your Mac — make sure ClipBridge is running on it and Bluetooth is on")
+                onError("Couldn't find your Mac — make sure CaptainClip is running on it and Bluetooth is on")
             }
             private fun show(sender: IntentSender) {
                 runCatching { activity.startIntentSenderForResult(sender, REQUEST_CODE, null, 0, 0, 0) }

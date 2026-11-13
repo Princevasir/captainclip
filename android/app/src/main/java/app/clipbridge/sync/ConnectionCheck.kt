@@ -29,7 +29,7 @@ object ConnectionCheck {
         }
         !f.onWifi -> "This phone isn't on Wi-Fi"
         f.macVisible && !f.macReachable -> "Your Wi-Fi is blocking devices from talking to each other"
-        !f.macVisible && f.macReachable -> "Your Mac answered at its last address — ClipBridge will reconnect"
+        !f.macVisible && f.macReachable -> "Your Mac answered at its last address — CaptainClip will reconnect"
         !f.macVisible -> "Can't find your Mac on this Wi-Fi"
         else -> "Still looking for your Mac"
     }
@@ -48,11 +48,11 @@ object ConnectionCheck {
         f.macVisible && f.macReachable -> CheckLine("Mac on this Wi-Fi", Severity.OK, "All good — your Mac is on this Wi-Fi and answering.")
         f.macVisible -> CheckLine("Mac on this Wi-Fi", Severity.PROBLEM, "Your Mac is here but can't be reached — guest, hotel or office Wi-Fi often blocks this, so use Bluetooth or a different Wi-Fi.")
         f.macReachable -> CheckLine("Mac on this Wi-Fi", Severity.WARN, "Your Wi-Fi hides devices from each other, but your Mac's last address works.")
-        else -> CheckLine("Mac on this Wi-Fi", Severity.PROBLEM, "Is ClipBridge open on your Mac, and is it on the same Wi-Fi?")
+        else -> CheckLine("Mac on this Wi-Fi", Severity.PROBLEM, "Is CaptainClip open on your Mac, and is it on the same Wi-Fi?")
     }
 
     private fun bluetooth(f: CheckFacts) = when {
-        !f.bluetoothAllowed -> CheckLine("Bluetooth", Severity.WARN, "ClipBridge isn't allowed to use Bluetooth — allow Nearby devices for ClipBridge in your phone's settings.")
+        !f.bluetoothAllowed -> CheckLine("Bluetooth", Severity.WARN, "CaptainClip isn't allowed to use Bluetooth — allow Nearby devices for CaptainClip in your phone's settings.")
         !f.bluetoothOn -> CheckLine("Bluetooth", Severity.WARN, "Bluetooth is off — turn it on to keep syncing when Wi-Fi isn't available.")
         else -> CheckLine("Bluetooth", Severity.OK, "All good — Bluetooth is on and ready as a backup.")
     }
@@ -62,8 +62,8 @@ object ConnectionCheck {
         else CheckLine("Pairing", Severity.OK, "All good — this phone is paired with your Mac.")
 
     private fun background(f: CheckFacts) =
-        if (f.backgroundOk) CheckLine("Background", Severity.OK, "All good — ClipBridge can keep running in the background.")
-        else CheckLine("Background", Severity.WARN, "Android may stop ClipBridge in the background — set its battery use to Unrestricted in your phone's settings.")
+        if (f.backgroundOk) CheckLine("Background", Severity.OK, "All good — CaptainClip can keep running in the background.")
+        else CheckLine("Background", Severity.WARN, "Android may stop CaptainClip in the background — set its battery use to Unrestricted in your phone's settings.")
 }
 
 /** [kind] is one of: connected-wifi, connected-bluetooth, lost, auth-failed, paused, resumed. */
@@ -80,7 +80,7 @@ object ConnectionReport {
         now: Long,
         time: (Long) -> String,
     ): String = buildString {
-        appendLine("ClipBridge connection report")
+        appendLine("CaptainClip connection report")
         appendLine("App: $app")
         appendLine("Android: $android")
         appendLine("Time: ${time(now)}")

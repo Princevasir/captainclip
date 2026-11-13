@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ClipBridge Pro only: automatic copy. the standard ClipBridge leaves this out so Play Protect allows browser installs. -->
+<!-- CaptainClip Pro only: automatic copy. the standard CaptainClip leaves this out so Play Protect allows browser installs. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <service
             android:name=".capture.CopyDetectService"
             android:exported="false"
-            android:label="ClipBridge automatic copy"
+            android:label="CaptainClip automatic copy"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />

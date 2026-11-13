@@ -24,8 +24,8 @@ object HistoryUi {
     fun copy(ctx: Context, e: HistoryEntry) {
         if (e.isFile) { toast(ctx, "Only the file's name is kept — its contents aren't stored"); return }
         val text = e.text ?: return
-        OwnWrites.markNow()  // ClipBridge Pro: don't send this back to the Mac by itself
-        val clip = if (e.html != null) ClipData.newHtmlText("ClipBridge", text, e.html) else ClipData.newPlainText("ClipBridge", text)
+        OwnWrites.markNow()  // CaptainClip Pro: don't send this back to the Mac by itself
+        val clip = if (e.html != null) ClipData.newHtmlText("CaptainClip", text, e.html) else ClipData.newPlainText("CaptainClip", text)
         ctx.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
         app.clipbridge.sync.SyncService.noteClipboardChanged()
         if (UiText.showOwnCopiedMessage(android.os.Build.VERSION.SDK_INT)) toast(ctx, "Copied")  // newer Android says it already
