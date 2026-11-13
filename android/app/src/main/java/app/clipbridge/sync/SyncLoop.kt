@@ -148,6 +148,9 @@ class SyncLoop(
         synchronized(probeSignal) { probeNow = true; probeSignal.notifyAll() }
     }
 
+    /** The phone put this text on its clipboard (possibly cleaned, so unlike what the Mac sent): never send it back. */
+    fun noteWritten(text: String) = loopGuard.markReceived(text)
+
     /**
      * Send text to the Mac. False if not connected, too large, or it is an echo of what the Mac sent.
      * [userInitiated] (an explicit "Send to Mac", e.g. from history) skips the echo check: the tap is the intent.

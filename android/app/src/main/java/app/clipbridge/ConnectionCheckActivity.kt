@@ -122,6 +122,7 @@ class ConnectionCheckActivity : Activity() {
         )
         OwnWrites.markNow()  // ClipBridge's own write: not sent to the Mac
         getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("ClipBridge report", text))
+        app.clipbridge.sync.SyncService.noteClipboardChanged()
         Toast.makeText(this, "Report copied — it has no clipboard text", Toast.LENGTH_SHORT).show()
     }
 }

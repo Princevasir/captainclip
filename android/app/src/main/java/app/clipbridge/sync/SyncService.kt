@@ -164,6 +164,9 @@ class SyncService : Service() {
             return result
         }
 
+        /** ClipBridge itself put something on the clipboard: a code waiting to be cleared is no longer current. */
+        fun noteClipboardChanged() { instance?.clearGuard?.markChanged() }
+
         /** Held while a clip goes to the Mac, so a stale queued clip can't overtake a newer direct send. */
         private val clipSendLock = Any()
 
@@ -174,6 +177,7 @@ class SyncService : Service() {
          */
         fun send(ctx: Context, text: String, html: String? = null, userInitiated: Boolean = false): SendResult {
             if (text.isEmpty()) return SendResult.FAILED
+            noteClipboardChanged()  // a newer copy, whether or not it is sent: a code waiting to be cleared is no longer current
             val out = ClipPrivacy.outgoing(text, html, Prefs.cleanLinks(ctx))
             when (decide(ctx, userInitiated)) {
                 SendPolicy.Decision.DROP -> return SendResult.FAILED
@@ -186,7 +190,6 @@ class SyncService : Service() {
                 SendQueueHub.queue.supersedeClip()  // newest wins: a waiting older clip must not follow this one
                 service.loop?.send(out.text, html, userInitiated, out.sensitive) ?: false
             }
-            if (sent) service.clearGuard.markChanged()  // a newer copy: a code waiting to be cleared is no longer current
             if (sent) { service.history().recordText(out.text, html, Direction.TO_MAC, out.sensitive); service.historyChanged() }  // it crossed
             return if (sent) SendResult.SENT else SendResult.FAILED
         }
@@ -441,6 +444,7 @@ class SyncService : Service() {
                 offers.drop(1).forEach { clip.addItem(ClipData.Item(Files.uriFor(it.id, it.name))) }
                 markFromMac(clip.description)
                 getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+                clearGuard.markChanged()  // newer than any code waiting to be cleared
             }
         }
         val save = PendingIntent.getService(
@@ -594,6 +598,7 @@ class SyncService : Service() {
     private fun writeClipboard(text: String, html: String?) {
         if (isPaused(this)) return  // a timed pause ignores the Mac's clips
         val inc = ClipPrivacy.incoming(text, html, Prefs.cleanLinks(this), Prefs.macToClipboard(this), Prefs.historyFromMac(this))
+        if (inc.putOnClipboard) loop?.noteWritten(inc.text)  // the cleaned text is what the phone now holds
         main.post {
             val placed = !inc.putOnClipboard || runCatching {
                 OwnWrites.markNow()  // so copy detection ignores the system "Copied" overlay this causes
@@ -604,7 +609,7 @@ class SyncService : Service() {
                 if (inc.sensitive) scheduleClear(inc.text) else clearGuard.markChanged()  // a newer clip replaced any waiting code
             }.isSuccess
             // On the phone's clipboard (or, with that off, just received): it crossed
-            if (placed && inc.recordInHistory) { history().recordText(inc.text, html, Direction.FROM_MAC, inc.sensitive); historyChanged() }
+            if (placed && inc.recordInHistory) { history().recordText(inc.text, html, Direction.FROM_MAC, inc.sensitive, held = !inc.putOnClipboard); historyChanged() }
         }
     }
 

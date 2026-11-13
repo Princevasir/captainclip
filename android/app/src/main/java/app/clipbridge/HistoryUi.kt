@@ -27,6 +27,7 @@ object HistoryUi {
         OwnWrites.markNow()  // ClipBridge Pro: don't send this back to the Mac by itself
         val clip = if (e.html != null) ClipData.newHtmlText("ClipBridge", text, e.html) else ClipData.newPlainText("ClipBridge", text)
         ctx.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+        app.clipbridge.sync.SyncService.noteClipboardChanged()
         if (UiText.showOwnCopiedMessage(android.os.Build.VERSION.SDK_INT)) toast(ctx, "Copied")  // newer Android says it already
     }
 
