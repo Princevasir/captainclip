@@ -28,6 +28,7 @@ do {
     try quarantineTests()
     brandIconTests()
     menuTextTests()
+    pauseWindowTests()
     try richMessageTests()
     packetizerTests()
     try sessionOverBluetoothTests()
