@@ -1,4 +1,6 @@
-# ClipBridge
+# CaptainClip
+
+CaptainClip was called ClipBridge before 0.8.
 
 **Copy on your Mac, paste on your Android phone — and back.** Text and small files (PDFs, docs, images)
 move between a Mac and an Android phone on the same Wi-Fi — or over Bluetooth when there's no shared Wi-Fi —
@@ -6,18 +8,18 @@ directly and end-to-end encrypted. No account, no cloud, no server.
 
 | | |
 |---|---|
-| 🖥 **Mac app** | [**Download ClipBridge for Mac**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-mac.zip) · macOS 13 Ventura or later · Apple silicon and Intel |
-| 📱 **Android app** | [**Download ClipBridge for Android**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android.apk) · Android 10 or later · installs normally |
-| 📱 **Android app — Pro** | [**Download ClipBridge Pro**](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android-pro.apk) · adds automatic copy (see below) |
+| 🖥 **Mac app** | [**Download CaptainClip for Mac**](https://github.com/Princevasir/captainclip/releases/latest/download/CaptainClip-mac.zip) · macOS 13 Ventura or later · Apple silicon and Intel |
+| 📱 **Android app** | [**Download CaptainClip for Android**](https://github.com/Princevasir/captainclip/releases/latest/download/CaptainClip-android.apk) · Android 10 or later · installs normally |
+| 📱 **Android app — Pro** | [**Download CaptainClip Pro**](https://github.com/Princevasir/captainclip/releases/latest/download/CaptainClip-android-pro.apk) · adds automatic copy (see below) |
 
-**ClipBridge or ClipBridge Pro?** Both do everything Mac → phone automatically. **ClipBridge** sends from the
+**CaptainClip or CaptainClip Pro?** Both do everything Mac → phone automatically. **CaptainClip** sends from the
 phone when you tap **Send to Mac** (the quick toggle next to Torch, Share, or the button in the app); it asks for
 no location and no accessibility access, so it installs without warnings (Bluetooth fallback: Android 12+).
-**ClipBridge Pro** also notices when you copy on the phone and sends it by itself — that needs an Android
+**CaptainClip Pro** also notices when you copy on the phone and sends it by itself — that needs an Android
 *accessibility service*, which Google Play Protect blocks for apps installed from a browser in some countries
 (see the install steps). Either one installs over the other and keeps your pairing.
 
-All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge/releases).
+All versions and checksums: [Releases](https://github.com/Princevasir/captainclip/releases).
 
 ---
 
@@ -26,9 +28,9 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
 - **Text, Mac → phone:** copy on the Mac, paste on the phone. Automatic.
 - **Text, phone → Mac:** copy in most Android apps and it's on the Mac clipboard. Where an app copies
   silently, use the **Send to Mac** toggle in your notification panel, **Share → Send to Mac**, or the big
-  **Send clipboard to Mac** button on ClipBridge's main screen.
+  **Send clipboard to Mac** button on CaptainClip's main screen.
 - **Files, Mac → phone (up to 25 MB each, up to 20 at once):** ⌘C one or several files in Finder. The phone only
-  learns their names and sizes; the files themselves move **only when you use them**: open ClipBridge and tap
+  learns their names and sizes; the files themselves move **only when you use them**: open CaptainClip and tap
   **Share…** (attaches them in Gmail, WhatsApp, Drive…) or **Save to Downloads**. Images can also simply be pasted.
   Offers expire after 10 minutes or at your next copy.
 - **Bluetooth fallback:** when the phone can't reach the Mac over Wi-Fi (café, office guest Wi-Fi, no Wi-Fi), it
@@ -53,7 +55,7 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
 - **One-time codes stay private:** a copied code (4–8 digits, like a login or delivery code) still syncs, but on
   the receiving device Android hides its preview and the Mac marks it so clipboard managers skip it, it's never kept in Clipboard history, and
   cleared after 1 minute. On the Mac that happens unless you've copied something newer; on the phone, Android
-  doesn't let ClipBridge check, so if you copy something else there within that minute and don't send it, that
+  doesn't let CaptainClip check, so if you copy something else there within that minute and don't send it, that
   may be cleared too. The device you copied it on is left alone.
   Older Mac apps keep working; they just don't hide or clear codes.
 - **Cleaner links:** with **Remove tracking from links** (on by default), a copied web link loses tracking tags
@@ -66,29 +68,29 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
 
 ### 1. Mac
 
-1. Download **[ClipBridge-mac.zip](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-mac.zip)**
+1. Download **[CaptainClip-mac.zip](https://github.com/Princevasir/captainclip/releases/latest/download/CaptainClip-mac.zip)**
    and double-click it to unzip.
-2. Drag **ClipBridge.app** into your **Applications** folder.
-3. Open it. Because ClipBridge isn't from the App Store or notarised by Apple, macOS blocks the first launch:
+2. Drag **CaptainClip.app** into your **Applications** folder.
+3. Open it. Because CaptainClip isn't from the App Store or notarised by Apple, macOS blocks the first launch:
    - **macOS 15 Sequoia and later:** click **Done** on the warning, then open **System Settings → Privacy &
-     Security**, scroll down and click **Open Anyway** next to ClipBridge, and confirm.
-   - **macOS 13–14:** right-click (or Control-click) ClipBridge.app → **Open** → **Open**.
-   - Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/ClipBridge.app`
+     Security**, scroll down and click **Open Anyway** next to CaptainClip, and confirm.
+   - **macOS 13–14:** right-click (or Control-click) CaptainClip.app → **Open** → **Open**.
+   - Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/CaptainClip.app`
 4. A clipboard-with-a-bridge icon appears in the **menu bar** (top-right). There's no Dock icon — that's normal.
-5. When macOS asks, allow ClipBridge to **find devices on your local network**, to **use Bluetooth** (for the
+5. When macOS asks, allow CaptainClip to **find devices on your local network**, to **use Bluetooth** (for the
    fallback), to **use its key in your Keychain** (click **Always Allow**), and to send **notifications** (optional).
-6. Optional: menu-bar icon → **Start ClipBridge at login**.
+6. Optional: menu-bar icon → **Start CaptainClip at login**.
 
 ### 2. Android phone
 
-1. On the phone, open **[ClipBridge-android.apk](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android.apk)**
-   — or **[ClipBridge-android-pro.apk](https://github.com/Princevasir/clipbridge/releases/latest/download/ClipBridge-android-pro.apk)**
+1. On the phone, open **[CaptainClip-android.apk](https://github.com/Princevasir/captainclip/releases/latest/download/CaptainClip-android.apk)**
+   — or **[CaptainClip-android-pro.apk](https://github.com/Princevasir/captainclip/releases/latest/download/CaptainClip-android-pro.apk)**
    for Pro (download it in Chrome, or send it from the Mac with Quick Share / AirDrop).
 2. Tap the downloaded file to install. If Android asks, allow **Install unknown apps** for Chrome or My Files.
    - **Samsung phones:** if installing is blocked, turn off **Settings → Security and privacy → Auto Blocker**
      while you install (you can turn it back on afterwards).
    - **Google Play Protect** may say the developer is unknown → **More details → Install anyway**.
-   - **ClipBridge Pro: "This app can request access to sensitive data" with only an OK button** — Play Protect
+   - **CaptainClip Pro: "This app can request access to sensitive data" with only an OK button** — Play Protect
      blocks apps that use an *accessibility service* (Pro's automatic copy, which only reads the text of
      "Copy"/"Copied" labels) when they're installed from a browser, chat app or file manager. In some countries (e.g. India,
      Singapore, Thailand, Brazil) there's no "Install anyway". Install it from your Mac over USB instead — this
@@ -96,42 +98,42 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
      1. On the phone: **Settings → About phone → Software information**, tap **Build number** 7 times, then
         **Settings → Developer options → USB debugging** on. Connect the phone to the Mac and allow the prompt.
      2. On the Mac, in Terminal (needs [Homebrew](https://brew.sh)):
-        `brew install android-platform-tools`, then `adb install ~/Downloads/ClipBridge-android-pro.apk`
+        `brew install android-platform-tools`, then `adb install ~/Downloads/CaptainClip-android-pro.apk`
      3. Turn **Developer options** off again afterwards (banking apps often refuse to run while it's on).
 
-     Or use the standard **ClipBridge**, which installs normally. Please don't turn Play Protect off to get
+     Or use the standard **CaptainClip**, which installs normally. Please don't turn Play Protect off to get
      around it — it protects you from other apps too.
-3. Open **ClipBridge**.
+3. Open **CaptainClip**.
 
 ### 3. Pair (once)
 
 1. On the Mac: menu-bar icon → **Pair phone…** — a QR code appears.
-2. On the phone: ClipBridge → **Scan QR code**, allow the camera, and point it at the QR code.
+2. On the phone: CaptainClip → **Scan QR code**, allow the camera, and point it at the QR code.
 3. The phone shows **Connected to ‹your Mac›** and the Mac menu shows **Connected to ‹your phone›**. Done.
 
-### 4. Turn on automatic copy (ClipBridge Pro only — with ClipBridge, use the Send to Mac toggle)
+### 4. Turn on automatic copy (CaptainClip Pro only — with CaptainClip, use the Send to Mac toggle)
 
-This lets ClipBridge notice when you tap **Copy** in other apps, so phone → Mac works by itself.
+This lets CaptainClip notice when you tap **Copy** in other apps, so phone → Mac works by itself.
 
-1. In ClipBridge, tap **Open Accessibility settings** (or Settings → **Accessibility → Installed apps**).
-2. Turn on **ClipBridge automatic copy** and confirm.
+1. In CaptainClip, tap **Open Accessibility settings** (or Settings → **Accessibility → Installed apps**).
+2. Turn on **CaptainClip automatic copy** and confirm.
 3. **Greyed out?** Android 13+ restricts this for apps installed outside the Play Store. Go to
-   **Settings → Apps → ClipBridge → ⋮ (top-right) → Allow restricted settings**, then try again.
+   **Settings → Apps → CaptainClip → ⋮ (top-right) → Allow restricted settings**, then try again.
 
-ClipBridge only reads the short text of "Copy" buttons and "Copied" messages to know when you copied —
+CaptainClip only reads the short text of "Copy" buttons and "Copied" messages to know when you copied —
 never screen content — and sends only to your paired Mac.
 
 ### 5. Optional
 
-- **Bluetooth fallback:** in ClipBridge, tap **Allow Bluetooth** on the setup card and allow **Nearby devices**.
-  Without it, ClipBridge simply stays Wi-Fi-only.
-- **"Send to Mac" quick toggle** (next to Torch, Auto rotate…): in ClipBridge tap the **Add to Quick Settings**
+- **Bluetooth fallback:** in CaptainClip, tap **Allow Bluetooth** on the setup card and allow **Nearby devices**.
+  Without it, CaptainClip simply stays Wi-Fi-only.
+- **"Send to Mac" quick toggle** (next to Torch, Auto rotate…): in CaptainClip tap the **Add to Quick Settings**
   tile — a short guide with **Add it now** (Android 13+; tap **Add**). Samsung places new toggles at the end of
   the panel: tap ✏️ and drag **Send to Mac** up into the grid. On Android 10–12 the guide shows how to add it by
   hand. The toggle lights up with **Ready** while your Mac is connected; tap it after copying to send your
   clipboard. Once it's in place, the tile says **In Quick Settings ✓**.
-- **Battery:** in ClipBridge → Settings, tap **Run in the background**, so Android doesn't pause it.
-- **Notifications** are optional. With them off, everything still works; use the ClipBridge screen for
+- **Battery:** in CaptainClip → Settings, tap **Run in the background**, so Android doesn't pause it.
+- **Notifications** are optional. With them off, everything still works; use the CaptainClip screen for
   **Save to Downloads**.
 
 ## Using it
@@ -139,19 +141,19 @@ never screen content — and sends only to your paired Mac.
 | You want to… | Do this |
 |---|---|
 | Send text Mac → phone | Copy on the Mac. Paste on the phone. |
-| Send text phone → Mac | Copy on the phone, then tap **Send to Mac** in your notification panel (or **Send clipboard to Mac** in the app; ClipBridge Pro sends by itself). Paste on the Mac. |
-| Find something you sent earlier | ClipBridge → **Recent clips**, or **Clipboard history** to search. Tap to copy; long-press → **Send to Mac**. |
-| Send files Mac → phone | ⌘C one or several files in Finder. On the phone open ClipBridge → **Share…** and pick Gmail, WhatsApp, Drive… **or** **Save to Downloads** (saved in *Download/ClipBridge*). |
+| Send text phone → Mac | Copy on the phone, then tap **Send to Mac** in your notification panel (or **Send clipboard to Mac** in the app; CaptainClip Pro sends by itself). Paste on the Mac. |
+| Find something you sent earlier | CaptainClip → **Recent clips**, or **Clipboard history** to search. Tap to copy; long-press → **Send to Mac**. |
+| Send files Mac → phone | ⌘C one or several files in Finder. On the phone open CaptainClip → **Share…** and pick Gmail, WhatsApp, Drive… **or** **Save to Downloads** (saved in *Download/CaptainClip*). |
 | Send a file phone → Mac | **Share → Send to Mac**. It's in **Downloads** on the Mac; ⌘V pastes it. |
 | Send a screenshot Mac → phone | ⌃⇧⌘4 (copies to the clipboard), then paste on the phone or **Save to Downloads**. |
 | Send an image phone → Mac | Copy it on the phone (Chrome: long-press → **Copy image**), then ⌘V on the Mac. |
-| Pause syncing | Mac menu → **Pause syncing**, or the **Pause syncing** tile in ClipBridge on the phone. |
-| Change privacy options | Phone: ClipBridge main screen → **This phone → Privacy**: **Remove tracking from links**, and **Put Mac copies on this phone's clipboard** (turn it off and text from your Mac waits in Clipboard history instead, if history is on; pictures and files still arrive as before; one-time codes aren't kept). |
-| Clear or turn off history | ClipBridge → **Clipboard history** → ⋮ → **Clear history** / **Settings**. |
+| Pause syncing | Mac menu → **Pause syncing**, or the **Pause syncing** tile in CaptainClip on the phone. |
+| Change privacy options | Phone: CaptainClip main screen → **This phone → Privacy**: **Remove tracking from links**, and **Put Mac copies on this phone's clipboard** (turn it off and text from your Mac waits in Clipboard history instead, if history is on; pictures and files still arrive as before; one-time codes aren't kept). |
+| Clear or turn off history | CaptainClip → **Clipboard history** → ⋮ → **Clear history** / **Settings**. |
 | Pair a new phone / revoke the old one | Mac menu → **Reset pairing…**, then scan the new code. |
 
 Note: most Android apps (Gmail included) accept **pasted images** but ignore other pasted files such as PDFs —
-use **Share…** in ClipBridge for those. Samsung **My Files** can't paste files from other apps ("Destination folder
+use **Share…** in CaptainClip for those. Samsung **My Files** can't paste files from other apps ("Destination folder
 is same as source folder"); use **Save to Downloads**.
 
 ## Troubleshooting
@@ -159,14 +161,14 @@ is same as source folder"); use **Save to Downloads**.
 **Phone stays on "Looking for your Mac…"**
 - Both on the **same Wi-Fi**, not a guest network. Guest and office Wi-Fi often block devices from talking to each
   other (*AP / client isolation*) — use your home Wi-Fi or a phone hotspot.
-- Mac: **System Settings → Privacy & Security → Local Network → ClipBridge** must be on.
-- Mac firewall: allow incoming connections for ClipBridge (TCP port 52001).
+- Mac: **System Settings → Privacy & Security → Local Network → CaptainClip** must be on.
+- Mac firewall: allow incoming connections for CaptainClip (TCP port 52001).
 - A **VPN** on either device can hide the local network — pause it or allow LAN traffic.
-- Is ClipBridge running on the Mac (icon in the menu bar)?
+- Is CaptainClip running on the Mac (icon in the menu bar)?
 
 **Bluetooth fallback doesn't connect**
-- Phone: ClipBridge needs **Nearby devices** (Settings → Apps → ClipBridge → Permissions) and Bluetooth on.
-- Mac: **System Settings → Privacy & Security → Bluetooth → ClipBridge** must be on; the menu shows
+- Phone: CaptainClip needs **Nearby devices** (Settings → Apps → CaptainClip → Permissions) and Bluetooth on.
+- Mac: **System Settings → Privacy & Security → Bluetooth → CaptainClip** must be on; the menu shows
   **Bluetooth fallback: ready** when it's working.
 - Keep the phone within a few metres of the Mac. After the phone fails to find the Mac over Bluetooth, it waits
   1–10 minutes before looking again (to save battery); turning Wi-Fi off and on makes it look right away.
@@ -183,14 +185,14 @@ message. Use the **Send to Mac** tile right after copying.
 Docs or Notes to keep formatting.
 
 **Banking app won't open** — many banking apps refuse to run while **Developer options / USB debugging** is on
-(only needed for building ClipBridge yourself) or while an accessibility service from outside the Play Store is on.
-Turn off Developer options first; if needed, turn off *ClipBridge automatic copy* (use the Send to Mac tile instead).
+(only needed for building CaptainClip yourself) or while an accessibility service from outside the Play Store is on.
+Turn off Developer options first; if needed, turn off *CaptainClip automatic copy* (use the Send to Mac tile instead).
 
 **"Copied." pop-up on the phone when the Mac sends something** — that's Android's own clipboard confirmation
 (shown whenever any app sets the clipboard). Apps can't turn it off.
 
 **Automatic copy stopped working** — Android turns accessibility services off if an app is force-stopped.
-Turn **ClipBridge automatic copy** back on in Accessibility settings.
+Turn **CaptainClip automatic copy** back on in Accessibility settings.
 
 ## Limits
 
@@ -204,7 +206,7 @@ Turn **ClipBridge automatic copy** back on in Accessibility settings.
 Requirements: macOS 13+, Xcode Command Line Tools, Homebrew `openjdk@17`, Android SDK (platform 35, build-tools 35).
 
 ```bash
-# Mac app → mac/build/ClipBridge.app (universal: Apple silicon + Intel)
+# Mac app → mac/build/CaptainClip.app (universal: Apple silicon + Intel)
 cd mac && ./build-app.sh
 
 # Android app → android/app/build/outputs/apk/{standard,pro}/debug/app-{standard,pro}-debug.apk

@@ -1,16 +1,16 @@
-# ClipBridge privacy policy
+# CaptainClip privacy policy
 
-_Effective 13 November 2026 · applies to ClipBridge and ClipBridge Pro for Android, and ClipBridge for Mac._
+_Effective 13 November 2026 · applies to CaptainClip and CaptainClip Pro for Android, and CaptainClip for Mac._
 
-**Short version: ClipBridge has no servers, no accounts, no analytics and no ads. What you copy goes only
+**Short version: CaptainClip has no servers, no accounts, no analytics and no ads. What you copy goes only
 from your phone to your own paired Mac (and back), encrypted, and nowhere else. The developer never receives
 any of your data.**
 
-## What ClipBridge handles
+## What CaptainClip handles
 
 | Data | When | Where it goes |
 |---|---|---|
-| Text you copy (and its formatting) | When you copy on the Mac, or when you send it from the phone (Send to Mac toggle, Share, the in-app button — or automatically in ClipBridge Pro) | Only to your paired device |
+| Text you copy (and its formatting) | When you copy on the Mac, or when you send it from the phone (Send to Mac toggle, Share, the in-app button — or automatically in CaptainClip Pro) | Only to your paired device |
 | Images and files | Only when you paste, share or save them | Only to your paired device |
 | Your devices' names (e.g. "Pixel 9", "MacBook Air") | While connected | Only to your paired device, to show "Connected to …" |
 | Clipboard history (phone) | What you sent from the phone, and Mac files you opened on it (Mac text only if you turn that on, or if you turn off putting Mac copies on the phone's clipboard): text, and the names and sizes of files (never file contents) | Kept **only on your phone**, encrypted (see below) |
@@ -23,7 +23,7 @@ any of your data.**
 - **One-time codes** (a copy that is just 4–8 digits, optionally split once by a space or dash) still go to your
   paired device. On the receiving device they are hidden (Android marks the clip sensitive; the Mac marks it
   concealed so clipboard managers skip it), are never kept in Clipboard history, and are cleared after 1 minute.
-  On the Mac that happens unless something newer was copied; on the phone, Android doesn't let ClipBridge check
+  On the Mac that happens unless something newer was copied; on the phone, Android doesn't let CaptainClip check
   the clipboard, so something else you copy there within that minute and don't send may be cleared too. The device where you copied the code is not changed. Older Mac apps keep
   working but don't hide or clear codes.
 - **Tracking removed from links:** when a copy is a single web link, tracking tags (`utm_*`, `fbclid`, `gclid`
@@ -61,13 +61,13 @@ any of your data.**
   automatically; you choose where to paste it.
 - The phone remembers the Mac's last network address **on the phone only**, so it can reconnect quickly. It is never sent anywhere else.
 
-## What ClipBridge does not do
+## What CaptainClip does not do
 
 - No account, sign-in, advertising ID, analytics, crash reporting or tracking of any kind.
 - No access to your contacts, messages, call logs, photos library or location.
-- It does not read your screen. (ClipBridge Pro's "automatic copy" uses an Android accessibility service only to
+- It does not read your screen. (CaptainClip Pro's "automatic copy" uses an Android accessibility service only to
   notice the text of "Copy" buttons and "Copied" messages, so it knows when you copied something. It is off
-  until you turn it on, and the standard ClipBridge doesn't include it at all.)
+  until you turn it on, and the standard CaptainClip doesn't include it at all.)
 
 ## Permissions (Android)
 
@@ -77,8 +77,8 @@ any of your data.**
 | Nearby devices (Bluetooth) — optional | Connect to your Mac over Bluetooth when there's no shared Wi-Fi. Never used for location |
 | Camera | Only to scan the pairing QR code; no image is stored or sent |
 | Notifications, foreground service, start at boot | Keep the connection to your Mac running in the background |
-| Accessibility service — ClipBridge Pro only, off until you enable it | Notice when you tap "Copy" (see above) |
-| Location — ClipBridge Pro only, Android 10–11 only | Android requires it for Bluetooth scanning on those versions; your location is never read |
+| Accessibility service — CaptainClip Pro only, off until you enable it | Notice when you tap "Copy" (see above) |
+| Location — CaptainClip Pro only, Android 10–11 only | Android requires it for Bluetooth scanning on those versions; your location is never read |
 
 ## Your control
 
@@ -89,9 +89,9 @@ any of your data.**
 
 ## Children
 
-ClipBridge is a general-purpose utility and is not directed at children.
+CaptainClip is a general-purpose utility and is not directed at children.
 
 ## Changes and contact
 
 If this policy changes, the new version will be published here with a new date.
-Questions: open an issue at <https://github.com/Princevasir/clipbridge/issues>.
+Questions: open an issue at <https://github.com/Princevasir/captainclip/issues>.
