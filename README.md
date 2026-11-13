@@ -52,7 +52,9 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
   It never contains clipboard text or network addresses.
 - **One-time codes stay private:** a copied code (4–8 digits, like a login or delivery code) still syncs, but on
   the receiving device it's hidden from previews and clipboard managers, never kept in Clipboard history, and
-  cleared after 1 minute if you haven't copied anything newer. The device you copied it on is left alone.
+  cleared after 1 minute. On the Mac that happens unless you've copied something newer; on the phone, Android
+  doesn't let ClipBridge check, so if you copy something else there within that minute and don't send it, that
+  may be cleared too. The device you copied it on is left alone.
   Older Mac apps keep working; they just don't hide or clear codes.
 - **Cleaner links:** with **Remove tracking from links** (on by default), a copied web link loses tracking tags
   (`utm_*`, `fbclid`, `gclid` and similar) on the phone, both when sending and receiving. Formatted (rich-text)

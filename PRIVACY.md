@@ -22,8 +22,9 @@ any of your data.**
 - Copies marked as sensitive (for example passwords from a password manager) are never sent.
 - **One-time codes** (a copy that is just 4–8 digits, optionally split once by a space or dash) still go to your
   paired device. On the receiving device they are hidden (Android marks the clip sensitive; the Mac marks it
-  concealed so clipboard managers skip it), are never kept in Clipboard history, and are cleared after 1 minute
-  if nothing newer was copied. The device where you copied the code is not changed. Older Mac apps keep
+  concealed so clipboard managers skip it), are never kept in Clipboard history, and are cleared after 1 minute.
+  On the Mac that happens unless something newer was copied; on the phone, Android doesn't let ClipBridge check
+  the clipboard, so something else you copy there within that minute and don't send may be cleared too. The device where you copied the code is not changed. Older Mac apps keep
   working but don't hide or clear codes.
 - **Tracking removed from links:** when a copy is a single web link, tracking tags (`utm_*`, `fbclid`, `gclid`
   and similar) are removed on the phone, when sending and when receiving. Formatted (HTML) copies are left alone.
