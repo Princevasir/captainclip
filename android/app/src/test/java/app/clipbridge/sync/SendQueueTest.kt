@@ -131,6 +131,30 @@ class SendQueueTest {
         assertEquals(listOf(img.file), discarded)
     }
 
+    @Test fun requeueAfterClearIsDiscarded() {
+        val q = queue()
+        val img = out("i.png"); val f = out("f")
+        q.putClip(QueuedClip.Image(img, "k"))
+        q.addFiles(listOf(f))
+        val p = q.drain()
+        q.clear()  // re-paired while the drain was in flight
+        assertEquals(false, q.requeueClip(p))
+        assertEquals(false, q.requeueFile(p, f))
+        assertTrue(q.isEmpty)
+        assertEquals(setOf(img.file, f.file), discarded.toSet())
+    }
+
+    @Test fun requeueReportsWhetherTheItemWasKept() {
+        val q = queue()
+        val f = out("f")
+        q.putClip(QueuedClip.Text("t", null))
+        q.addFiles(listOf(f))
+        val p = q.drain()
+        assertEquals(true, q.requeueClip(p))
+        assertEquals(true, q.requeueFile(p, f))
+        assertEquals(2, q.count)
+    }
+
     @Test fun clearDiscardsEverythingAndDeletesFiles() {
         val q = queue()
         val img = out("i.png"); val f = out("f")

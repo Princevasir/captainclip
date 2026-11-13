@@ -504,7 +504,7 @@ class SyncService : Service() {
      * On [io]. Sends [files] in order and deletes each afterwards, except that a failed one goes to [requeue]
      * (queued items that waited for the Mac) instead, to be tried again on the next connection.
      */
-    private fun uploadNow(files: List<OutgoingFile>, requeue: ((OutgoingFile) -> Unit)? = null) {
+    private fun uploadNow(files: List<OutgoingFile>, requeue: ((OutgoingFile) -> Boolean)? = null) {
         var sent = 0
         for (f in files) {
             var kept = false
@@ -518,9 +518,9 @@ class SyncService : Service() {
                 android.util.Log.i("ClipBridgeFiles", "upload of ${f.file.length()} bytes ok=$ok")
                 if (ok) history().recordFile(java.util.UUID.randomUUID().toString(), f.name, f.mime, f.file.length(), Direction.TO_MAC)
                 if (ok) sent++ else if (requeue != null) {
-                    requeue(f)  // the queue now owns the file (or has deleted it if expired)
+                    // The queue now owns the file: kept for the next connection, or deleted (expired, re-paired, …).
                     kept = true
-                    if (f.purpose != "clipboard") transferNotice("Waiting — sends when your Mac is back", null)
+                    if (requeue(f) && f.purpose != "clipboard") transferNotice("Waiting — sends when your Mac is back", null)
                 } else if (f.purpose != "clipboard") toast(
                     if (loop?.isOnBluetooth == true && f.file.length() > app.clipbridge.core.FileLimit.BLUETOOTH_MAX_BYTES)
                         "${f.name} is too big for Bluetooth — connect both to the same Wi-Fi"

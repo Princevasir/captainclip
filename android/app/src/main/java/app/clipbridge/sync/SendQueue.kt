@@ -28,6 +28,7 @@ class SendQueue(
         val filesAt: List<Long> = emptyList(),
         val filesOrder: List<Long> = emptyList(),
         val clipVersion: Long = 0,
+        val epoch: Long = 0,
     )
 
     private class Stamped<T>(val item: T, val at: Long, val size: Long = 0, val order: Long = 0)
@@ -38,6 +39,8 @@ class SendQueue(
     /** Bumped whenever a newer clip exists (queued or sent directly): an older one must never follow it. */
     private var clipVersion = 0L
     private var nextOrder = 0L
+    /** Bumped by [clear] (re-pairing): anything drained before it must never come back. */
+    private var epoch = 0L
 
     val count: Int get() = synchronized(this) { expire(); (if (clip != null) 1 else 0) + files.size }
     val isEmpty: Boolean get() = count == 0
@@ -82,38 +85,51 @@ class SendQueue(
         expire()
         val c = clip?.takeIf { (it.item as? QueuedClip.Image)?.file?.file?.length()?.let { n -> n <= maxFileBytes } ?: true }
         val taken = files.filter { it.size <= maxFileBytes }
-        val p = Pending(c?.item, taken.map { it.item }, c?.at ?: 0, taken.map { it.at }, taken.map { it.order }, clipVersion)
+        val p = Pending(c?.item, taken.map { it.item }, c?.at ?: 0, taken.map { it.at }, taken.map { it.order }, clipVersion, epoch)
         if (c != null) clip = null
         files.removeAll(taken.toSet())
         bytes -= taken.sumOf { it.size }
         p
     }
 
-    /** [p]'s clip failed to send: back in the queue, unless a newer clip exists or it has expired. */
-    fun requeueClip(p: Pending) = synchronized(this) {
-        val c = p.clip ?: return@synchronized
-        if (clip == null && p.clipVersion == clipVersion && p.clipAt >= clock() - ttlMs) clip = Stamped(c, p.clipAt)
-        else (c as? QueuedClip.Image)?.let { discard(it.file.file) }
+    /**
+     * [p]'s clip failed to send: back in the queue, unless a newer clip exists, it has expired, or the queue was
+     * cleared since [p] was drained. Returns true if it was kept (otherwise its image is deleted).
+     */
+    fun requeueClip(p: Pending): Boolean = synchronized(this) {
+        val c = p.clip ?: return@synchronized false
+        val keep = clip == null && p.epoch == epoch && p.clipVersion == clipVersion && p.clipAt >= clock() - ttlMs
+        if (keep) clip = Stamped(c, p.clipAt) else (c as? QueuedClip.Image)?.let { discard(it.file.file) }
+        keep
     }
 
-    /** [file] (one of [p]'s files) failed to send: back in its place in the queue, unless expired or over the limits. */
-    fun requeueFile(p: Pending, file: OutgoingFile) = synchronized(this) {
+    /**
+     * [file] (one of [p]'s files) failed to send: back in its place in the queue, unless expired, over the limits,
+     * or the queue was cleared since [p] was drained. Returns true if it was kept (otherwise it is deleted).
+     */
+    fun requeueFile(p: Pending, file: OutgoingFile): Boolean = synchronized(this) {
         val i = p.files.indexOf(file)
         val at = p.filesAt.getOrNull(i) ?: clock()
         val order = p.filesOrder.getOrNull(i) ?: nextOrder++
         val size = file.file.length()
-        if (at < clock() - ttlMs || files.size >= maxFiles || bytes + size > maxBytes) { discard(file.file); return@synchronized }
+        if (p.epoch != epoch || at < clock() - ttlMs || files.size >= maxFiles || bytes + size > maxBytes) {
+            discard(file.file)
+            return@synchronized false
+        }
         val index = files.indexOfFirst { it.order > order }.let { if (it < 0) files.size else it }
         files.add(index, Stamped(file, at, size, order))
         bytes += size
+        true
     }
 
-    /** Drops everything and deletes the files. */
+    /** Drops everything and deletes the files; items drained before this can't be requeued. */
     fun clear() = synchronized(this) {
         discardClip()
         files.forEach { discard(it.item.file) }
         files.clear()
         bytes = 0
+        epoch++
+        clipVersion++
     }
 
     private fun expire() {
