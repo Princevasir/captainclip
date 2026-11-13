@@ -37,6 +37,13 @@ any of your data.**
 - Sensitive copies (for example passwords) are never stored. File contents are never stored, only names and sizes.
 - You can delete single clips, clear everything, or turn history off (which deletes it) in **Clipboard history → ⋮**.
 
+## Connection check (Android)
+
+- The connection report you can copy from **Check connection** contains app and Android versions, check results and
+  connect/disconnect times. It never contains clipboard text, file names or network addresses, and nothing is sent
+  automatically; you choose where to paste it.
+- The phone remembers the Mac's last network address **on the phone only**, so it can reconnect quickly. It is never sent anywhere else.
+
 ## What ClipBridge does not do
 
 - No account, sign-in, advertising ID, analytics, crash reporting or tracking of any kind.

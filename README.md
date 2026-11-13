@@ -45,6 +45,11 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
   what you sent from the phone and the Mac files you opened on it — grouped by day; tap to copy again, long-press
   to send to the Mac again. Text copied on the Mac is left out unless you turn on **Include clips from your Mac**.
   Kept only on the phone, encrypted; 25/50/100 clips for 1/7/30 days, or off.
+- **Waiting sends:** a phone send made while your Mac is away waits and goes out when the Mac is back
+  ("1 waiting — sends when your Mac is back", with **Cancel**).
+- **Pause:** pause for 15 minutes, 1 hour or until you resume, from the Mac menu or the phone.
+- **Check connection:** a screen on the phone with a report you can copy when something isn't working.
+  It never contains clipboard text or network addresses.
 - **Private by design:** a direct encrypted connection on your own Wi-Fi (AES-256-GCM with a key that only ever
   travels in the pairing QR code). Passwords copied from password managers are never sent.
 
