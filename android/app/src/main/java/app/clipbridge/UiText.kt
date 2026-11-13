@@ -62,6 +62,11 @@ object UiText {
         if (!enabled) "Off"
         else "On · last $items clips, $days ${if (days == 1) "day" else "days"}" + if (fromMac) " · incl. Mac copies" else ""
 
+    /** Value line under "Privacy". */
+    fun privacySummary(cleanLinks: Boolean, macToClipboard: Boolean): String =
+        (if (cleanLinks) "Links cleaned" else "Links kept as copied") + " · " +
+            (if (macToClipboard) "Mac copies go to the clipboard" else "Mac copies wait in history")
+
     /** Value line under "Stay connected in the background". */
     fun backgroundSummary(linked: Boolean, noBatteryLimits: Boolean): String = when {
         linked -> "On — your Mac is linked"

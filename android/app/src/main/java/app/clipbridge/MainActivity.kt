@@ -135,6 +135,7 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.sendClipboardButton).setOnClickListener { sendClipboard() }
         findViewById<View>(R.id.repairRow).setOnClickListener { scanQr() }
         findViewById<View>(R.id.historyRow).setOnClickListener { startActivity(Intent(this, HistoryActivity::class.java)) }
+        findViewById<View>(R.id.privacyRow).setOnClickListener { showPrivacyDialog() }
         findViewById<View>(R.id.featuresRow).setOnClickListener {
             Prefs.setFeaturesSeen(this); startActivity(Intent(this, FeaturesActivity::class.java))
         }
@@ -181,6 +182,8 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.historyValue).text =
             UiText.historySummary(Prefs.historyEnabled(this), Prefs.historyMaxItems(this), Prefs.historyMaxDays(this),
                 Prefs.historyFromMac(this))
+        findViewById<TextView>(R.id.privacyValue).text =
+            UiText.privacySummary(Prefs.cleanLinks(this), Prefs.macToClipboard(this))
         findViewById<TextView>(R.id.panelValue).text = UiText.panelSummary(Prefs.tileAdded(this), Prefs.switchTileAdded(this))
         findViewById<TextView>(R.id.batteryValue).text = UiText.backgroundSummary(app.clipbridge.sync.MacCompanion.linked(this),
             getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(packageName))
@@ -513,6 +516,28 @@ class MainActivity : Activity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    /** Two switches; each change is saved at once (SyncService reads them per clip) and the row refreshes. */
+    private fun showPrivacyDialog() {
+        val pad = (20 * resources.displayMetrics.density).toInt()
+        fun switchFor(label: String, on: Boolean, save: (Boolean) -> Unit) = android.widget.Switch(this).apply {
+            text = label; isChecked = on; setPadding(0, pad / 3, 0, pad / 3)
+            setOnCheckedChangeListener { _, checked -> save(checked); refresh() }
+        }
+        val note = TextView(this).apply {
+            text = "Off: Mac copies wait in Clipboard history instead. One-time codes aren't kept."
+            setPadding(0, pad / 4, 0, 0)
+        }
+        val body = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(pad, pad / 2, pad, 0)
+            addView(switchFor("Remove tracking from links", Prefs.cleanLinks(this@MainActivity)) { Prefs.setCleanLinks(this@MainActivity, it) })
+            addView(switchFor("Put Mac copies on this phone's clipboard", Prefs.macToClipboard(this@MainActivity)) { Prefs.setMacToClipboard(this@MainActivity, it) })
+            addView(note)
+        }
+        android.app.AlertDialog.Builder(this).setTitle("Privacy").setView(body)
+            .setPositiveButton("Done", null).show()
     }
 
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
