@@ -13,8 +13,11 @@ import java.io.File
 
 /** Sends an image that's on the phone clipboard to the Mac clipboard (used by the ghost screen and the app). */
 object ClipImages {
-    /** Sends the clip's image to the Mac if it is one (or queues it while away). Call while the clip is readable. */
-    fun sendIfImage(context: Context, clip: ClipData?): ImageSend.Outcome {
+    /**
+     * Sends the clip's image to the Mac if it is one (or queues it while away). Call while the clip is readable.
+     * [manual] is an explicit tap; an automatic copy made while paused is dropped.
+     */
+    fun sendIfImage(context: Context, clip: ClipData?, manual: Boolean): ImageSend.Outcome {
         val uri = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri ?: return ImageSend.Outcome.NOT_AN_IMAGE
         val resolver = context.contentResolver
         val mime = runCatching { resolver.getType(uri) }.getOrNull() ?: clip.description.getMimeType(0)
@@ -48,13 +51,14 @@ object ClipImages {
                     }
                 }
             }
-            when (SyncService.sendClipboardImage(OutgoingFile(target, name, mime!!, purpose = "clipboard"), key = "$uri:$copied")) {
+            when (SyncService.sendClipboardImage(context, OutgoingFile(target, name, mime!!, purpose = "clipboard"), key = "$uri:$copied",
+                manual = manual)) {
                 SendResult.SENT -> ImageSend.Outcome.SEND
                 SendResult.QUEUED -> ImageSend.Outcome.QUEUED
                 SendResult.FAILED -> ImageSend.Outcome.FAILED
             }
         } catch (e: Exception) {
-            Log.w("ClipBridgeFiles", "couldn't read clipboard image", e)
+            Log.w("ClipBridgeFiles", "couldn't read clipboard image: ${e.javaClass.simpleName}")  // no URI or path
             target.delete()
             ImageSend.Outcome.NOT_AN_IMAGE
         }

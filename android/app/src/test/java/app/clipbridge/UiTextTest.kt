@@ -89,6 +89,8 @@ class UiTextTest {
         assertEquals("1 waiting — sends when your Mac is back", UiText.waitingLine(1))
         assertEquals("3 waiting — sends when your Mac is back", UiText.waitingLine(3))
         assertNull(UiText.waitingLine(0))
+        assertEquals("1 waiting — sends when you resume", UiText.waitingLine(1, paused = true))
+        assertNull(UiText.waitingLine(0, paused = true))
     }
 
     @Test fun tileSaysPausedWithTime() {
@@ -109,6 +111,8 @@ class UiTextTest {
         assertEquals("Sent to Mac", UiText.sendResultText(SendResult.SENT))
         assertEquals("Waiting — sends when your Mac is back", UiText.sendResultText(SendResult.QUEUED))
         assertEquals("Couldn't send", UiText.sendResultText(SendResult.FAILED))
+        assertEquals("Waiting — sends when you resume", UiText.sendResultText(SendResult.QUEUED, paused = true))
+        assertEquals("Sent to Mac", UiText.sendResultText(SendResult.SENT, paused = true))
     }
 
     @Test fun panelSummarySaysWhichButtonsAreInThePanel() {

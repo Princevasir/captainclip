@@ -165,3 +165,20 @@ class SendQueueTest {
         assertEquals(setOf(img.file, f.file), discarded.toSet())
     }
 }
+
+class OutgoingSweepTest {
+    @get:Rule val tmp = TemporaryFolder()
+
+    @Test fun deletesOnlyFilesOlderThanTheTtl() {
+        val dir = tmp.newFolder("outgoing")
+        val now = 10_000_000L
+        val old = File(dir, "old.png").apply { writeBytes(ByteArray(1)); setLastModified(now - 3_600_001) }
+        val fresh = File(dir, "fresh.png").apply { writeBytes(ByteArray(1)); setLastModified(now - 60_000) }
+        assertEquals(1, SendQueue.sweepOrphans(dir, now = now, ttlMs = 3_600_000))
+        assertTrue(!old.exists())
+        assertTrue(fresh.exists())
+    }
+
+    @Test fun missingFolderIsFine() =
+        assertEquals(0, SendQueue.sweepOrphans(File(tmp.root, "nope"), now = 0, ttlMs = 3_600_000))
+}

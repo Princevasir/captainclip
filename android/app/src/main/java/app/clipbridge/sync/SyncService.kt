@@ -93,10 +93,10 @@ class SyncService : Service() {
         fun start(ctx: Context) = command(ctx, ACTION_START, foreground = true)
         fun stop(ctx: Context) { if (instance != null) command(ctx, ACTION_STOP, foreground = false) }
 
-        /** After re-pairing: (re)start and connect with the new pairing right away. Waiting copies are dropped
-         *  so they never reach a different Mac. */
-        fun reconnect(ctx: Context) {
-            SendQueueHub.queue.clear()
+        /** After re-pairing: (re)start and connect with the new pairing right away. For a [newMac], waiting copies
+         *  are dropped so they never reach a different Mac. */
+        fun reconnect(ctx: Context, newMac: Boolean) {
+            if (newMac) SendQueueHub.queue.clear()
             command(ctx, ACTION_RECONNECT, foreground = true)
         }
 
@@ -145,8 +145,12 @@ class SyncService : Service() {
             if (service != null) service.main.post { service.checkPause() } else start(ctx)
         }
 
-        /** The service, if a send can go to the Mac right now (connected and not paused). */
-        private fun ready(): SyncService? = instance?.takeIf { isConnected && !isPaused(it) }
+        /** True while sends are held for the user: a timed pause or "Until I resume" (sync off). */
+        fun holdsSends(ctx: Context): Boolean = isPaused(ctx) || !Prefs.syncEnabled(ctx)
+
+        /** Whether a copy goes to the Mac now, waits, or (an automatic copy while paused) is dropped. */
+        private fun decide(ctx: Context, userInitiated: Boolean): SendPolicy.Decision =
+            SendPolicy.decide(connected = isConnected, paused = holdsSends(ctx), userInitiated = userInitiated)
 
         /** Something was just queued: if the Mac is (or just became) reachable, send it now rather than at the
          *  next status change. [checkPause] also ends a timed pause whose deadline has passed. */
@@ -161,11 +165,18 @@ class SyncService : Service() {
 
         /**
          * Send text to the Mac, in-process (no Intent, so no Binder size limit). Never starts the service:
-         * when not connected (or paused) the text waits in [SendQueueHub] until the Mac is back.
+         * when not connected (or paused) the text waits in [SendQueueHub] until the Mac is back. While paused only a
+         * [userInitiated] send waits; an automatic copy is not sent at all (FAILED, which callers keep silent).
          */
-        fun send(text: String, html: String? = null, userInitiated: Boolean = false): SendResult {
+        fun send(ctx: Context, text: String, html: String? = null, userInitiated: Boolean = false): SendResult {
             if (text.isEmpty()) return SendResult.FAILED
-            val service = ready() ?: return queued(SendResult.QUEUED.also { SendQueueHub.queue.putClip(QueuedClip.Text(text, html)) })
+            when (decide(ctx, userInitiated)) {
+                SendPolicy.Decision.DROP -> return SendResult.FAILED
+                SendPolicy.Decision.QUEUE ->
+                    return queued(SendResult.QUEUED.also { SendQueueHub.queue.putClip(QueuedClip.Text(text, html)) })
+                SendPolicy.Decision.SEND -> {}
+            }
+            val service = instance ?: return SendResult.FAILED
             val sent = synchronized(clipSendLock) {
                 SendQueueHub.queue.supersedeClip()  // newest wins: a waiting older clip must not follow this one
                 service.loop?.send(text, html, userInitiated) ?: false
@@ -199,13 +210,16 @@ class SyncService : Service() {
 
         /**
          * A copied image (already copied into our cache) → the Mac's clipboard, or the queue while away. Duplicate
-         * triggers for the same image within a few seconds (copy button + "Copied" toast) are handled once.
+         * triggers for the same image within a few seconds (copy button + "Copied" toast) are handled once. While
+         * paused an automatic copy ([manual] false) is dropped and its file deleted (FAILED, kept silent).
          */
-        fun sendClipboardImage(file: OutgoingFile, key: String): SendResult {
+        fun sendClipboardImage(ctx: Context, file: OutgoingFile, key: String, manual: Boolean): SendResult {
+            val decision = decide(ctx, userInitiated = manual)
+            if (decision == SendPolicy.Decision.DROP) { file.file.delete(); return SendResult.FAILED }
             val now = android.os.SystemClock.elapsedRealtime()
             if (key == lastImageKey && now - lastImageAt < 5_000) { file.file.delete(); return lastImageResult }
             lastImageKey = key; lastImageAt = now
-            val service = ready()
+            val service = instance?.takeIf { decision == SendPolicy.Decision.SEND }
             lastImageResult = if (service == null) {
                 SendQueueHub.queue.putClip(QueuedClip.Image(file, key))
                 SendResult.QUEUED
@@ -223,7 +237,7 @@ class SyncService : Service() {
         /** Share → Send to Mac: send already-copied files (deleted afterwards), or queue them while away. */
         fun sendLocalFiles(files: List<OutgoingFile>): SendResult {
             if (files.isEmpty()) return SendResult.FAILED
-            val service = ready()
+            val service = instance?.takeIf { isConnected && !isPaused(it) }
                 ?: return queued(if (SendQueueHub.queue.addFiles(files) > 0) SendResult.QUEUED else SendResult.FAILED)
             service.uploadFiles(files)
             return SendResult.SENT
@@ -308,6 +322,7 @@ class SyncService : Service() {
         )
         loop = newLoop
         instance = this
+        io.execute { SendQueueHub.sweepOnce(File(cacheDir, "outgoing")) }  // copies a dead process left behind
         watchNetwork()
         newLoop.start()
         return true

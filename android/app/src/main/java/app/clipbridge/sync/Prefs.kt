@@ -9,7 +9,17 @@ object Prefs {
 
     fun pairing(ctx: Context): PairingInfo? = prefs(ctx).getString("pairing", null)?.let(PairingInfo::parse)
 
-    fun savePairing(ctx: Context, info: PairingInfo) = prefs(ctx).edit().putString("pairing", info.uri).apply()
+    /**
+     * Saves a scanned pairing. For a different Mac the remembered address is forgotten (it belongs to the old Mac).
+     * Returns true when it is a different Mac.
+     */
+    fun savePairing(ctx: Context, info: PairingInfo): Boolean {
+        val newMac = PairingChange.isNewMac(pairing(ctx), info)
+        val edit = prefs(ctx).edit().putString("pairing", info.uri)
+        if (newMac) edit.remove("lastHost").remove("lastPort")
+        edit.apply()
+        return newMac
+    }
 
     fun syncEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean("enabled", true)
 
@@ -60,4 +70,10 @@ object Prefs {
     fun bluetoothAsked(ctx: Context): Boolean = prefs(ctx).getBoolean("bluetoothAsked", false)
 
     fun setBluetoothAsked(ctx: Context) = prefs(ctx).edit().putBoolean("bluetoothAsked", true).apply()
+}
+
+/** Pure re-pairing rule (unit-tested). */
+object PairingChange {
+    /** True unless [next] is the Mac already paired (same Mac id), e.g. re-scanned after the Mac's Reset pairing. */
+    fun isNewMac(previous: PairingInfo?, next: PairingInfo): Boolean = previous?.macId != next.macId
 }

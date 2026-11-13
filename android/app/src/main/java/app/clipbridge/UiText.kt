@@ -5,10 +5,10 @@ import kotlin.math.roundToLong
 
 /** Small, user-facing wording helpers (unit-tested). */
 object UiText {
-    /** After a tap on Send to Mac: sent, kept until the Mac is back (away or paused), or refused. */
-    fun sendResultText(r: app.clipbridge.sync.SendResult): String = when (r) {
+    /** After a tap on Send to Mac: sent, kept until the Mac is back (or until [paused] ends), or refused. */
+    fun sendResultText(r: app.clipbridge.sync.SendResult, paused: Boolean = false): String = when (r) {
         app.clipbridge.sync.SendResult.SENT -> "Sent to Mac"
-        app.clipbridge.sync.SendResult.QUEUED -> "Waiting — sends when your Mac is back"
+        app.clipbridge.sync.SendResult.QUEUED -> if (paused) "Waiting — sends when you resume" else "Waiting — sends when your Mac is back"
         app.clipbridge.sync.SendResult.FAILED -> "Couldn't send"
     }
 
@@ -23,7 +23,8 @@ object UiText {
     }
 
     /** Line under the status card while sends wait for the Mac; null when nothing waits. */
-    fun waitingLine(count: Int): String? = if (count > 0) "$count waiting — sends when your Mac is back" else null
+    fun waitingLine(count: Int, paused: Boolean = false): String? =
+        if (count > 0) "$count waiting — sends when ${if (paused) "you resume" else "your Mac is back"}" else null
 
     /** Status line while a timed pause is running; null once it has ended. */
     fun pausedLine(pausedUntil: Long, now: Long, time: (Long) -> String): String? =

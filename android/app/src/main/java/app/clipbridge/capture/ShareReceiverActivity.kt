@@ -27,8 +27,8 @@ class ShareReceiverActivity : Activity() {
             uris.isNotEmpty() -> sendFiles(uris)
             intent.action == Intent.ACTION_SEND -> {
                 intent.getStringExtra(Intent.EXTRA_TEXT)?.takeIf { it.isNotEmpty() }?.let {
-                    val result = SyncService.send(it, intent.getStringExtra(Intent.EXTRA_HTML_TEXT), userInitiated = true)  // explicit share
-                    toast(app.clipbridge.UiText.sendResultText(result))
+                    val result = SyncService.send(this, it, intent.getStringExtra(Intent.EXTRA_HTML_TEXT), userInitiated = true)  // explicit share
+                    toast(app.clipbridge.UiText.sendResultText(result, SyncService.holdsSends(this)))
                 }
                 finish()
             }
@@ -46,7 +46,7 @@ class ShareReceiverActivity : Activity() {
             runOnUiThread {
                 if (copies.isNotEmpty()) {
                     val result = SyncService.sendLocalFiles(copies)
-                    if (result != app.clipbridge.sync.SendResult.SENT) toast(app.clipbridge.UiText.sendResultText(result))  // sent: the service says so when done
+                    if (result != app.clipbridge.sync.SendResult.SENT) toast(app.clipbridge.UiText.sendResultText(result, SyncService.holdsSends(this)))  // sent: the service says so when done
                 }
                 finish()
             }

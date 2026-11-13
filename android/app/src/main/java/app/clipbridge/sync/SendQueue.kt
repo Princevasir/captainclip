@@ -142,6 +142,15 @@ class SendQueue(
         }
     }
 
+    companion object {
+        /**
+         * Deletes files in [dir] older than [ttlMs]: copies whose queue died with the process. Anything that young
+         * could still be waiting or on its way. Returns how many were deleted.
+         */
+        fun sweepOrphans(dir: File, now: Long, ttlMs: Long): Int =
+            (dir.listFiles() ?: emptyArray()).count { it.isFile && it.lastModified() < now - ttlMs && it.delete() }
+    }
+
     private fun discardClip() {
         (clip?.item as? QueuedClip.Image)?.let { discard(it.file.file) }
         clip = null
@@ -150,5 +159,15 @@ class SendQueue(
 
 /** The one send queue for this process. */
 object SendQueueHub {
-    val queue = SendQueue(clock = System::currentTimeMillis)
+    const val TTL_MS = 3_600_000L
+    val queue = SendQueue(clock = System::currentTimeMillis, ttlMs = TTL_MS)
+
+    @Volatile private var swept = false
+
+    /** Once per process: deletes copies left in [dir] (cache/outgoing) by a queue that died with an earlier process. */
+    fun sweepOnce(dir: File) {
+        if (swept) return
+        swept = true
+        SendQueue.sweepOrphans(dir, System.currentTimeMillis(), TTL_MS)
+    }
 }

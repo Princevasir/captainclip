@@ -25,9 +25,9 @@ class SendSelectionActivity : Activity() {
                 ?.takeIf { it.getSpans(0, it.length, CharacterStyle::class.java).isNotEmpty() }
                 ?.let { Html.toHtml(it, Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE) }
             if (!SyncService.isRunning) SyncService.start(this)
-            result = SyncService.send(text, html, userInitiated = true)  // an explicit tap: send even a repeat
+            result = SyncService.send(this, text, html, userInitiated = true)  // an explicit tap: send even a repeat
         }
-        val message = result?.let { app.clipbridge.UiText.sendResultText(it) } ?: SelectedText.message(outcome, sent = false)
+        val message = result?.let { app.clipbridge.UiText.sendResultText(it, SyncService.holdsSends(this)) } ?: SelectedText.message(outcome, sent = false)
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
         finish()
     }

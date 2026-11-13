@@ -173,7 +173,7 @@ class MainActivity : Activity() {
         renderRecent()
         renderSetup()
         pauseButton.text = if (Prefs.syncEnabled(this) && !SyncService.isPaused(this)) "Pause syncing" else "Resume now"
-        val waiting = UiText.waitingLine(app.clipbridge.sync.SendQueueHub.queue.count)
+        val waiting = UiText.waitingLine(app.clipbridge.sync.SendQueueHub.queue.count, SyncService.holdsSends(this))
         findViewById<View>(R.id.waitingRow).visibility = if (waiting != null && Prefs.pairing(this) != null) View.VISIBLE else View.GONE
         findViewById<TextView>(R.id.waitingText).text = waiting.orEmpty()
         pauseButton.visibility = if (Prefs.pairing(this) != null) View.VISIBLE else View.GONE
@@ -437,14 +437,15 @@ class MainActivity : Activity() {
         val sensitive = clip?.description?.extras?.getBoolean(ClipPolicy.EXTRA_IS_SENSITIVE, false) ?: false
         if (hasUri) {
             Thread {
-                val outcome = app.clipbridge.capture.ClipImages.sendIfImage(applicationContext, clip)
-                app.clipbridge.capture.ImageSend.message(outcome, manual = true)?.let { runOnUiThread { toast(it) } }
+                val outcome = app.clipbridge.capture.ClipImages.sendIfImage(applicationContext, clip, manual = true)
+                app.clipbridge.capture.ImageSend.message(outcome, manual = true, paused = SyncService.holdsSends(applicationContext))?.let { runOnUiThread { toast(it) } }
             }.start()
             return
         }
         toast(when {
             !ClipPolicy.shouldSend(text, sensitive) -> if (sensitive) "Passwords aren't sent" else "Your clipboard is empty"
-            else -> UiText.sendResultText(SyncService.send(text!!, app.clipbridge.capture.ClipHtml.of(item), userInitiated = true))
+            else -> UiText.sendResultText(SyncService.send(this, text!!, app.clipbridge.capture.ClipHtml.of(item), userInitiated = true),
+                SyncService.holdsSends(this))
         })
     }
 
@@ -476,9 +477,10 @@ class MainActivity : Activity() {
         if (result == null) { super.onActivityResult(requestCode, resultCode, data); return }
         val contents = result.contents ?: return
         val info = PairingInfo.parse(contents) ?: return toast("Not a ClipBridge code")
-        Prefs.savePairing(this, info)
+        val newMac = Prefs.savePairing(this, info)  // a different Mac: forgets the old Mac's address
+        Prefs.setPausedUntil(this, 0)  // a fresh pairing never starts out paused
         Prefs.setSyncEnabled(this, true)
-        SyncService.reconnect(this)
+        SyncService.reconnect(this, newMac)  // a different Mac: what waited for the old one is dropped
         toast("Paired with your Mac")
         refresh()
         if (Features.showAfterPairing(Prefs.featuresSeen(this))) {

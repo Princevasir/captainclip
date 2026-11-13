@@ -15,6 +15,7 @@ class ImageSendTest {
         assertEquals("Image sent to Mac", ImageSend.message(ImageSend.Outcome.SEND, manual = true))
         assertEquals("Waiting — sends when your Mac is back", ImageSend.message(ImageSend.Outcome.QUEUED, manual = true))
         assertEquals("Couldn't send", ImageSend.message(ImageSend.Outcome.FAILED, manual = true))
+        assertEquals("Waiting — sends when you resume", ImageSend.message(ImageSend.Outcome.QUEUED, manual = true, paused = true))
         assertEquals("That's a file — use Share → Send to Mac", ImageSend.message(ImageSend.Outcome.NOT_AN_IMAGE, manual = true))
     }
 }
