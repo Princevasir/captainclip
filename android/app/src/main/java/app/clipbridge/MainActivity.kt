@@ -526,7 +526,7 @@ class MainActivity : Activity() {
             setOnCheckedChangeListener { _, checked -> save(checked); refresh() }
         }
         val note = TextView(this).apply {
-            text = "Off: Mac copies wait in Clipboard history instead. One-time codes aren't kept."
+            text = "Off: text from your Mac waits in Clipboard history instead (if history is on). Pictures and files still arrive as before. One-time codes aren't kept."
             setPadding(0, pad / 4, 0, 0)
         }
         val body = android.widget.LinearLayout(this).apply {

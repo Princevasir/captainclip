@@ -13,7 +13,7 @@ any of your data.**
 | Text you copy (and its formatting) | When you copy on the Mac, or when you send it from the phone (Send to Mac toggle, Share, the in-app button — or automatically in ClipBridge Pro) | Only to your paired device |
 | Images and files | Only when you paste, share or save them | Only to your paired device |
 | Your devices' names (e.g. "Pixel 9", "MacBook Air") | While connected | Only to your paired device, to show "Connected to …" |
-| Clipboard history (phone) | What you sent from the phone, and Mac files you opened on it (Mac text only if you turn that on): text, and the names and sizes of files (never file contents) | Kept **only on your phone**, encrypted (see below) |
+| Clipboard history (phone) | What you sent from the phone, and Mac files you opened on it (Mac text only if you turn that on, or if you turn off putting Mac copies on the phone's clipboard): text, and the names and sizes of files (never file contents) | Kept **only on your phone**, encrypted (see below) |
 
 - Everything travels **directly between your two devices** over your local Wi-Fi or Bluetooth, encrypted
   end-to-end with AES-256-GCM. The encryption key is created on your Mac and reaches your phone only through
@@ -30,8 +30,9 @@ any of your data.**
   and similar) are removed on the phone, when sending and when receiving. Formatted (HTML) copies are left alone.
   You can turn this off in **This phone → Privacy → Remove tracking from links** (on by default).
 - **Mac copies on the phone's clipboard:** by default text copied on the Mac is placed on the phone's clipboard.
-  Turn off **This phone → Privacy → Put Mac copies on this phone's clipboard** and Mac copies go only to
-  Clipboard history on the phone; one-time codes aren't kept.
+  Turn off **This phone → Privacy → Put Mac copies on this phone's clipboard** and text from your Mac waits in
+  Clipboard history on the phone instead (if history is on); pictures and files still arrive as before; one-time
+  codes aren't kept.
 - Files from your Mac are kept on the phone only temporarily (at most 10 minutes, or until your next copy),
   unless you save or share them yourself. Files you send to the Mac are saved in its Downloads folder.
 - If you send something to your Mac while it isn't connected or syncing is paused, it waits on this phone only: the

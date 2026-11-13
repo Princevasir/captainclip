@@ -51,7 +51,7 @@ All versions and checksums: [Releases](https://github.com/Princevasir/clipbridge
 - **Check connection:** a screen on the phone with a report you can copy when something isn't working.
   It never contains clipboard text or network addresses.
 - **One-time codes stay private:** a copied code (4–8 digits, like a login or delivery code) still syncs, but on
-  the receiving device it's hidden from previews and clipboard managers, never kept in Clipboard history, and
+  the receiving device Android hides its preview and the Mac marks it so clipboard managers skip it, it's never kept in Clipboard history, and
   cleared after 1 minute. On the Mac that happens unless you've copied something newer; on the phone, Android
   doesn't let ClipBridge check, so if you copy something else there within that minute and don't send it, that
   may be cleared too. The device you copied it on is left alone.
@@ -146,7 +146,7 @@ never screen content — and sends only to your paired Mac.
 | Send a screenshot Mac → phone | ⌃⇧⌘4 (copies to the clipboard), then paste on the phone or **Save to Downloads**. |
 | Send an image phone → Mac | Copy it on the phone (Chrome: long-press → **Copy image**), then ⌘V on the Mac. |
 | Pause syncing | Mac menu → **Pause syncing**, or the **Pause syncing** tile in ClipBridge on the phone. |
-| Change privacy options | Phone: ClipBridge main screen → **This phone → Privacy**: **Remove tracking from links**, and **Put Mac copies on this phone's clipboard** (turn it off and Mac copies go only to Clipboard history; one-time codes aren't kept). |
+| Change privacy options | Phone: ClipBridge main screen → **This phone → Privacy**: **Remove tracking from links**, and **Put Mac copies on this phone's clipboard** (turn it off and text from your Mac waits in Clipboard history instead, if history is on; pictures and files still arrive as before; one-time codes aren't kept). |
 | Clear or turn off history | ClipBridge → **Clipboard history** → ⋮ → **Clear history** / **Settings**. |
 | Pair a new phone / revoke the old one | Mac menu → **Reset pairing…**, then scan the new code. |
 
