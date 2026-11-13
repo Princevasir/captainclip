@@ -145,6 +145,34 @@
                 android:textSize="15sp" />
         </LinearLayout>
 
+        <!-- Sends waiting for the Mac (only while something is queued) -->
+        <LinearLayout
+            android:id="@+id/waitingRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="6dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/waitingText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="?android:attr/textColorSecondary"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/waitingCancel"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cancel"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
         <!-- Setup (only while something is missing) -->
         <LinearLayout style="@style/Card" android:id="@+id/setupCard" android:layout_marginTop="14dp" android:visibility="gone">
             <TextView style="@style/CardTitle" android:layout_width="wrap_content" android:layout_height="wrap_content"

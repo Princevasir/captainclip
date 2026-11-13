@@ -24,12 +24,20 @@ class SendWidget : AppWidgetProvider() {
             if (ids.isNotEmpty()) render(ctx, manager, ids)
         }
 
+        private fun pausedLine(ctx: Context): String? = UiText.pausedLine(Prefs.pausedUntil(ctx), System.currentTimeMillis()) {
+            android.text.format.DateFormat.getTimeFormat(ctx).format(java.util.Date(it))
+        }
+
         private fun render(ctx: Context, manager: AppWidgetManager, ids: IntArray) {
             val (title, subtitle) = UiText.connectionLine(
                 paired = Prefs.pairing(ctx) != null, syncOn = Prefs.syncEnabled(ctx),
                 connected = SyncService.state == SyncLoop.Status.CONNECTED, macName = SyncService.macName,
-                bluetooth = SyncService.onBluetooth)
-            val send = PendingIntent.getActivity(ctx, 21, GhostActivity.readIntent(ctx, announce = true),
+                bluetooth = SyncService.onBluetooth, pausedLine = pausedLine(ctx))
+            // While a timed pause runs, a tap on Send resumes instead of sending.
+            val send = if (SyncService.isPaused(ctx)) {
+                PendingIntent.getBroadcast(ctx, 23, Intent(ctx, ResumeReceiver::class.java),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            } else PendingIntent.getActivity(ctx, 21, GhostActivity.readIntent(ctx, announce = true),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             val open = PendingIntent.getActivity(ctx, 22, Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
@@ -41,5 +49,14 @@ class SendWidget : AppWidgetProvider() {
             }
             manager.updateAppWidget(ids, views)
         }
+    }
+}
+
+/** Widget tap while paused: resume syncing, then redraw. */
+class ResumeReceiver : android.content.BroadcastReceiver() {
+    override fun onReceive(ctx: Context, intent: Intent) {
+        SyncService.resume(ctx)
+        SendWidget.refresh(ctx)
+        app.clipbridge.capture.ConnectionTileService.refresh(ctx)
     }
 }

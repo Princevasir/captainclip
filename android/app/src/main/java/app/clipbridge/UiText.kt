@@ -13,12 +13,17 @@ object UiText {
     }
 
     /** (title, subtitle) for the home-screen widget and the connection toggle. */
-    fun connectionLine(paired: Boolean, syncOn: Boolean, connected: Boolean, macName: String?, bluetooth: Boolean): Pair<String, String> = when {
+    fun connectionLine(paired: Boolean, syncOn: Boolean, connected: Boolean, macName: String?, bluetooth: Boolean,
+                       pausedLine: String? = null): Pair<String, String> = when {
         !paired -> "ClipBridge" to "Not paired"
+        pausedLine != null -> "Paused" to pausedLine
         !syncOn -> "ClipBridge" to "Paused"
         connected -> (macName ?: "Your Mac") to (if (bluetooth) "Connected · Bluetooth" else "Connected · Wi-Fi")
         else -> (macName ?: "Your Mac") to "Looking for your Mac…"
     }
+
+    /** Line under the status card while sends wait for the Mac; null when nothing waits. */
+    fun waitingLine(count: Int): String? = if (count > 0) "$count waiting — sends when your Mac is back" else null
 
     /** Status line while a timed pause is running; null once it has ended. */
     fun pausedLine(pausedUntil: Long, now: Long, time: (Long) -> String): String? =

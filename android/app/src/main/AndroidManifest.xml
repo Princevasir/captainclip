@@ -126,6 +126,8 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_send_info" />
         </receiver>
 
+        <receiver android:name=".ResumeReceiver" android:exported="false" />
+
         <service
             android:name=".capture.SendTileService"
             android:exported="true"

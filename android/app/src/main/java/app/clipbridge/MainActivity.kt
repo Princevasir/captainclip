@@ -19,6 +19,7 @@ import app.clipbridge.capture.ClipPolicy
 import app.clipbridge.capture.CopyDetectService
 import app.clipbridge.core.PairingInfo
 import app.clipbridge.files.Files
+import app.clipbridge.sync.PauseChoice
 import app.clipbridge.sync.Prefs
 import app.clipbridge.sync.SyncLoop
 import app.clipbridge.sync.SyncService
@@ -127,6 +128,10 @@ class MainActivity : Activity() {
         shareButton.setOnClickListener { shareOffers() }
         setupButton.setOnClickListener { onSetupAction() }
         pauseButton.setOnClickListener { toggleSync() }
+        findViewById<View>(R.id.waitingCancel).setOnClickListener {
+            app.clipbridge.sync.SendQueueHub.queue.clear()
+            refresh()
+        }
         findViewById<View>(R.id.sendClipboardButton).setOnClickListener { sendClipboard() }
         findViewById<View>(R.id.repairRow).setOnClickListener { scanQr() }
         findViewById<View>(R.id.historyRow).setOnClickListener { startActivity(Intent(this, HistoryActivity::class.java)) }
@@ -159,8 +164,10 @@ class MainActivity : Activity() {
         renderOffer()
         renderRecent()
         renderSetup()
-        val enabled = Prefs.syncEnabled(this)
-        pauseButton.text = if (enabled) "Pause syncing" else "Resume syncing"
+        pauseButton.text = if (Prefs.syncEnabled(this) && !SyncService.isPaused(this)) "Pause syncing" else "Resume now"
+        val waiting = UiText.waitingLine(app.clipbridge.sync.SendQueueHub.queue.count)
+        findViewById<View>(R.id.waitingRow).visibility = if (waiting != null && Prefs.pairing(this) != null) View.VISIBLE else View.GONE
+        findViewById<TextView>(R.id.waitingText).text = waiting.orEmpty()
         pauseButton.visibility = if (Prefs.pairing(this) != null) View.VISIBLE else View.GONE
         // "This phone": each row shows its current value.
         findViewById<TextView>(R.id.historyValue).text =
@@ -205,10 +212,14 @@ class MainActivity : Activity() {
 
     private fun renderStatus() {
         val paired = Prefs.pairing(this) != null
-        val connected = paired && Prefs.syncEnabled(this) && SyncService.state == SyncLoop.Status.CONNECTED
+        val connected = paired && Prefs.syncEnabled(this) && !SyncService.isPaused(this) && SyncService.state == SyncLoop.Status.CONNECTED
+        val pausedLine = UiText.pausedLine(Prefs.pausedUntil(this), System.currentTimeMillis()) {
+            android.text.format.DateFormat.getTimeFormat(this).format(java.util.Date(it))
+        }
         // (card colours, pill, title, detail)
         val look = when {
             !paired -> Look(SLATE, "Not paired", "Pair with your Mac", "Scan the QR code from ClipBridge on your Mac")
+            pausedLine != null -> Look(SLATE, "Paused", "Syncing is paused", pausedLine)
             !Prefs.syncEnabled(this) -> Look(SLATE, "Paused", "Syncing is paused", "Copies stay on this phone until you resume")
             else -> when (SyncService.state) {
                 SyncLoop.Status.CONNECTED -> Look(BRAND, "Connected", SyncService.macName ?: "Your Mac",
@@ -462,11 +473,22 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Running: ask how long to pause. Paused (timed or stopped): resume right away. */
     private fun toggleSync() {
-        val enable = !Prefs.syncEnabled(this)
-        Prefs.setSyncEnabled(this, enable)
-        if (enable) SyncService.start(this) else SyncService.stop(this)
-        refresh()
+        if (!Prefs.syncEnabled(this) || SyncService.isPaused(this)) {
+            SyncService.resume(this)
+            refresh()
+            return
+        }
+        val choices = PauseChoice.values()
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Pause syncing for")
+            .setItems(choices.map { it.label }.toTypedArray()) { _, i ->
+                SyncService.pauseFor(this, choices[i])
+                refresh()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()

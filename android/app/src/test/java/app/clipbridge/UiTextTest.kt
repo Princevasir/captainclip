@@ -85,6 +85,18 @@ class UiTextTest {
         assertEquals(false, UiText.showOwnCopiedMessage(sdk = 33))
     }
 
+    @Test fun waitingLine() {
+        assertEquals("1 waiting — sends when your Mac is back", UiText.waitingLine(1))
+        assertEquals("3 waiting — sends when your Mac is back", UiText.waitingLine(3))
+        assertNull(UiText.waitingLine(0))
+    }
+
+    @Test fun tileSaysPausedWithTime() {
+        val line = UiText.connectionLine(paired = true, syncOn = true, connected = true, macName = "Mac", bluetooth = false,
+            pausedLine = "Paused · resumes at 3:45")
+        assertEquals("Paused" to "Paused · resumes at 3:45", line)
+    }
+
     @Test fun widgetAndToggleSayHowYouAreConnected() {
         assertEquals("MacBook Air" to "Connected · Wi-Fi", UiText.connectionLine(paired = true, syncOn = true, connected = true, macName = "MacBook Air", bluetooth = false))
         assertEquals("MacBook Air" to "Connected · Bluetooth", UiText.connectionLine(paired = true, syncOn = true, connected = true, macName = "MacBook Air", bluetooth = true))
