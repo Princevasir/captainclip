@@ -71,6 +71,8 @@ class SyncLoop(
         fun onOffers(offers: List<Message.Offer>) = onOffer(offers.firstOrNull())
         /** Connected over Wi-Fi via [host]:[port] (worth remembering as the Mac's address). */
         fun onWifiConnected(host: String, port: Int) {}
+        /** A working connection dropped unexpectedly (not a switch back to Wi-Fi, a [reconnect] or [stop]). */
+        fun onLost() {}
     }
 
     private class PendingFetch(val id: String, val dir: File) {
@@ -100,6 +102,8 @@ class SyncLoop(
     private var worker: Thread? = null // guarded by lock
     private var wakeRequested = false // guarded by lock
     @Volatile private var connection: Connection? = null
+    /** The connection we closed on purpose (Wi-Fi switch, [reconnect]); its close is not an unexpected drop. */
+    @Volatile private var closedOnPurpose: Connection? = null
     private val loopGuard = LoopGuard()
 
     val isRunning: Boolean get() = synchronized(lock) { worker != null }
@@ -131,7 +135,7 @@ class SyncLoop(
     fun reconnect() {
         backoff.reset()
         wake()
-        connection?.close()
+        connection?.let { closedOnPurpose = it; it.close() }
     }
 
     /** Skip the current back-off wait (e.g. Wi-Fi came back). */
@@ -347,7 +351,7 @@ class SyncLoop(
                                 probeNow = false
                             }
                             // Never switch mid-transfer: a Bluetooth paste or upload would fail.
-                            if (closed.count > 0 && !busy && probeWifi(info)) { wifiFailures = 0; conn.close(); break }
+                            if (closed.count > 0 && !busy && probeWifi(info)) { wifiFailures = 0; closedOnPurpose = conn; conn.close(); break }
                         }
                     } catch (_: InterruptedException) {}
                 }, "clipbridge-wifi-probe").apply { isDaemon = true; start() } else null
@@ -361,6 +365,8 @@ class SyncLoop(
                     fetches.values.toList().forEach { fail(it, "io") }  // a dropped connection ends any fetch
                 }
                 if (!alive(gen)) return
+                if (acked && closedOnPurpose !== conn) callbacks.onLost()
+                closedOnPurpose = null
 
                 if (!link.isBluetooth && !acked && reason == Connection.CloseReason.LOST) wifiFailures++
                 if (link.isBluetooth && wifiFailures > 0) wifiFailures = WIFI_FAILURES_BEFORE_BLUETOOTH - 1

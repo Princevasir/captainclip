@@ -67,6 +67,70 @@ class SendQueueTest {
         assertEquals(3, q.count)
     }
 
+    @Test fun bigFilesAndImagesWaitForWifi() {
+        val q = queue()
+        val small = out("s", 3); val big = out("b", 10); val img = out("i.png", 10)
+        q.putClip(QueuedClip.Image(img, "k"))
+        q.addFiles(listOf(big, small))
+        val overBluetooth = q.drain(maxFileBytes = 5)
+        assertNull(overBluetooth.clip)
+        assertEquals(listOf(small), overBluetooth.files)
+        assertEquals(2, q.count)
+        val overWifi = q.drain()
+        assertEquals(QueuedClip.Image(img, "k"), overWifi.clip)
+        assertEquals(listOf(big), overWifi.files)
+        assertTrue(discarded.isEmpty())
+    }
+
+    @Test fun failedItemsGoBackInOrderWithTheirOriginalTime() {
+        val q = queue()
+        val f1 = out("1"); val f2 = out("2"); val f3 = out("3")
+        q.putClip(QueuedClip.Text("t", null))
+        q.addFiles(listOf(f1, f2))
+        now = 1_000
+        val p = q.drain()
+        q.addFiles(listOf(f3))  // queued after the drain
+        q.requeueClip(p)
+        q.requeueFile(p, f2)
+        q.requeueFile(p, f1)
+        val again = q.drain()
+        assertEquals(QueuedClip.Text("t", null), again.clip)
+        assertEquals(listOf(f1, f2, f3), again.files)
+
+        q.requeueClip(again); q.requeueFile(again, f1)
+        now = 3_600_001  // an hour after f1 and the clip were first queued
+        assertTrue(q.isEmpty)
+        assertEquals(listOf(f1.file), discarded)
+    }
+
+    @Test fun aDirectSendSupersedesTheQueuedClip() {
+        val q = queue()
+        val img = out("i.png")
+        q.putClip(QueuedClip.Image(img, "k"))
+        q.supersedeClip()
+        assertTrue(q.isEmpty)
+        assertEquals(listOf(img.file), discarded)
+
+        q.putClip(QueuedClip.Text("old", null))
+        val p = q.drain()
+        assertTrue(q.isLatestClip(p))
+        q.supersedeClip()  // newer text went straight to the Mac while "old" was in flight
+        assertTrue(!q.isLatestClip(p))
+        q.requeueClip(p)
+        assertTrue(q.isEmpty)
+    }
+
+    @Test fun aFailedClipNeverReplacesANewerOne() {
+        val q = queue()
+        val img = out("i.png")
+        q.putClip(QueuedClip.Image(img, "k"))
+        val p = q.drain()
+        q.putClip(QueuedClip.Text("newer", null))
+        q.requeueClip(p)
+        assertEquals(QueuedClip.Text("newer", null), q.drain().clip)
+        assertEquals(listOf(img.file), discarded)
+    }
+
     @Test fun clearDiscardsEverythingAndDeletesFiles() {
         val q = queue()
         val img = out("i.png"); val f = out("f")

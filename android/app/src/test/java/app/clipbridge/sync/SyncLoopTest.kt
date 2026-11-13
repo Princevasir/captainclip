@@ -17,6 +17,7 @@ class SyncLoopTest {
     private val clips = CopyOnWriteArrayList<String>()
     private val htmls = CopyOnWriteArrayList<String?>()
     @Volatile private var locateDelayMs = 0L
+    private val lost = java.util.concurrent.atomic.AtomicInteger()
 
     private val loop = SyncLoop(
         pairing = { pairing },
@@ -26,6 +27,7 @@ class SyncLoopTest {
             override fun onStatus(status: SyncLoop.Status) { statuses.add(status) }
             override fun onClip(text: String) { clips.add(text) }
             override fun onClip(text: String, html: String?) { onClip(text); htmls.add(html) }
+            override fun onLost() { lost.incrementAndGet() }
         },
         backoff = Backoff(longArrayOf(50, 50, 50)),
         pingIntervalMs = 200,
@@ -105,6 +107,22 @@ class SyncLoopTest {
         assertTrue(eventually { mac.accepts.get() == 2 && mac.liveConnections == 1 })
         Thread.sleep(1_000)
         assertEquals(2, mac.accepts.get())
+    }
+
+    @Test fun macGoingAwayIsAnUnexpectedDrop() {
+        loop.start()
+        assertTrue(eventually { statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
+        mac.dropConnections()
+        assertTrue(eventually { lost.get() == 1 })
+    }
+
+    @Test fun reconnectIsNotAnUnexpectedDrop() {
+        loop.start()
+        assertTrue(eventually { statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
+        loop.reconnect()
+        assertTrue(eventually { mac.accepts.get() == 2 && statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
+        assertTrue(statuses.contains(SyncLoop.Status.RETRYING))
+        assertEquals(0, lost.get())
     }
 
     @Test fun noClipsAfterStop() {

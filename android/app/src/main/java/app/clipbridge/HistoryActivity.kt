@@ -128,7 +128,7 @@ class HistoryActivity : Activity() {
         val options = mutableListOf<Pair<String, () -> Unit>>()
         if (!e.isFile) {
             options += "Copy" to { HistoryUi.copy(this, e) }
-            if (SyncService.isConnected) options += "Send to Mac" to {
+            if (Prefs.pairing(this) != null) options += "Send to Mac" to {  // queues while the Mac is away
                 val result = SyncService.send(e.text ?: "", e.html, userInitiated = true)
                 toast(UiText.sendResultText(result))
                 refresh()

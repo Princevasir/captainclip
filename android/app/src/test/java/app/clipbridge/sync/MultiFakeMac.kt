@@ -109,5 +109,8 @@ class MultiFakeMac(private val key: ByteArray, var rejectKey: Boolean = false, p
         write(socket, challenge, Message.Clip("id", text, 1, html))
     }
 
+    /** Drops every phone connection (the Mac went away), but keeps accepting new ones. */
+    fun dropConnections() { sessions.forEach { runCatching { it.first.close() } } }
+
     fun close() { server.close(); sessions.forEach { runCatching { it.first.close() } } }
 }
