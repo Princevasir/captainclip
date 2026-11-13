@@ -133,7 +133,7 @@ class SyncLoopTest {
         unpaired.stop()
     }
 
-    private fun rememberedLoop(dialed: MutableList<Pair<String, Int>>, wifiUp: Boolean, worked: MutableList<Pair<String, Int>>) = SyncLoop(
+    private fun rememberedLoop(dialed: MutableList<Pair<String, Int>>, wifiUp: Boolean, worked: MutableList<Pair<String, Int>>, remembered: Boolean = true) = SyncLoop(
         pairing = { pairing },
         locate = { null },
         device = "test-phone",
@@ -147,6 +147,7 @@ class SyncLoopTest {
         // Pretend the remembered address is the Mac: dial the fake Mac whatever address was asked for.
         wifiLink = { host, port -> dialed.add(host to port); TcpLink("127.0.0.1", if (wifiUp) mac.port else 1) },
         lastAddress = { "10.0.0.9" to 5000 },
+        addressReachable = { _, _ -> remembered },
     )
 
     @Test fun usesRememberedAddressWhenDiscoveryFindsNothing() {
@@ -164,8 +165,18 @@ class SyncLoopTest {
         val l = rememberedLoop(CopyOnWriteArrayList(), true, worked)
         try {
             l.start()
-            assertTrue(eventually { statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
+            assertTrue(eventually { worked.isNotEmpty() })
             assertEquals(listOf("10.0.0.9" to 5000), worked)
+        } finally { l.stop() }
+    }
+
+    @Test fun staleRememberedAddressFallsBackToPairingAddress() {
+        val dialed = CopyOnWriteArrayList<Pair<String, Int>>()
+        val l = rememberedLoop(dialed, true, CopyOnWriteArrayList(), remembered = false)
+        try {
+            l.start()
+            assertTrue(eventually { dialed.isNotEmpty() })
+            assertEquals("127.0.0.1" to mac.port, dialed.first())
         } finally { l.stop() }
     }
 }

@@ -44,6 +44,10 @@ class SyncLoop(
     private val bluetoothRetryDelaysMs: LongArray = longArrayOf(60_000, 120_000, 300_000, 600_000),
     /** The Mac's last address that worked over Wi-Fi: tried when discovery finds nothing, before the QR address. */
     private val lastAddress: () -> Pair<String, Int>? = { null },
+    /** Quick reachability check (short timeout) used before trusting the remembered address. */
+    private val addressReachable: (host: String, port: Int) -> Boolean = { host, port ->
+        runCatching { java.net.Socket().use { it.connect(java.net.InetSocketAddress(host, port), 2_000) } }.isSuccess
+    },
 ) {
     enum class Path { WIFI, BLUETOOTH }
 
@@ -248,9 +252,13 @@ class SyncLoop(
     }
 
     private fun probeWifi(info: PairingInfo): Boolean = wifiProbe?.invoke(info) ?: run {
-        val (host, port) = runCatching { locate(info) }.getOrNull() ?: (info.host to info.port)
-        runCatching { java.net.Socket().use { it.connect(java.net.InetSocketAddress(host, port), 2_000) } }.isSuccess
+        val (host, port) = runCatching { locate(info) }.getOrNull() ?: rememberedOrPairing(info)
+        addressReachable(host, port)
     }
+
+    /** The remembered address if it answers quickly, else the pairing (QR) address. */
+    private fun rememberedOrPairing(info: PairingInfo): Pair<String, Int> =
+        lastAddress()?.takeIf { (h, p) -> addressReachable(h, p) } ?: (info.host to info.port)
 
     private fun run(gen: Int) {
         var authFailures = 0
@@ -288,7 +296,7 @@ class SyncLoop(
                         null
                     } ?: continue
                 } else {
-                    val (h, p) = locate(info) ?: lastAddress() ?: (info.host to info.port)
+                    val (h, p) = locate(info) ?: rememberedOrPairing(info)
                     host = h
                     port = p
                     wifiLink(h, p)
