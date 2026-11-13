@@ -49,6 +49,12 @@ object Prefs {
     fun setFeaturesSeen(ctx: Context) = prefs(ctx).edit().putBoolean("featuresSeen", true).apply()
     fun historyFromMac(ctx: Context): Boolean = prefs(ctx).getBoolean("historyFromMac", false)
     fun setHistoryFromMac(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("historyFromMac", on).apply()
+    /** Strip tracking parameters from copied links. */
+    fun cleanLinks(ctx: Context): Boolean = prefs(ctx).getBoolean("cleanLinks", true)
+    fun setCleanLinks(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("cleanLinks", on).apply()
+    /** Whether Mac copies are put on this phone's clipboard. */
+    fun macToClipboard(ctx: Context): Boolean = prefs(ctx).getBoolean("macToClipboard", true)
+    fun setMacToClipboard(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("macToClipboard", on).apply()
     fun historyMaxItems(ctx: Context): Int = prefs(ctx).getInt("historyMaxItems", 50)
     fun setHistoryMaxItems(ctx: Context, n: Int) = prefs(ctx).edit().putInt("historyMaxItems", n).apply()
     fun historyMaxDays(ctx: Context): Int = prefs(ctx).getInt("historyMaxDays", 7)
