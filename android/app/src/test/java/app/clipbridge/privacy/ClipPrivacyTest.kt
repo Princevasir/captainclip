@@ -50,4 +50,18 @@ class ClipPrivacyTest {
         assertEquals(Outgoing(dirty, sensitive = false), ClipPrivacy.outgoing(dirty, null, cleanLinks = false))
         assertEquals(Outgoing(dirty, sensitive = false), ClipPrivacy.outgoing(dirty, "<b>x</b>", cleanLinks = true))
     }
+
+    @Test fun macCopyNotKeptByDefault() =
+        assertEquals(
+            Incoming("hello", putOnClipboard = true, sensitive = false, recordInHistory = false),
+            ClipPrivacy.incoming("hello", null, cleanLinks = true, macToClipboard = true, includeFromMac = false),
+        )
+
+    @Test fun codeSensitiveWhatever() {
+        assertEquals(Outgoing("482913", sensitive = true), ClipPrivacy.outgoing("482913", null, cleanLinks = false))
+        assertEquals(
+            Incoming("482913", putOnClipboard = true, sensitive = true, recordInHistory = false),
+            ClipPrivacy.incoming("482913", "<b>482913</b>", cleanLinks = true, macToClipboard = true, includeFromMac = true),
+        )
+    }
 }
