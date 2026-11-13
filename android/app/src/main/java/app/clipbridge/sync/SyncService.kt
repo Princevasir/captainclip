@@ -16,6 +16,9 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
+import app.clipbridge.privacy.ClearGuard
+import app.clipbridge.privacy.ClipPrivacy
 import app.clipbridge.MainActivity
 import app.clipbridge.capture.GhostActivity
 import app.clipbridge.capture.OwnWrites
@@ -54,6 +57,7 @@ class SyncService : Service() {
         private const val ACTION_SAVE_OFFER = "app.clipbridge.SAVE_OFFER"
         private const val EXTRA_OFFER_ID = "offer_id"
         private const val PAUSE_CHECK_MS = 30_000L
+        private const val CLEAR_DELAY_MS = 60_000L
 
         @Volatile private var instance: SyncService? = null
 
@@ -170,18 +174,19 @@ class SyncService : Service() {
          */
         fun send(ctx: Context, text: String, html: String? = null, userInitiated: Boolean = false): SendResult {
             if (text.isEmpty()) return SendResult.FAILED
+            val out = ClipPrivacy.outgoing(text, html, Prefs.cleanLinks(ctx))
             when (decide(ctx, userInitiated)) {
                 SendPolicy.Decision.DROP -> return SendResult.FAILED
                 SendPolicy.Decision.QUEUE ->
-                    return queued(SendResult.QUEUED.also { SendQueueHub.queue.putClip(QueuedClip.Text(text, html)) })
+                    return queued(SendResult.QUEUED.also { SendQueueHub.queue.putClip(QueuedClip.Text(out.text, html)) })
                 SendPolicy.Decision.SEND -> {}
             }
             val service = instance ?: return SendResult.FAILED
             val sent = synchronized(clipSendLock) {
                 SendQueueHub.queue.supersedeClip()  // newest wins: a waiting older clip must not follow this one
-                service.loop?.send(text, html, userInitiated) ?: false
+                service.loop?.send(out.text, html, userInitiated, out.sensitive) ?: false
             }
-            if (sent) { service.history().recordText(text, html, Direction.TO_MAC); service.historyChanged() }  // it crossed
+            if (sent) { service.history().recordText(out.text, html, Direction.TO_MAC, out.sensitive); service.historyChanged() }  // it crossed
             return if (sent) SendResult.SENT else SendResult.FAILED
         }
 
@@ -381,10 +386,11 @@ class SyncService : Service() {
             when (val clip = pending.clip) {
                 is QueuedClip.Text -> {
                     // As userInitiated, so the echo guard can't swallow a copy that already waited for the Mac.
+                    val out = ClipPrivacy.outgoing(clip.text, clip.html, Prefs.cleanLinks(this))
                     val sent = synchronized(clipSendLock) {
-                        queue.isLatestClip(pending) && loop?.send(clip.text, clip.html, userInitiated = true) == true
+                        queue.isLatestClip(pending) && loop?.send(out.text, clip.html, userInitiated = true, sensitive = out.sensitive) == true
                     }
-                    if (sent) { history().recordText(clip.text, clip.html, Direction.TO_MAC); historyChanged() }
+                    if (sent) { history().recordText(out.text, clip.html, Direction.TO_MAC, out.sensitive); historyChanged() }
                     else queue.requeueClip(pending)  // drops it if a newer clip exists
                 }
                 is QueuedClip.Image ->
@@ -582,16 +588,46 @@ class SyncService : Service() {
         }
     }
 
+    private val clearGuard = ClearGuard({ SystemClock.elapsedRealtime() })
+
     private fun writeClipboard(text: String, html: String?) {
         if (isPaused(this)) return  // a timed pause ignores the Mac's clips
+        val inc = ClipPrivacy.incoming(text, html, Prefs.cleanLinks(this), Prefs.macToClipboard(this), Prefs.historyFromMac(this))
         main.post {
-            runCatching {
+            val placed = !inc.putOnClipboard || runCatching {
                 OwnWrites.markNow()  // so copy detection ignores the system "Copied" overlay this causes
-                val clip = if (html != null) ClipData.newHtmlText("ClipBridge", text, html) else ClipData.newPlainText("ClipBridge", text)
+                val clip = if (html != null) ClipData.newHtmlText("ClipBridge", inc.text, html) else ClipData.newPlainText("ClipBridge", inc.text)
                 markFromMac(clip.description)
+                if (inc.sensitive) markSensitive(clip.description)
                 getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
-            }.onSuccess { history().recordText(text, html, Direction.FROM_MAC); historyChanged() }  // on the phone's clipboard: it crossed
+                if (inc.sensitive) scheduleClear(inc.text)
+            }.isSuccess
+            // On the phone's clipboard (or, with that off, just received): it crossed
+            if (placed && inc.recordInHistory) { history().recordText(inc.text, html, Direction.FROM_MAC, inc.sensitive); historyChanged() }
         }
+    }
+
+    /** Ask Android to hide this clip's content in clipboard previews. */
+    private fun markSensitive(description: ClipDescription) {
+        val key = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) ClipDescription.EXTRA_IS_SENSITIVE else "android.content.extra.IS_SENSITIVE"
+        val extras = description.extras ?: android.os.PersistableBundle()
+        extras.putBoolean(key, true)
+        description.extras = extras
+    }
+
+    /** A code ClipBridge wrote is cleared after 60 s, but only if it is still what's on the clipboard. */
+    private fun scheduleClear(text: String) {
+        val token = clearGuard.wrote(text)
+        main.postDelayed({
+            runCatching {
+                val cm = getSystemService(ClipboardManager::class.java)
+                val current = runCatching { cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString() }.getOrNull()
+                if (clearGuard.shouldClear(token, current)) {
+                    OwnWrites.markNow()
+                    cm.clearPrimaryClip()
+                }
+            }
+        }, CLEAR_DELAY_MS)
     }
 
     private fun describe(status: SyncLoop.Status) = when (status) {
