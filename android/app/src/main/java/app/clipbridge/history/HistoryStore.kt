@@ -21,6 +21,7 @@ object HistoryCodec {
             e.text?.let { put("text", it) }; e.html?.let { put("html", it) }
             e.fileName?.let { put("name", it) }; e.mime?.let { put("mime", it) }
             if (e.isFile) put("size", e.size)
+            if (e.held) put("held", true)
         })
         return JSONObject().put("v", 1).put("entries", arr).toString().toByteArray(Charsets.UTF_8)
     }
@@ -32,7 +33,7 @@ object HistoryCodec {
             HistoryEntry(
                 id = o.getString("id"), at = o.getLong("at"), direction = Direction.valueOf(o.getString("dir")),
                 text = o.optStringOrNull("text"), html = o.optStringOrNull("html"),
-                fileName = o.optStringOrNull("name"), mime = o.optStringOrNull("mime"), size = o.optLong("size", 0),
+                fileName = o.optStringOrNull("name"), mime = o.optStringOrNull("mime"), size = o.optLong("size", 0), held = o.optBoolean("held", false),
             )
         }
     }
@@ -77,9 +78,9 @@ class HistoryStore(
 
     @Synchronized fun search(query: String): List<HistoryEntry> { pruneAndMaybeSave(); return history.search(query) }
 
-    @Synchronized fun recordText(text: String, html: String?, direction: Direction, sensitive: Boolean = false) {
-        if (direction == Direction.FROM_MAC && !includeFromMac) return
-        if (enabled && history.addText(text, html, direction, clock(), sensitive)) save()
+    @Synchronized fun recordText(text: String, html: String?, direction: Direction, sensitive: Boolean = false, held: Boolean = false) {
+        if (direction == Direction.FROM_MAC && !includeFromMac && !held) return
+        if (enabled && history.addText(text, html, direction, clock(), sensitive, held)) save()
     }
 
     @Synchronized fun recordFile(id: String, name: String, mime: String, size: Long, direction: Direction) {

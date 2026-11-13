@@ -15,6 +15,8 @@ data class HistoryEntry(
     val fileName: String? = null,
     val mime: String? = null,
     val size: Long = 0,
+    /** Mac text kept because it was not put on the phone's clipboard: it survives "Include clips from your Mac" being off. */
+    val held: Boolean = false,
 ) {
     val isFile: Boolean get() = fileName != null
 }
@@ -41,15 +43,15 @@ class History(entries: List<HistoryEntry> = emptyList()) {
     val entries: List<HistoryEntry> get() = list.toList()
 
     /** False when nothing changed (sensitive or blank text). Equal to the newest entry → that entry moves up. */
-    fun addText(text: String, html: String?, direction: Direction, now: Long, sensitive: Boolean = false): Boolean {
+    fun addText(text: String, html: String?, direction: Direction, now: Long, sensitive: Boolean = false, held: Boolean = false): Boolean {
         if (sensitive || text.isBlank()) return false
         val keptHtml = html?.takeIf { it.toByteArray(Charsets.UTF_8).size <= HistoryLimits.MAX_HTML_BYTES }
         val top = list.firstOrNull()
         if (top != null && !top.isFile && top.text == text) {
-            list[0] = top.copy(at = now, direction = direction, html = keptHtml)  // the latest crossing wins
+            list[0] = top.copy(at = now, direction = direction, html = keptHtml, held = held)  // the latest crossing wins
             return true
         }
-        list.add(0, HistoryEntry(UUID.randomUUID().toString(), now, direction, text = text, html = keptHtml))
+        list.add(0, HistoryEntry(UUID.randomUUID().toString(), now, direction, text = text, html = keptHtml, held = held))
         return true
     }
 
@@ -73,8 +75,8 @@ class History(entries: List<HistoryEntry> = emptyList()) {
 
     fun delete(id: String) { list.removeAll { it.id == id } }
 
-    /** Drops text that only arrived from the Mac (files from the Mac were opened on the phone, so they stay). */
-    fun removeMacText(): Boolean = list.removeAll { !it.isFile && it.direction == Direction.FROM_MAC }
+    /** Drops text that only arrived from the Mac, except text held because it never reached the clipboard (files from the Mac were opened on the phone, so they stay). */
+    fun removeMacText(): Boolean = list.removeAll { !it.isFile && !it.held && it.direction == Direction.FROM_MAC }
 
     fun clear() = list.clear()
 }
