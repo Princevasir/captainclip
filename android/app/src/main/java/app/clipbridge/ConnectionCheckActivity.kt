@@ -64,6 +64,13 @@ class ConnectionCheckActivity : Activity() {
 
     private fun run() {
         if (running) return
+        if (app.clipbridge.sync.Prefs.pairing(this) == null) {
+            headline.text = "Not paired yet — scan the QR code from your Mac"
+            list.removeAllViews()
+            lines = emptyList()
+            copyReport.isEnabled = false
+            return
+        }
         running = true
         headline.text = "Checking…"
         list.removeAllViews()

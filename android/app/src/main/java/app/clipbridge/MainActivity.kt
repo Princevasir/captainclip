@@ -252,6 +252,7 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.sendClipboardButton).visibility = if (paired && Prefs.syncEnabled(this)) View.VISIBLE else View.GONE
         val paused = pausedLine != null || !Prefs.syncEnabled(this)
         val dropping = paired && app.clipbridge.sync.ConnectionLogHub.log.keepsDropping()
+        findViewById<View>(R.id.checkConnectionRow).visibility = if (paired) View.VISIBLE else View.GONE
         findViewById<View>(R.id.droppingRow).visibility = if (dropping) View.VISIBLE else View.GONE
         findViewById<View>(R.id.checkLink).visibility =
             if (paired && !paused && !connected && !dropping) View.VISIBLE else View.GONE

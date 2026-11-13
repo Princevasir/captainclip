@@ -29,6 +29,7 @@ object ConnectionCheck {
         }
         !f.onWifi -> "This phone isn't on Wi-Fi"
         f.macVisible && !f.macReachable -> "Your Wi-Fi is blocking devices from talking to each other"
+        !f.macVisible && f.macReachable -> "Your Mac answered at its last address — ClipBridge will reconnect"
         !f.macVisible -> "Can't find your Mac on this Wi-Fi"
         else -> "Still looking for your Mac"
     }
@@ -45,6 +46,7 @@ object ConnectionCheck {
         !f.onWifi -> CheckLine("Mac on this Wi-Fi", Severity.WARN, "Can't look for your Mac without Wi-Fi — join your Mac's Wi-Fi, or use Bluetooth.")
         f.macVisible && f.macReachable -> CheckLine("Mac on this Wi-Fi", Severity.OK, "All good — your Mac is on this Wi-Fi and answering.")
         f.macVisible -> CheckLine("Mac on this Wi-Fi", Severity.PROBLEM, "Your Mac is here but can't be reached — guest, hotel or office Wi-Fi often blocks this, so use Bluetooth or a different Wi-Fi.")
+        f.macReachable -> CheckLine("Mac on this Wi-Fi", Severity.WARN, "Your Wi-Fi hides devices from each other, but your Mac's last address works.")
         else -> CheckLine("Mac on this Wi-Fi", Severity.PROBLEM, "Is ClipBridge open on your Mac, and is it on the same Wi-Fi?")
     }
 

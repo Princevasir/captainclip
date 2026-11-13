@@ -37,6 +37,14 @@ class ConnectionCheckTest {
         assertTrue(details(f).any { "Is ClipBridge open on your Mac, and is it on the same Wi-Fi?" in it })
     }
 
+    @Test fun rememberedAddressAnswers() {
+        val f = good.copy(macVisible = false, macReachable = true)
+        assertEquals("Your Mac answered at its last address — ClipBridge will reconnect", ConnectionCheck.headline(f))
+        val mac = ConnectionCheck.lines(f).first { it.title == "Mac on this Wi-Fi" }
+        assertEquals(Severity.WARN, mac.severity)
+        assertEquals("Your Wi-Fi hides devices from each other, but your Mac's last address works.", mac.detail)
+    }
+
     @Test fun pairingInvalidWins() {
         val f = good.copy(pairingInvalid = true, macVisible = false, onWifi = false)
         assertEquals("Your Mac was paired again — scan its new QR code", ConnectionCheck.headline(f))
