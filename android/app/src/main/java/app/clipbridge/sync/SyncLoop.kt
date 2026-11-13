@@ -42,6 +42,12 @@ class SyncLoop(
     private val wifiProbeIntervalMs: Long = 30_000,
     /** Wait after each Bluetooth scan that found nothing (battery): 1, 2, 5, then every 10 min; reset by [wake] or a connection. */
     private val bluetoothRetryDelaysMs: LongArray = longArrayOf(60_000, 120_000, 300_000, 600_000),
+    /** The Mac's last address that worked over Wi-Fi: tried when discovery finds nothing, before the QR address. */
+    private val lastAddress: () -> Pair<String, Int>? = { null },
+    /** Quick reachability check (short timeout) used before trusting the remembered address. */
+    private val addressReachable: (host: String, port: Int) -> Boolean = { host, port ->
+        runCatching { java.net.Socket().use { it.connect(java.net.InetSocketAddress(host, port), 2_000) } }.isSuccess
+    },
 ) {
     enum class Path { WIFI, BLUETOOTH }
 
@@ -63,6 +69,10 @@ class SyncLoop(
         fun onOffer(offer: Message.Offer?) {}
         /** The Mac offered several files together. Defaults to offering the first. */
         fun onOffers(offers: List<Message.Offer>) = onOffer(offers.firstOrNull())
+        /** Connected over Wi-Fi via [host]:[port] (worth remembering as the Mac's address). */
+        fun onWifiConnected(host: String, port: Int) {}
+        /** A working connection dropped unexpectedly (not a switch back to Wi-Fi, a [reconnect] or [stop]). */
+        fun onLost() {}
     }
 
     private class PendingFetch(val id: String, val dir: File) {
@@ -92,6 +102,8 @@ class SyncLoop(
     private var worker: Thread? = null // guarded by lock
     private var wakeRequested = false // guarded by lock
     @Volatile private var connection: Connection? = null
+    /** The connection we closed on purpose (Wi-Fi switch, [reconnect]); its close is not an unexpected drop. */
+    @Volatile private var closedOnPurpose: Connection? = null
     private val loopGuard = LoopGuard()
 
     val isRunning: Boolean get() = synchronized(lock) { worker != null }
@@ -123,7 +135,7 @@ class SyncLoop(
     fun reconnect() {
         backoff.reset()
         wake()
-        connection?.close()
+        connection?.let { closedOnPurpose = it; it.close() }
     }
 
     /** Skip the current back-off wait (e.g. Wi-Fi came back). */
@@ -244,9 +256,13 @@ class SyncLoop(
     }
 
     private fun probeWifi(info: PairingInfo): Boolean = wifiProbe?.invoke(info) ?: run {
-        val (host, port) = runCatching { locate(info) }.getOrNull() ?: (info.host to info.port)
-        runCatching { java.net.Socket().use { it.connect(java.net.InetSocketAddress(host, port), 2_000) } }.isSuccess
+        val (host, port) = runCatching { locate(info) }.getOrNull() ?: rememberedOrPairing(info)
+        addressReachable(host, port)
     }
+
+    /** The remembered address if it answers quickly, else the pairing (QR) address. */
+    private fun rememberedOrPairing(info: PairingInfo): Pair<String, Int> =
+        lastAddress()?.takeIf { (h, p) -> addressReachable(h, p) } ?: (info.host to info.port)
 
     private fun run(gen: Int) {
         var authFailures = 0
@@ -263,6 +279,8 @@ class SyncLoop(
                 // Wi-Fi first; Bluetooth only after two Wi-Fi attempts that never connected.
                 val useBluetooth = bluetoothLink != null && wifiFailures >= WIFI_FAILURES_BEFORE_BLUETOOTH &&
                     System.currentTimeMillis() >= bluetoothNotBefore
+                var host = info.host
+                var port = info.port
                 val link: Link = if (useBluetooth) {
                     val found = try {
                         bluetoothLink!!.invoke(info)
@@ -282,8 +300,10 @@ class SyncLoop(
                         null
                     } ?: continue
                 } else {
-                    val (host, port) = locate(info) ?: (info.host to info.port)
-                    wifiLink(host, port)
+                    val (h, p) = locate(info) ?: rememberedOrPairing(info)
+                    host = h
+                    port = p
+                    wifiLink(h, p)
                 }
                 if (!alive(gen)) { link.close(); return }
 
@@ -300,6 +320,7 @@ class SyncLoop(
                         backoff.reset()
                         path = if (link.isBluetooth) Path.BLUETOOTH else Path.WIFI
                         status(gen, Status.CONNECTED)
+                        if (!link.isBluetooth && alive(gen)) callbacks.onWifiConnected(host, port)
                     }
                     override fun onClip(text: String) = onClip(text, null)
                     override fun onClip(text: String, html: String?) {
@@ -330,7 +351,7 @@ class SyncLoop(
                                 probeNow = false
                             }
                             // Never switch mid-transfer: a Bluetooth paste or upload would fail.
-                            if (closed.count > 0 && !busy && probeWifi(info)) { wifiFailures = 0; conn.close(); break }
+                            if (closed.count > 0 && !busy && probeWifi(info)) { wifiFailures = 0; closedOnPurpose = conn; conn.close(); break }
                         }
                     } catch (_: InterruptedException) {}
                 }, "clipbridge-wifi-probe").apply { isDaemon = true; start() } else null
@@ -344,6 +365,8 @@ class SyncLoop(
                     fetches.values.toList().forEach { fail(it, "io") }  // a dropped connection ends any fetch
                 }
                 if (!alive(gen)) return
+                if (acked && closedOnPurpose !== conn) callbacks.onLost()
+                closedOnPurpose = null
 
                 if (!link.isBluetooth && !acked && reason == Connection.CloseReason.LOST) wifiFailures++
                 if (link.isBluetooth && wifiFailures > 0) wifiFailures = WIFI_FAILURES_BEFORE_BLUETOOTH - 1

@@ -4,7 +4,12 @@ import Foundation
 /// Wires the pasteboard watcher to the server: text sync (v1) plus file offers, fetches and incoming files (v2).
 /// All public callbacks are delivered on the main queue.
 public final class Bridge {
+    /// Paused until resumed (no end time).
     public var paused = false
+    /// Paused until this time (a timed pause); nil when none.
+    public var pausedUntil: Date?
+    public var now: () -> Date = Date.init
+    public var isPaused: Bool { PauseWindow.isActive(manual: paused, until: pausedUntil, now: now()) }
     public var onStatus: ((Server.Status) -> Void)?
     public var onReceived: ((String) -> Void)?
     /// A file from the phone landed in Downloads (and is on the pasteboard).
@@ -37,33 +42,33 @@ public final class Bridge {
 
     public func start() throws {
         watcher.onText = { [weak self] text in
-            guard let self, !self.paused else { return }
+            guard let self, !self.isPaused else { return }
             self.clearOffer()
             guard TextLimit.fits(text), self.loopGuard.shouldSend(text) else { return }
             let html = RichText.fitting(text: text, html: self.watcher.currentHTML())
             if self.server.send(text: text, html: html) { self.loopGuard.markSent(text) }
         }
         watcher.onFile = { [weak self] url in
-            guard let self, !self.paused, let offer = try? self.offers.make(url: url) else { return }
+            guard let self, !self.isPaused, let offer = try? self.offers.make(url: url) else { return }
             self.server.cancelStream()  // stop sending the previous offer, if a paste was in progress
             self.server.send(message: offer)  // just name/type/size; content waits for a fetch
             self.onOfferChanged?(url.lastPathComponent)
         }
         watcher.onFiles = { [weak self] urls in
-            guard let self, !self.paused, let offer = try? self.offers.makeSet(urls: urls) else { return }
+            guard let self, !self.isPaused, let offer = try? self.offers.makeSet(urls: urls) else { return }
             self.server.cancelStream()
             self.server.send(message: offer)  // names/types/sizes only; each file waits for its own fetch
             self.onOfferChanged?("\(urls.count) files")
         }
         watcher.onImage = { [weak self] png in
             // Offered like a file: only name/type/size go to the phone until it pastes.
-            guard let self, !self.paused, let url = try? ClipboardImage.save(png, in: self.imageCache) else { return }
+            guard let self, !self.isPaused, let url = try? ClipboardImage.save(png, in: self.imageCache) else { return }
             self.watcher.onFile?(url)
         }
         watcher.onIgnoredFiles = { [weak self] in self?.clearOffer() }
         server.onRichClip = { [weak self] text, html in
             DispatchQueue.main.async {
-                guard let self, !self.paused else { return }
+                guard let self, !self.isPaused else { return }
                 self.clearOffer()  // the Mac clipboard no longer holds the offered file
                 self.loopGuard.markReceived(text)
                 if let html { self.watcher.write(text, html: html) } else { self.watcher.write(text) }
@@ -100,9 +105,16 @@ public final class Bridge {
         onOfferChanged?(nil)
     }
 
+    /// A pause ended: clear it and give a connected phone what was copied meanwhile.
+    public func resumed() {
+        paused = false
+        pausedUntil = nil
+        sendCurrentClipboard()
+    }
+
     /// A phone just connected: give it what's on the Mac clipboard (an offer, or text it may have missed).
     private func sendCurrentClipboard() {
-        guard !paused else { return }
+        guard !isPaused else { return }
         if let offer = offers.current {
             server.send(message: offer)
             return
@@ -167,7 +179,7 @@ public final class Bridge {
     }
 
     private func serve(id: String) {
-        guard !paused else { server.send(message: .fileError(id: id, reason: "expired")); return }
+        guard !isPaused else { server.send(message: .fileError(id: id, reason: "expired")); return }
         switch offers.entry(id: id) {
         case .failure(let error):
             bleLog.info("serve \(id.prefix(8), privacy: .public) refused \(error == .changed ? "changed" : "expired", privacy: .public)")

@@ -1,20 +1,18 @@
 package app.clipbridge.capture
 
+import app.clipbridge.UiText
+import app.clipbridge.sync.SendResult
+
 /** Outcome and wording for sending a clipboard image (unit-tested). */
 object ImageSend {
-    enum class Outcome { SEND, NOT_CONNECTED, NOT_AN_IMAGE }
-
-    fun decide(isImage: Boolean, connected: Boolean): Outcome = when {
-        !isImage -> Outcome.NOT_AN_IMAGE
-        !connected -> Outcome.NOT_CONNECTED
-        else -> Outcome.SEND
-    }
+    enum class Outcome { SEND, QUEUED, FAILED, NOT_AN_IMAGE }
 
     /** Automatic copies stay silent unless something was sent; manual sends (tile, button) always explain. */
-    fun message(outcome: Outcome, manual: Boolean): String? = when {
+    fun message(outcome: Outcome, manual: Boolean, paused: Boolean = false): String? = when {
         !manual -> null
         outcome == Outcome.SEND -> "Image sent to Mac"
-        outcome == Outcome.NOT_CONNECTED -> "Not connected to your Mac"
+        outcome == Outcome.QUEUED -> UiText.sendResultText(SendResult.QUEUED, paused)
+        outcome == Outcome.FAILED -> UiText.sendResultText(SendResult.FAILED)
         else -> "That's a file — use Share → Send to Mac"
     }
 }

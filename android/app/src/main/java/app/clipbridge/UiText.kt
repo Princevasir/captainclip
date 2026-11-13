@@ -5,20 +5,30 @@ import kotlin.math.roundToLong
 
 /** Small, user-facing wording helpers (unit-tested). */
 object UiText {
-    /** After a tap on Send to Mac: only blame the connection when it really is down. */
-    fun sendResult(sent: Boolean, connected: Boolean): String = when {
-        sent -> "Sent to Mac"
-        !connected -> "Not connected to your Mac"
-        else -> "Couldn't send — try again"
+    /** After a tap on Send to Mac: sent, kept until the Mac is back (or until [paused] ends), or refused. */
+    fun sendResultText(r: app.clipbridge.sync.SendResult, paused: Boolean = false): String = when (r) {
+        app.clipbridge.sync.SendResult.SENT -> "Sent to Mac"
+        app.clipbridge.sync.SendResult.QUEUED -> if (paused) "Waiting — sends when you resume" else "Waiting — sends when your Mac is back"
+        app.clipbridge.sync.SendResult.FAILED -> "Couldn't send"
     }
 
     /** (title, subtitle) for the home-screen widget and the connection toggle. */
-    fun connectionLine(paired: Boolean, syncOn: Boolean, connected: Boolean, macName: String?, bluetooth: Boolean): Pair<String, String> = when {
+    fun connectionLine(paired: Boolean, syncOn: Boolean, connected: Boolean, macName: String?, bluetooth: Boolean,
+                       pausedLine: String? = null): Pair<String, String> = when {
         !paired -> "ClipBridge" to "Not paired"
+        pausedLine != null -> "Paused" to pausedLine
         !syncOn -> "ClipBridge" to "Paused"
         connected -> (macName ?: "Your Mac") to (if (bluetooth) "Connected · Bluetooth" else "Connected · Wi-Fi")
         else -> (macName ?: "Your Mac") to "Looking for your Mac…"
     }
+
+    /** Line under the status card while sends wait for the Mac; null when nothing waits. */
+    fun waitingLine(count: Int, paused: Boolean = false): String? =
+        if (count > 0) "$count waiting — sends when ${if (paused) "you resume" else "your Mac is back"}" else null
+
+    /** Status line while a timed pause is running; null once it has ended. */
+    fun pausedLine(pausedUntil: Long, now: Long, time: (Long) -> String): String? =
+        if (pausedUntil > now) "Paused · resumes at ${time(pausedUntil)}" else null
 
     /** Android 13+ confirms every clipboard write itself ("Copied"); our own message would be a second pop-up. */
     fun showOwnCopiedMessage(sdk: Int): Boolean = sdk < 33

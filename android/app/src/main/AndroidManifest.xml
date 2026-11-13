@@ -56,6 +56,7 @@
             android:windowSoftInputMode="adjustResize" />
         <activity android:name=".QuickToggleActivity" android:exported="false" android:label="Send to Mac toggle" />
         <activity android:name=".FeaturesActivity" android:exported="false" android:label="What ClipBridge does" />
+        <activity android:name=".ConnectionCheckActivity" android:exported="false" android:label="Check connection" />
         <activity android:name=".MacSetupActivity" android:exported="false" android:label="Set up your Mac" />
 
         <provider
@@ -125,6 +126,8 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_send_info" />
         </receiver>
+
+        <receiver android:name=".ResumeReceiver" android:exported="false" />
 
         <service
             android:name=".capture.SendTileService"

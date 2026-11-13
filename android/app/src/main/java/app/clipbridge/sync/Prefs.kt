@@ -9,7 +9,17 @@ object Prefs {
 
     fun pairing(ctx: Context): PairingInfo? = prefs(ctx).getString("pairing", null)?.let(PairingInfo::parse)
 
-    fun savePairing(ctx: Context, info: PairingInfo) = prefs(ctx).edit().putString("pairing", info.uri).apply()
+    /**
+     * Saves a scanned pairing. For a different Mac the remembered address is forgotten (it belongs to the old Mac).
+     * Returns true when it is a different Mac.
+     */
+    fun savePairing(ctx: Context, info: PairingInfo): Boolean {
+        val newMac = PairingChange.isNewMac(pairing(ctx), info)
+        val edit = prefs(ctx).edit().putString("pairing", info.uri)
+        if (newMac) edit.remove("lastHost").remove("lastPort")
+        edit.apply()
+        return newMac
+    }
 
     fun syncEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean("enabled", true)
 
@@ -43,8 +53,27 @@ object Prefs {
     fun setHistoryMaxItems(ctx: Context, n: Int) = prefs(ctx).edit().putInt("historyMaxItems", n).apply()
     fun historyMaxDays(ctx: Context): Int = prefs(ctx).getInt("historyMaxDays", 7)
     fun setHistoryMaxDays(ctx: Context, n: Int) = prefs(ctx).edit().putInt("historyMaxDays", n).apply()
+    /** Epoch millis when a timed pause ends; 0 = no timed pause. */
+    fun pausedUntil(ctx: Context): Long = prefs(ctx).getLong("pausedUntil", 0L)
+    fun setPausedUntil(ctx: Context, until: Long) = prefs(ctx).edit().putLong("pausedUntil", until).apply()
+
+    /** The Mac's last address that worked over Wi-Fi (null until one has). */
+    fun lastMacAddress(ctx: Context): Pair<String, Int>? {
+        val p = prefs(ctx)
+        val host = p.getString("lastHost", null) ?: return null
+        if (!p.contains("lastPort")) return null
+        return host to p.getInt("lastPort", 0)
+    }
+    fun setLastMacAddress(ctx: Context, host: String, port: Int) =
+        prefs(ctx).edit().putString("lastHost", host).putInt("lastPort", port).apply()
 
     fun bluetoothAsked(ctx: Context): Boolean = prefs(ctx).getBoolean("bluetoothAsked", false)
 
     fun setBluetoothAsked(ctx: Context) = prefs(ctx).edit().putBoolean("bluetoothAsked", true).apply()
+}
+
+/** Pure re-pairing rule (unit-tested). */
+object PairingChange {
+    /** True unless [next] is the Mac already paired (same Mac id), e.g. re-scanned after the Mac's Reset pairing. */
+    fun isNewMac(previous: PairingInfo?, next: PairingInfo): Boolean = previous?.macId != next.macId
 }

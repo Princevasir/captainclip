@@ -19,6 +19,12 @@ public enum MenuText {
         }
     }
 
+    /// "Paused until 3:45 PM" while a timed pause is running; nil once it has ended.
+    public static func pausedUntil(_ until: Date, now: Date, time: (Date) -> String) -> String? {
+        guard now < until else { return nil }
+        return "Paused until \(time(until))"
+    }
+
     public static func offer(_ name: String) -> String {
         let prefix = "Ready to paste on phone: "
         let room = 64 - prefix.count

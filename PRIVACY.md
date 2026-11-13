@@ -22,6 +22,10 @@ any of your data.**
 - Copies marked as sensitive (for example passwords from a password manager) are never sent.
 - Files from your Mac are kept on the phone only temporarily (at most 10 minutes, or until your next copy),
   unless you save or share them yourself. Files you send to the Mac are saved in its Downloads folder.
+- If you send something to your Mac while it isn't connected or syncing is paused, it waits on this phone only: the
+  latest copied text or picture, plus up to 20 shared files (200 MB). It is sent only to your paired Mac, when it's back.
+  It's deleted after 1 hour, when you tap **Cancel**, or when you pair a different Mac. Text waits in the app's memory;
+  pictures and files wait in the app's private storage, which other apps can't read.
 
 ## Clipboard history (Android)
 
@@ -36,6 +40,13 @@ any of your data.**
   30 days (7 by default).
 - Sensitive copies (for example passwords) are never stored. File contents are never stored, only names and sizes.
 - You can delete single clips, clear everything, or turn history off (which deletes it) in **Clipboard history → ⋮**.
+
+## Connection check (Android)
+
+- The connection report you can copy from **Check connection** contains app and Android versions, check results and
+  connect/disconnect times. It never contains clipboard text, file names or network addresses, and nothing is sent
+  automatically; you choose where to paste it.
+- The phone remembers the Mac's last network address **on the phone only**, so it can reconnect quickly. It is never sent anywhere else.
 
 ## What ClipBridge does not do
 

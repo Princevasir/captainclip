@@ -55,8 +55,8 @@ class GhostActivity : Activity() {
             // A copied image (screenshot "Copy", Chrome "Copy image") → Mac clipboard. Read it before closing.
             val announce = intent.getBooleanExtra(EXTRA_ANNOUNCE, false)
             Thread {
-                val outcome = ClipImages.sendIfImage(applicationContext, clip)
-                ImageSend.message(outcome, manual = announce)?.let { text ->
+                val outcome = ClipImages.sendIfImage(applicationContext, clip, manual = announce)
+                ImageSend.message(outcome, manual = announce, paused = SyncService.holdsSends(applicationContext))?.let { text ->
                     runOnUiThread { Toast.makeText(applicationContext, text, Toast.LENGTH_SHORT).show() }
                 }
             }.start()
@@ -70,10 +70,10 @@ class GhostActivity : Activity() {
             val html = ClipHtml.of(clip?.getItemAt(0))
             val announce = intent.getBooleanExtra(EXTRA_ANNOUNCE, false)
             // A tap on Send to Mac (tile, widget, shortcut) always sends; automatic copies keep the echo guard.
-            val sent = SyncService.send(text!!, html, userInitiated = announce)
-            android.util.Log.i("ClipBridgeFiles", "phone copy → Mac: text ${text.length} chars, html ${html?.length ?: 0} chars, sent=$sent")
+            val result = SyncService.send(this, text!!, html, userInitiated = announce)
+            android.util.Log.i("ClipBridgeFiles", "phone copy → Mac: text ${text.length} chars, html ${html?.length ?: 0} chars, result=$result")
             if (announce) {
-                Toast.makeText(this, app.clipbridge.UiText.sendResult(sent, SyncService.isConnected), Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, app.clipbridge.UiText.sendResultText(result, SyncService.holdsSends(this)), Toast.LENGTH_SHORT).show()
             }
         }
         finishQuietly()

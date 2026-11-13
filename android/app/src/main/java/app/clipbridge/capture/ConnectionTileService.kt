@@ -24,11 +24,15 @@ class ConnectionTileService : TileService() {
     override fun onStartListening() {
         val tile = qsTile ?: return
         val paired = Prefs.pairing(this) != null
-        val on = paired && Prefs.syncEnabled(this)
+        val paused = paired && SyncService.isPaused(this)
+        val on = paired && Prefs.syncEnabled(this) && !paused
         tile.icon = Icon.createWithResource(this, R.drawable.ic_devices)
         tile.label = getString(R.string.connection_tile_label)
         tile.subtitle = UiText.connectionLine(paired, Prefs.syncEnabled(this),
-            SyncService.state == SyncLoop.Status.CONNECTED, SyncService.macName, SyncService.onBluetooth).second
+            SyncService.state == SyncLoop.Status.CONNECTED, SyncService.macName, SyncService.onBluetooth,
+            pausedLine = UiText.pausedLine(Prefs.pausedUntil(this), System.currentTimeMillis()) {
+                android.text.format.DateFormat.getTimeFormat(this).format(java.util.Date(it))
+            }).second
         tile.state = when { !paired -> Tile.STATE_UNAVAILABLE; on -> Tile.STATE_ACTIVE; else -> Tile.STATE_INACTIVE }
         tile.updateTile()
     }
@@ -37,6 +41,10 @@ class ConnectionTileService : TileService() {
     @SuppressLint("StartActivityAndCollapseDeprecated")
     override fun onClick() {
         if (Prefs.pairing(this) == null) return openApp()
+        if (SyncService.isPaused(this)) {
+            if (runCatching { SyncService.resume(this) }.isFailure) return openApp()
+            return onStartListening()
+        }
         val enable = !Prefs.syncEnabled(this)
         Prefs.setSyncEnabled(this, enable)
         if (enable) {

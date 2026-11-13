@@ -19,6 +19,7 @@ import app.clipbridge.capture.ClipPolicy
 import app.clipbridge.capture.CopyDetectService
 import app.clipbridge.core.PairingInfo
 import app.clipbridge.files.Files
+import app.clipbridge.sync.PauseChoice
 import app.clipbridge.sync.Prefs
 import app.clipbridge.sync.SyncLoop
 import app.clipbridge.sync.SyncService
@@ -127,11 +128,23 @@ class MainActivity : Activity() {
         shareButton.setOnClickListener { shareOffers() }
         setupButton.setOnClickListener { onSetupAction() }
         pauseButton.setOnClickListener { toggleSync() }
+        findViewById<View>(R.id.waitingCancel).setOnClickListener {
+            app.clipbridge.sync.SendQueueHub.queue.clear()
+            refresh()
+        }
         findViewById<View>(R.id.sendClipboardButton).setOnClickListener { sendClipboard() }
         findViewById<View>(R.id.repairRow).setOnClickListener { scanQr() }
         findViewById<View>(R.id.historyRow).setOnClickListener { startActivity(Intent(this, HistoryActivity::class.java)) }
         findViewById<View>(R.id.featuresRow).setOnClickListener {
             Prefs.setFeaturesSeen(this); startActivity(Intent(this, FeaturesActivity::class.java))
+        }
+        val openCheck = View.OnClickListener { startActivity(Intent(this, ConnectionCheckActivity::class.java)) }
+        findViewById<View>(R.id.checkConnectionRow).setOnClickListener(openCheck)
+        findViewById<View>(R.id.checkLink).setOnClickListener(openCheck)
+        findViewById<View>(R.id.droppingText).setOnClickListener(openCheck)
+        findViewById<View>(R.id.droppingDismiss).setOnClickListener {
+            app.clipbridge.sync.ConnectionLogHub.log.dismissPrompt()
+            renderStatus()
         }
         findViewById<View>(R.id.macGuideRow).setOnClickListener { startActivity(Intent(this, MacSetupActivity::class.java)) }
         findViewById<View>(R.id.setupMacGuide).setOnClickListener {
@@ -159,8 +172,10 @@ class MainActivity : Activity() {
         renderOffer()
         renderRecent()
         renderSetup()
-        val enabled = Prefs.syncEnabled(this)
-        pauseButton.text = if (enabled) "Pause syncing" else "Resume syncing"
+        pauseButton.text = if (Prefs.syncEnabled(this) && !SyncService.isPaused(this)) "Pause syncing" else "Resume now"
+        val waiting = UiText.waitingLine(app.clipbridge.sync.SendQueueHub.queue.count, SyncService.holdsSends(this))
+        findViewById<View>(R.id.waitingRow).visibility = if (waiting != null && Prefs.pairing(this) != null) View.VISIBLE else View.GONE
+        findViewById<TextView>(R.id.waitingText).text = waiting.orEmpty()
         pauseButton.visibility = if (Prefs.pairing(this) != null) View.VISIBLE else View.GONE
         // "This phone": each row shows its current value.
         findViewById<TextView>(R.id.historyValue).text =
@@ -205,10 +220,14 @@ class MainActivity : Activity() {
 
     private fun renderStatus() {
         val paired = Prefs.pairing(this) != null
-        val connected = paired && Prefs.syncEnabled(this) && SyncService.state == SyncLoop.Status.CONNECTED
+        val connected = paired && Prefs.syncEnabled(this) && !SyncService.isPaused(this) && SyncService.state == SyncLoop.Status.CONNECTED
+        val pausedLine = UiText.pausedLine(Prefs.pausedUntil(this), System.currentTimeMillis()) {
+            android.text.format.DateFormat.getTimeFormat(this).format(java.util.Date(it))
+        }
         // (card colours, pill, title, detail)
         val look = when {
             !paired -> Look(SLATE, "Not paired", "Pair with your Mac", "Scan the QR code from ClipBridge on your Mac")
+            pausedLine != null -> Look(SLATE, "Paused", "Syncing is paused", pausedLine)
             !Prefs.syncEnabled(this) -> Look(SLATE, "Paused", "Syncing is paused", "Copies stay on this phone until you resume")
             else -> when (SyncService.state) {
                 SyncLoop.Status.CONNECTED -> Look(BRAND, "Connected", SyncService.macName ?: "Your Mac",
@@ -231,6 +250,12 @@ class MainActivity : Activity() {
         statusDetail.text = look.detail
         statusDetail.visibility = if (look.detail.isEmpty()) View.GONE else View.VISIBLE
         findViewById<View>(R.id.sendClipboardButton).visibility = if (paired && Prefs.syncEnabled(this)) View.VISIBLE else View.GONE
+        val paused = pausedLine != null || !Prefs.syncEnabled(this)
+        val dropping = paired && app.clipbridge.sync.ConnectionLogHub.log.keepsDropping()
+        findViewById<View>(R.id.checkConnectionRow).visibility = if (paired) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.droppingRow).visibility = if (dropping) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.checkLink).visibility =
+            if (paired && !paused && !connected && !dropping) View.VISIBLE else View.GONE
     }
 
     private fun renderOffer() {
@@ -412,15 +437,15 @@ class MainActivity : Activity() {
         val sensitive = clip?.description?.extras?.getBoolean(ClipPolicy.EXTRA_IS_SENSITIVE, false) ?: false
         if (hasUri) {
             Thread {
-                val outcome = app.clipbridge.capture.ClipImages.sendIfImage(applicationContext, clip)
-                app.clipbridge.capture.ImageSend.message(outcome, manual = true)?.let { runOnUiThread { toast(it) } }
+                val outcome = app.clipbridge.capture.ClipImages.sendIfImage(applicationContext, clip, manual = true)
+                app.clipbridge.capture.ImageSend.message(outcome, manual = true, paused = SyncService.holdsSends(applicationContext))?.let { runOnUiThread { toast(it) } }
             }.start()
             return
         }
         toast(when {
             !ClipPolicy.shouldSend(text, sensitive) -> if (sensitive) "Passwords aren't sent" else "Your clipboard is empty"
-            SyncService.send(text!!, app.clipbridge.capture.ClipHtml.of(item), userInitiated = true) -> "Sent to Mac"
-            else -> UiText.sendResult(sent = false, connected = SyncService.isConnected)
+            else -> UiText.sendResultText(SyncService.send(this, text!!, app.clipbridge.capture.ClipHtml.of(item), userInitiated = true),
+                SyncService.holdsSends(this))
         })
     }
 
@@ -452,9 +477,10 @@ class MainActivity : Activity() {
         if (result == null) { super.onActivityResult(requestCode, resultCode, data); return }
         val contents = result.contents ?: return
         val info = PairingInfo.parse(contents) ?: return toast("Not a ClipBridge code")
-        Prefs.savePairing(this, info)
+        val newMac = Prefs.savePairing(this, info)  // a different Mac: forgets the old Mac's address
+        Prefs.setPausedUntil(this, 0)  // a fresh pairing never starts out paused
         Prefs.setSyncEnabled(this, true)
-        SyncService.reconnect(this)
+        SyncService.reconnect(this, newMac)  // a different Mac: what waited for the old one is dropped
         toast("Paired with your Mac")
         refresh()
         if (Features.showAfterPairing(Prefs.featuresSeen(this))) {
@@ -463,11 +489,30 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Running: ask how long to pause. Paused (timed or stopped): resume right away. */
+    private var pauseDialog: android.app.AlertDialog? = null
+
+    override fun onDestroy() {
+        pauseDialog?.dismiss()
+        pauseDialog = null
+        super.onDestroy()
+    }
+
     private fun toggleSync() {
-        val enable = !Prefs.syncEnabled(this)
-        Prefs.setSyncEnabled(this, enable)
-        if (enable) SyncService.start(this) else SyncService.stop(this)
-        refresh()
+        if (!Prefs.syncEnabled(this) || SyncService.isPaused(this)) {
+            SyncService.resume(this)
+            refresh()
+            return
+        }
+        val choices = PauseChoice.values()
+        pauseDialog = android.app.AlertDialog.Builder(this)
+            .setTitle("Pause syncing for")
+            .setItems(choices.map { it.label }.toTypedArray()) { _, i ->
+                SyncService.pauseFor(this, choices[i])
+                refresh()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()

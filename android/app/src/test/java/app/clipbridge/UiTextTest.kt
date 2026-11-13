@@ -1,6 +1,8 @@
 package app.clipbridge
 
+import app.clipbridge.sync.SendResult
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class UiTextTest {
@@ -83,6 +85,20 @@ class UiTextTest {
         assertEquals(false, UiText.showOwnCopiedMessage(sdk = 33))
     }
 
+    @Test fun waitingLine() {
+        assertEquals("1 waiting — sends when your Mac is back", UiText.waitingLine(1))
+        assertEquals("3 waiting — sends when your Mac is back", UiText.waitingLine(3))
+        assertNull(UiText.waitingLine(0))
+        assertEquals("1 waiting — sends when you resume", UiText.waitingLine(1, paused = true))
+        assertNull(UiText.waitingLine(0, paused = true))
+    }
+
+    @Test fun tileSaysPausedWithTime() {
+        val line = UiText.connectionLine(paired = true, syncOn = true, connected = true, macName = "Mac", bluetooth = false,
+            pausedLine = "Paused · resumes at 3:45")
+        assertEquals("Paused" to "Paused · resumes at 3:45", line)
+    }
+
     @Test fun widgetAndToggleSayHowYouAreConnected() {
         assertEquals("MacBook Air" to "Connected · Wi-Fi", UiText.connectionLine(paired = true, syncOn = true, connected = true, macName = "MacBook Air", bluetooth = false))
         assertEquals("MacBook Air" to "Connected · Bluetooth", UiText.connectionLine(paired = true, syncOn = true, connected = true, macName = "MacBook Air", bluetooth = true))
@@ -91,10 +107,12 @@ class UiTextTest {
         assertEquals("ClipBridge" to "Not paired", UiText.connectionLine(paired = false, syncOn = true, connected = false, macName = null, bluetooth = false))
     }
 
-    @Test fun sendResultSaysWhatReallyHappened() {
-        assertEquals("Sent to Mac", UiText.sendResult(sent = true, connected = true))
-        assertEquals("Not connected to your Mac", UiText.sendResult(sent = false, connected = false))
-        assertEquals("Couldn't send — try again", UiText.sendResult(sent = false, connected = true))
+    @Test fun sendResultWording() {
+        assertEquals("Sent to Mac", UiText.sendResultText(SendResult.SENT))
+        assertEquals("Waiting — sends when your Mac is back", UiText.sendResultText(SendResult.QUEUED))
+        assertEquals("Couldn't send", UiText.sendResultText(SendResult.FAILED))
+        assertEquals("Waiting — sends when you resume", UiText.sendResultText(SendResult.QUEUED, paused = true))
+        assertEquals("Sent to Mac", UiText.sendResultText(SendResult.SENT, paused = true))
     }
 
     @Test fun panelSummarySaysWhichButtonsAreInThePanel() {
@@ -126,4 +144,7 @@ class UiTextTest {
         for (auto in listOf(true, false)) for (bt in listOf(true, false))
             assertEquals(false, UiText.tip(auto, bt).contains("quick toggle", ignoreCase = true))
     }
+
+    @Test fun pausedLineNamesResumeTime() = assertEquals("Paused · resumes at 3:45", UiText.pausedLine(5_000, 2_000) { "3:45" })
+    @Test fun noPausedLineAfterDeadline() = assertNull(UiText.pausedLine(1_000, 2_000) { "3:45" })
 }

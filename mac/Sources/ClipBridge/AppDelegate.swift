@@ -12,7 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let offerLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let bluetoothLine = NSMenuItem(title: "Bluetooth fallback: starting…", action: nil, keyEquivalent: "")
     private var bleServer: BLEServer?
-    private let pauseItem = NSMenuItem(title: "Pause syncing", action: #selector(togglePause), keyEquivalent: "")
+    private let pauseItem = NSMenuItem(title: "Pause syncing", action: nil, keyEquivalent: "")
+    private let resumeItem = NSMenuItem(title: "Resume now", action: #selector(resumeNow), keyEquivalent: "")
+    private var pauseTimer: Timer?
     private let loginItem = NSMenuItem(title: "Start ClipBridge at login", action: #selector(toggleLogin), keyEquivalent: "")
     private var bridge: Bridge?
     private var server: Server?
@@ -56,8 +58,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(bluetoothLine)
         menu.addItem(.separator())
         menu.addItem(item("Pair phone…", #selector(showPairing), key: "p"))
-        pauseItem.target = self
+        let pauseMenu = NSMenu()
+        for (index, choice) in PauseChoice.allCases.enumerated() {
+            let choiceItem = item(choice.title, #selector(pause(_:)))
+            choiceItem.tag = index
+            pauseMenu.addItem(choiceItem)
+        }
+        pauseItem.submenu = pauseMenu
         menu.addItem(pauseItem)
+        resumeItem.target = self
+        resumeItem.isHidden = true
+        menu.addItem(resumeItem)
         menu.addItem(item("Open Downloads", #selector(openDownloads), key: "d"))
         menu.addItem(.separator())
         loginItem.target = self
@@ -81,7 +92,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func renderStatus() {
-        let paused = bridge?.paused ?? false
+        let paused = bridge?.isPaused ?? false
+        pauseItem.isHidden = paused
+        resumeItem.isHidden = !paused
         let color: NSColor
         switch (paused, lastStatus) {
         case (true, _): color = .systemGray
@@ -89,7 +102,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case (false, .waiting): color = .systemOrange
         }
         let title = NSMutableAttributedString(string: "●  ", attributes: [.foregroundColor: color, .font: NSFont.menuFont(ofSize: 12)])
-        title.append(NSAttributedString(string: MenuText.status(lastStatus, paused: paused),
+        let timed = bridge?.pausedUntil.flatMap { MenuText.pausedUntil($0, now: Date(), time: Self.shortTime) }
+        title.append(NSAttributedString(string: timed ?? MenuText.status(lastStatus, paused: paused),
                                         attributes: [.font: NSFont.menuFont(ofSize: 0), .foregroundColor: NSColor.labelColor]))
         statusLine.attributedTitle = title
         let detail = MenuText.detail(lastStatus, paused: paused, bluetooth: server?.activeIsBluetooth ?? false)
@@ -99,6 +113,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 .font: NSFont.menuFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor])
         }
         statusItem.button?.appearsDisabled = paused || lastStatus == .waiting
+    }
+
+    private static func shortTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter.string(from: date)
     }
 
     // MARK: Bridge
@@ -122,6 +143,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         self.server = server
         self.bridge = bridge
+        schedulePauseTimer()
         bleServer?.stop()
         let ble = BLEServer(server: server, macId: pairing.macId)
         ble.onState = { [weak self] state in
@@ -154,11 +176,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         pairWindow.show(uri: info.uri, address: "\(info.host):\(info.port)")
     }
 
-    @objc private func togglePause() {
+    @objc private func pause(_ sender: NSMenuItem) {
         guard let bridge else { return }
-        bridge.paused.toggle()
-        pauseItem.state = bridge.paused ? .on : .off
+        let choice = PauseChoice.allCases[sender.tag]
+        bridge.pausedUntil = PauseWindow.until(choice, now: bridge.now())
+        bridge.paused = bridge.pausedUntil == nil
+        schedulePauseTimer()
         renderStatus()
+    }
+
+    @objc private func resumeNow() {
+        bridge?.resumed()
+        schedulePauseTimer()
+        renderStatus()
+    }
+
+    /// Re-checks a timed pause every 30 s so the menu and icon follow its end; runs only while one is set.
+    private func schedulePauseTimer() {
+        pauseTimer?.invalidate()
+        pauseTimer = nil
+        guard bridge?.pausedUntil != nil else { return }
+        pauseTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            guard let self, let bridge = self.bridge, let until = bridge.pausedUntil else { return }
+            if bridge.now() >= until { self.resumeNow() } else { self.renderStatus() }
+        }
     }
 
     @objc private func openDownloads() {

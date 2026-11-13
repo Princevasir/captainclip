@@ -34,6 +34,9 @@ import java.util.concurrent.Executors
 /** A shared file already copied into ClipBridge's cache by the Share screen. */
 data class OutgoingFile(val file: File, val name: String, val mime: String, val purpose: String = "file")
 
+/** What happened to a send: it went to the Mac, it waits in [SendQueueHub] for the Mac, or nothing could be sent. */
+enum class SendResult { SENT, QUEUED, FAILED }
+
 /**
  * Foreground service hosting the [SyncLoop]. Clips from the Mac go straight onto the phone clipboard.
  * Only START (when sync is enabled and paired) or RECONNECT bring it up; sending never does.
@@ -50,6 +53,7 @@ class SyncService : Service() {
         private const val FILES_CHANNEL = "files"
         private const val ACTION_SAVE_OFFER = "app.clipbridge.SAVE_OFFER"
         private const val EXTRA_OFFER_ID = "offer_id"
+        private const val PAUSE_CHECK_MS = 30_000L
 
         @Volatile private var instance: SyncService? = null
 
@@ -89,18 +93,96 @@ class SyncService : Service() {
         fun start(ctx: Context) = command(ctx, ACTION_START, foreground = true)
         fun stop(ctx: Context) { if (instance != null) command(ctx, ACTION_STOP, foreground = false) }
 
-        /** After re-pairing: (re)start and connect with the new pairing right away. */
-        fun reconnect(ctx: Context) = command(ctx, ACTION_RECONNECT, foreground = true)
+        /** After re-pairing: (re)start and connect with the new pairing right away. For a [newMac], waiting copies
+         *  are dropped so they never reach a different Mac. */
+        fun reconnect(ctx: Context, newMac: Boolean) {
+            if (newMac) SendQueueHub.queue.clear()
+            command(ctx, ACTION_RECONNECT, foreground = true)
+        }
+
+        /** Redraw the quick tiles and the home-screen widget (connection or pause changed). */
+        fun refreshSurfaces(ctx: Context) {
+            app.clipbridge.capture.SendTileService.refresh(ctx)
+            app.clipbridge.capture.ConnectionTileService.refresh(ctx)
+            app.clipbridge.SendWidget.refresh(ctx)
+        }
+
+        /** True while a timed pause (15 minutes / 1 hour) is running. "Until I resume" stops sync instead. */
+        fun isPaused(ctx: Context): Boolean = Pause.isTimedPause(Prefs.pausedUntil(ctx), System.currentTimeMillis())
 
         /**
-         * Send text to the Mac, in-process (no Intent, so no Binder size limit). Never starts the
-         * service: if sync is stopped, nothing is sent. Returns true if queued for the Mac.
+         * Timed choices keep the connection but ignore the Mac's clips and hold sends until the deadline;
+         * [PauseChoice.UNTIL_RESUMED] stops sync as the old Pause did.
          */
-        fun send(text: String, html: String? = null, userInitiated: Boolean = false): Boolean {
-            val service = instance ?: return false
-            val sent = service.loop?.send(text, html, userInitiated) ?: false
+        fun pauseFor(ctx: Context, choice: PauseChoice) {
+            val until = Pause.until(choice, System.currentTimeMillis())
+            ConnectionLogHub.log.add("paused")
+            if (until == null) {
+                Prefs.setPausedUntil(ctx, 0)
+                Prefs.setSyncEnabled(ctx, false)
+                stop(ctx)
+            } else {
+                Prefs.setPausedUntil(ctx, until)
+                Prefs.setSyncEnabled(ctx, true)
+                checkPauseOrStart(ctx)
+            }
+            refreshSurfaces(ctx)
+        }
+
+        /** Ends any pause: sync on, service up, and whatever waited is sent once connected. */
+        fun resume(ctx: Context) {
+            val wasPaused = isPaused(ctx) || !Prefs.syncEnabled(ctx)
+            Prefs.setPausedUntil(ctx, 0)
+            Prefs.setSyncEnabled(ctx, true)
+            if (wasPaused) ConnectionLogHub.log.add("resumed")
+            checkPauseOrStart(ctx)
+            refreshSurfaces(ctx)
+        }
+
+        /** A running service re-checks the pause (and drains); otherwise start it, which does the same. */
+        private fun checkPauseOrStart(ctx: Context) {
+            val service = instance
+            if (service != null) service.main.post { service.checkPause() } else start(ctx)
+        }
+
+        /** True while sends are held for the user: a timed pause or "Until I resume" (sync off). */
+        fun holdsSends(ctx: Context): Boolean = isPaused(ctx) || !Prefs.syncEnabled(ctx)
+
+        /** Whether a copy goes to the Mac now, waits, or (an automatic copy while paused) is dropped. */
+        private fun decide(ctx: Context, userInitiated: Boolean): SendPolicy.Decision =
+            SendPolicy.decide(connected = isConnected, paused = holdsSends(ctx), userInitiated = userInitiated)
+
+        /** Something was just queued: if the Mac is (or just became) reachable, send it now rather than at the
+         *  next status change. [checkPause] also ends a timed pause whose deadline has passed. */
+        private fun queued(result: SendResult): SendResult {
+            val service = instance
+            if (result == SendResult.QUEUED && service != null && isConnected) service.main.post { service.checkPause() }
+            return result
+        }
+
+        /** Held while a clip goes to the Mac, so a stale queued clip can't overtake a newer direct send. */
+        private val clipSendLock = Any()
+
+        /**
+         * Send text to the Mac, in-process (no Intent, so no Binder size limit). Never starts the service:
+         * when not connected (or paused) the text waits in [SendQueueHub] until the Mac is back. While paused only a
+         * [userInitiated] send waits; an automatic copy is not sent at all (FAILED, which callers keep silent).
+         */
+        fun send(ctx: Context, text: String, html: String? = null, userInitiated: Boolean = false): SendResult {
+            if (text.isEmpty()) return SendResult.FAILED
+            when (decide(ctx, userInitiated)) {
+                SendPolicy.Decision.DROP -> return SendResult.FAILED
+                SendPolicy.Decision.QUEUE ->
+                    return queued(SendResult.QUEUED.also { SendQueueHub.queue.putClip(QueuedClip.Text(text, html)) })
+                SendPolicy.Decision.SEND -> {}
+            }
+            val service = instance ?: return SendResult.FAILED
+            val sent = synchronized(clipSendLock) {
+                SendQueueHub.queue.supersedeClip()  // newest wins: a waiting older clip must not follow this one
+                service.loop?.send(text, html, userInitiated) ?: false
+            }
             if (sent) { service.history().recordText(text, html, Direction.TO_MAC); service.historyChanged() }  // it crossed
-            return sent
+            return if (sent) SendResult.SENT else SendResult.FAILED
         }
 
         /** Fetch (and verify) the Mac's offered file. Blocking; used by FileOfferProvider on a binder thread. */
@@ -126,26 +208,39 @@ class SyncService : Service() {
 
         val isRunning: Boolean get() = instance?.loop != null
 
-        /** Share → Send to Mac: send already-copied files (deleted afterwards). In-process, no URI grants. */
         /**
-         * A copied image (already copied into our cache) → the Mac's clipboard. Duplicate triggers for the same
-         * image within a few seconds (copy button + "Copied" toast) are sent once. Returns true if queued.
+         * A copied image (already copied into our cache) → the Mac's clipboard, or the queue while away. Duplicate
+         * triggers for the same image within a few seconds (copy button + "Copied" toast) are handled once. While
+         * paused an automatic copy ([manual] false) is dropped and its file deleted (FAILED, kept silent).
          */
-        fun sendClipboardImage(file: OutgoingFile, key: String): Boolean {
-            val service = instance ?: return false.also { file.file.delete() }
+        fun sendClipboardImage(ctx: Context, file: OutgoingFile, key: String, manual: Boolean): SendResult {
+            val decision = decide(ctx, userInitiated = manual)
+            if (decision == SendPolicy.Decision.DROP) { file.file.delete(); return SendResult.FAILED }
             val now = android.os.SystemClock.elapsedRealtime()
-            if (key == lastImageKey && now - lastImageAt < 5_000) { file.file.delete(); return true }
+            if (key == lastImageKey && now - lastImageAt < 5_000) { file.file.delete(); return lastImageResult }
             lastImageKey = key; lastImageAt = now
-            service.uploadFiles(listOf(file))
-            return true
+            val service = instance?.takeIf { decision == SendPolicy.Decision.SEND }
+            lastImageResult = if (service == null) {
+                SendQueueHub.queue.putClip(QueuedClip.Image(file, key))
+                SendResult.QUEUED
+            } else {
+                SendQueueHub.queue.supersedeClip()  // newest wins: a waiting older clip must not follow this one
+                service.uploadFiles(listOf(file))
+                SendResult.SENT
+            }
+            return queued(lastImageResult)
         }
         @Volatile private var lastImageKey: String? = null
         @Volatile private var lastImageAt = 0L
+        @Volatile private var lastImageResult = SendResult.SENT
 
-        fun sendLocalFiles(files: List<OutgoingFile>): Boolean {
-            val service = instance ?: return false
+        /** Share → Send to Mac: send already-copied files (deleted afterwards), or queue them while away. */
+        fun sendLocalFiles(files: List<OutgoingFile>): SendResult {
+            if (files.isEmpty()) return SendResult.FAILED
+            val service = instance?.takeIf { isConnected && !isPaused(it) }
+                ?: return queued(if (SendQueueHub.queue.addFiles(files) > 0) SendResult.QUEUED else SendResult.FAILED)
             service.uploadFiles(files)
-            return true
+            return SendResult.SENT
         }
 
         private fun command(ctx: Context, action: String, foreground: Boolean) {
@@ -163,7 +258,7 @@ class SyncService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> { shutdown(); return START_NOT_STICKY }
-            ACTION_RECONNECT -> if (ensureRunning()) loop?.reconnect()
+            ACTION_RECONNECT -> if (ensureRunning()) { loop?.reconnect(); checkPause() }
             // Notification "Save": every file of the set (an id saves just that one).
             ACTION_SAVE_OFFER -> if (loop != null) {
                 val id = intent.getStringExtra(EXTRA_OFFER_ID)
@@ -171,7 +266,7 @@ class SyncService : Service() {
             }
             else -> {  // START, or a sticky restart with a null intent
                 if (!Prefs.syncEnabled(this) || Prefs.pairing(this) == null) { shutdown(); return START_NOT_STICKY }
-                ensureRunning()
+                if (ensureRunning()) checkPause()
             }
         }
         return START_STICKY
@@ -207,28 +302,101 @@ class SyncService : Service() {
                 .getOrNull()?.takeIf { it.isNotBlank() } ?: Build.MODEL,
             bluetoothLink = if (app.clipbridge.SetupStep.bluetoothFallbackAvailable(Build.VERSION.SDK_INT, app.clipbridge.Edition.LOCATION_FOR_BLUETOOTH))
                 { info -> BleLink.find(this, info) } else null,
+            lastAddress = { Prefs.lastMacAddress(this) },
             callbacks = object : SyncLoop.Callbacks {
                 override fun onStatus(status: SyncLoop.Status) {
+                    val previous = state
                     state = status
+                    logStatus(previous, status)
+                    main.post { checkPause() }  // drains once connected and not paused
                     setStatus(describe(status))
-                    app.clipbridge.capture.SendTileService.refresh(this@SyncService)
-                    app.clipbridge.capture.ConnectionTileService.refresh(this@SyncService)
-                    app.clipbridge.SendWidget.refresh(this@SyncService)
+                    refreshSurfaces(this@SyncService)
                 }
                 override fun onClip(text: String) = writeClipboard(text, null)
                 override fun onClip(text: String, html: String?) = writeClipboard(text, html)
                 override fun onOffer(offer: Message.Offer?) = handleOffers(listOfNotNull(offer))
                 override fun onOffers(offers: List<Message.Offer>) = handleOffers(offers)
+                override fun onWifiConnected(host: String, port: Int) = Prefs.setLastMacAddress(this@SyncService, host, port)
+                override fun onLost() = ConnectionLogHub.log.add("lost")  // not for a Wi-Fi switch or reconnect
             },
         )
         loop = newLoop
         instance = this
+        io.execute { SendQueueHub.sweepOnce(File(cacheDir, "outgoing")) }  // copies a dead process left behind
         watchNetwork()
         newLoop.start()
         return true
     }
 
     private val io = Executors.newSingleThreadExecutor()
+
+    /** Connection log: connects by path and "auth-failed" ("lost" comes from [SyncLoop.Callbacks.onLost]). */
+    private var loggedPath: SyncLoop.Path? = null
+    private fun logStatus(previous: SyncLoop.Status, status: SyncLoop.Status) {
+        when (status) {
+            SyncLoop.Status.CONNECTED -> {
+                val path = loop?.path
+                if (previous != SyncLoop.Status.CONNECTED || path != loggedPath) {
+                    loggedPath = path
+                    ConnectionLogHub.log.add(if (path == SyncLoop.Path.BLUETOOTH) "connected-bluetooth" else "connected-wifi")
+                }
+            }
+            SyncLoop.Status.PAIRING_INVALID -> ConnectionLogHub.log.add("auth-failed")
+            else -> {}
+        }
+    }
+
+    private val pauseTick = Runnable { checkPause() }
+
+    /**
+     * Main thread. While a timed pause runs, look again in 30 s (or right at the deadline, if sooner); once it
+     * has ended, log "resumed" and send what waited (if connected). Also runs on every status change and queued send.
+     */
+    private fun checkPause() {
+        main.removeCallbacks(pauseTick)
+        if (instance !== this) return
+        val until = Prefs.pausedUntil(this)
+        val now = System.currentTimeMillis()
+        if (Pause.isTimedPause(until, now)) { main.postDelayed(pauseTick, minOf(PAUSE_CHECK_MS, until - now + 1)); return }
+        if (until != 0L) {
+            Prefs.setPausedUntil(this, 0)
+            ConnectionLogHub.log.add("resumed")
+            onStatusChanged?.invoke()
+            refreshSurfaces(this)
+        }
+        drainQueue()
+    }
+
+    /**
+     * Sends what waited while away: the clip first, then the files in order (one [io] task, so order holds).
+     * Over Bluetooth, anything too big for it stays queued for Wi-Fi. Whatever fails goes back into the queue
+     * (with its original time, so it still expires); a clip superseded by a newer direct send is dropped.
+     */
+    private fun drainQueue() {
+        val queue = SendQueueHub.queue
+        if (!isConnected || isPaused(this) || queue.isEmpty) return
+        val onBluetooth = loop?.isOnBluetooth == true
+        val pending = queue.drain(maxFileBytes = if (onBluetooth) FileLimit.BLUETOOTH_MAX_BYTES else Long.MAX_VALUE)
+        io.execute {
+            when (val clip = pending.clip) {
+                is QueuedClip.Text -> {
+                    // As userInitiated, so the echo guard can't swallow a copy that already waited for the Mac.
+                    val sent = synchronized(clipSendLock) {
+                        queue.isLatestClip(pending) && loop?.send(clip.text, clip.html, userInitiated = true) == true
+                    }
+                    if (sent) { history().recordText(clip.text, clip.html, Direction.TO_MAC); historyChanged() }
+                    else queue.requeueClip(pending)  // drops it if a newer clip exists
+                }
+                is QueuedClip.Image ->
+                    if (queue.isLatestClip(pending)) uploadNow(listOf(clip.file)) { queue.requeueClip(pending) }
+                    else queue.requeueClip(pending)  // superseded: deletes the image
+                null -> {}
+            }
+            if (pending.files.isNotEmpty()) uploadNow(pending.files) { queue.requeueFile(pending, it) }
+            main.post { onStatusChanged?.invoke() }
+        }
+        main.post { onStatusChanged?.invoke() }
+    }
 
     fun toast(text: String) = main.post { android.widget.Toast.makeText(this, text, android.widget.Toast.LENGTH_SHORT).show() }
 
@@ -244,6 +412,7 @@ class SyncService : Service() {
 
     /** Mac offered one or several files: placeholders on the clipboard (no download yet) and "Save". */
     private fun handleOffers(offers: List<Message.Offer>) {
+        if (isPaused(this)) return  // a timed pause ignores the Mac's clips
         val cache = Files.cache(this)
         val notifications = getSystemService(NotificationManager::class.java)
         val offer = offers.firstOrNull()
@@ -352,29 +521,39 @@ class SyncService : Service() {
     }
 
     /** Share → Send to Mac with files: send each (≤ 25 MB), one after another, then delete the copies. */
-    private fun uploadFiles(files: List<OutgoingFile>) {
-        io.execute {
-            var sent = 0
-            for (f in files) {
-                try {
-                    if (f.file.length() > FileLimit.MAX_BYTES) { toast("${f.name} is too large (max 25 MB)"); continue }
-                    if (f.purpose != "clipboard") transferNotice("Sending ${f.name} to Mac…", null, ongoing = true)
-                    val ok = runCatching { loop?.sendFile(f.name, f.mime, f.file.length(), f.purpose) { f.file.inputStream() } ?: false }
-                        .onFailure { android.util.Log.w("ClipBridgeFiles", "upload of ${f.name} failed", it) }
-                        .getOrDefault(false)
-                    android.util.Log.i("ClipBridgeFiles", "upload of ${f.name} ok=$ok")
-                    if (ok) history().recordFile(java.util.UUID.randomUUID().toString(), f.name, f.mime, f.file.length(), Direction.TO_MAC)
-                    if (ok) sent++ else if (f.purpose != "clipboard") toast(
-                        if (loop?.isOnBluetooth == true && f.file.length() > app.clipbridge.core.FileLimit.BLUETOOTH_MAX_BYTES)
-                            "${f.name} is too big for Bluetooth — connect both to the same Wi-Fi"
-                        else "Couldn't send ${f.name} — not connected to your Mac")
-                } finally {
-                    f.file.delete()
-                }
+    private fun uploadFiles(files: List<OutgoingFile>) = io.execute { uploadNow(files) }
+
+    /**
+     * On [io]. Sends [files] in order and deletes each afterwards, except that a failed one goes to [requeue]
+     * (queued items that waited for the Mac) instead, to be tried again on the next connection.
+     */
+    private fun uploadNow(files: List<OutgoingFile>, requeue: ((OutgoingFile) -> Boolean)? = null) {
+        var sent = 0
+        for (f in files) {
+            var kept = false
+            try {
+                if (f.file.length() > FileLimit.MAX_BYTES) { toast("${f.name} is too large (max 25 MB)"); continue }
+                if (f.purpose != "clipboard") transferNotice("Sending ${f.name} to Mac…", null, ongoing = true)
+                // Logs carry sizes only, never file names.
+                val ok = runCatching { loop?.sendFile(f.name, f.mime, f.file.length(), f.purpose) { f.file.inputStream() } ?: false }
+                    .onFailure { android.util.Log.w("ClipBridgeFiles", "upload of ${f.file.length()} bytes failed: ${it.javaClass.simpleName}") }
+                    .getOrDefault(false)
+                android.util.Log.i("ClipBridgeFiles", "upload of ${f.file.length()} bytes ok=$ok")
+                if (ok) history().recordFile(java.util.UUID.randomUUID().toString(), f.name, f.mime, f.file.length(), Direction.TO_MAC)
+                if (ok) sent++ else if (requeue != null) {
+                    // The queue now owns the file: kept for the next connection, or deleted (expired, re-paired, …).
+                    kept = true
+                    if (requeue(f) && f.purpose != "clipboard") transferNotice("Waiting — sends when your Mac is back", null)
+                } else if (f.purpose != "clipboard") toast(
+                    if (loop?.isOnBluetooth == true && f.file.length() > app.clipbridge.core.FileLimit.BLUETOOTH_MAX_BYTES)
+                        "${f.name} is too big for Bluetooth — connect both to the same Wi-Fi"
+                    else "Couldn't send ${f.name} — not connected to your Mac")
+            } finally {
+                if (!kept) f.file.delete()
             }
-            val done = if (sent == 1) "Sent to Mac" else "Sent $sent files to Mac"
-            if (sent > 0 && files.any { it.purpose != "clipboard" }) { toast(done); transferNotice(done, null) }
         }
+        val done = if (sent == 1) "Sent to Mac" else "Sent $sent files to Mac"
+        if (sent > 0 && files.any { it.purpose != "clipboard" }) { toast(done); transferNotice(done, null) }
     }
 
     private fun history() = app.clipbridge.history.HistoryHub.store(this)
@@ -404,6 +583,7 @@ class SyncService : Service() {
     }
 
     private fun writeClipboard(text: String, html: String?) {
+        if (isPaused(this)) return  // a timed pause ignores the Mac's clips
         main.post {
             runCatching {
                 OwnWrites.markNow()  // so copy detection ignores the system "Copied" overlay this causes
@@ -433,6 +613,7 @@ class SyncService : Service() {
     }
 
     private fun shutdown() {
+        main.removeCallbacks(pauseTick)
         Files.cache(this).clear()
         runCatching { getSystemService(NotificationManager::class.java).cancel(OFFER_NOTIFICATION_ID) }
         instance = null

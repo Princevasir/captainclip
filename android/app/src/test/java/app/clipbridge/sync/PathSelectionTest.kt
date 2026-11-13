@@ -25,6 +25,7 @@ class PathSelectionTest {
     private val statuses = CopyOnWriteArrayList<SyncLoop.Status>()
     private val wifiUp = AtomicBoolean(false)
     private val bleDials = AtomicInteger()
+    private val lost = AtomicInteger()
     private var loop: SyncLoop? = null
 
     @After fun tearDown() { loop?.stop(); mac.close() }
@@ -39,6 +40,7 @@ class PathSelectionTest {
         callbacks = object : SyncLoop.Callbacks {
             override fun onStatus(status: SyncLoop.Status) { statuses.add(status) }
             override fun onClip(text: String) {}
+            override fun onLost() { lost.incrementAndGet() }
         },
         backoff = Backoff(longArrayOf(50)),
         pingIntervalMs = 500,
@@ -85,6 +87,14 @@ class PathSelectionTest {
         assertTrue(eventually { l.path == SyncLoop.Path.BLUETOOTH })
         wifiUp.set(true)
         assertTrue("should switch back to Wi-Fi", eventually { l.path == SyncLoop.Path.WIFI && statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
+    }
+
+    @Test fun switchingBackToWifiIsNotAnUnexpectedDrop() {
+        val l = start(bluetooth = true)
+        assertTrue(eventually { l.path == SyncLoop.Path.BLUETOOTH })
+        wifiUp.set(true)
+        assertTrue(eventually { l.path == SyncLoop.Path.WIFI && statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
+        assertEquals(0, lost.get())
     }
 }
 

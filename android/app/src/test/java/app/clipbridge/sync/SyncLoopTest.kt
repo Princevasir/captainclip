@@ -17,6 +17,7 @@ class SyncLoopTest {
     private val clips = CopyOnWriteArrayList<String>()
     private val htmls = CopyOnWriteArrayList<String?>()
     @Volatile private var locateDelayMs = 0L
+    private val lost = java.util.concurrent.atomic.AtomicInteger()
 
     private val loop = SyncLoop(
         pairing = { pairing },
@@ -26,6 +27,7 @@ class SyncLoopTest {
             override fun onStatus(status: SyncLoop.Status) { statuses.add(status) }
             override fun onClip(text: String) { clips.add(text) }
             override fun onClip(text: String, html: String?) { onClip(text); htmls.add(html) }
+            override fun onLost() { lost.incrementAndGet() }
         },
         backoff = Backoff(longArrayOf(50, 50, 50)),
         pingIntervalMs = 200,
@@ -107,6 +109,22 @@ class SyncLoopTest {
         assertEquals(2, mac.accepts.get())
     }
 
+    @Test fun macGoingAwayIsAnUnexpectedDrop() {
+        loop.start()
+        assertTrue(eventually { statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
+        mac.dropConnections()
+        assertTrue(eventually { lost.get() == 1 })
+    }
+
+    @Test fun reconnectIsNotAnUnexpectedDrop() {
+        loop.start()
+        assertTrue(eventually { statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
+        loop.reconnect()
+        assertTrue(eventually { mac.accepts.get() == 2 && statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
+        assertTrue(statuses.contains(SyncLoop.Status.RETRYING))
+        assertEquals(0, lost.get())
+    }
+
     @Test fun noClipsAfterStop() {
         loop.start()
         assertTrue(eventually { statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
@@ -131,5 +149,52 @@ class SyncLoopTest {
         unpaired.start()
         assertTrue(eventually { statuses.lastOrNull() == SyncLoop.Status.NOT_PAIRED })
         unpaired.stop()
+    }
+
+    private fun rememberedLoop(dialed: MutableList<Pair<String, Int>>, wifiUp: Boolean, worked: MutableList<Pair<String, Int>>, remembered: Boolean = true) = SyncLoop(
+        pairing = { pairing },
+        locate = { null },
+        device = "test-phone",
+        callbacks = object : SyncLoop.Callbacks {
+            override fun onStatus(status: SyncLoop.Status) { statuses.add(status) }
+            override fun onClip(text: String) {}
+            override fun onWifiConnected(host: String, port: Int) { worked.add(host to port) }
+        },
+        backoff = Backoff(longArrayOf(50)),
+        pingIntervalMs = 200,
+        // Pretend the remembered address is the Mac: dial the fake Mac whatever address was asked for.
+        wifiLink = { host, port -> dialed.add(host to port); TcpLink("127.0.0.1", if (wifiUp) mac.port else 1) },
+        lastAddress = { "10.0.0.9" to 5000 },
+        addressReachable = { _, _ -> remembered },
+    )
+
+    @Test fun usesRememberedAddressWhenDiscoveryFindsNothing() {
+        val dialed = CopyOnWriteArrayList<Pair<String, Int>>()
+        val l = rememberedLoop(dialed, true, CopyOnWriteArrayList())
+        try {
+            l.start()
+            assertTrue(eventually { dialed.isNotEmpty() })
+            assertEquals("10.0.0.9" to 5000, dialed.first())
+        } finally { l.stop() }
+    }
+
+    @Test fun reportsTheWifiAddressThatWorked() {
+        val worked = CopyOnWriteArrayList<Pair<String, Int>>()
+        val l = rememberedLoop(CopyOnWriteArrayList(), true, worked)
+        try {
+            l.start()
+            assertTrue(eventually { worked.isNotEmpty() })
+            assertEquals(listOf("10.0.0.9" to 5000), worked)
+        } finally { l.stop() }
+    }
+
+    @Test fun staleRememberedAddressFallsBackToPairingAddress() {
+        val dialed = CopyOnWriteArrayList<Pair<String, Int>>()
+        val l = rememberedLoop(dialed, true, CopyOnWriteArrayList(), remembered = false)
+        try {
+            l.start()
+            assertTrue(eventually { dialed.isNotEmpty() })
+            assertEquals("127.0.0.1" to mac.port, dialed.first())
+        } finally { l.stop() }
     }
 }
