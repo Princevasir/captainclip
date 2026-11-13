@@ -8,7 +8,7 @@ class ClipPolicyTest {
     @Test fun normalTextIsSent() { assertTrue(ClipPolicy.shouldSend("hello", sensitive = false)) }
 
     @Test fun uriClipsAreNeverSentAsText() {
-        // e.g. ClipBridge's own content://app.clipbridge.files/... placeholder, or an image copied in Chrome
+        // e.g. CaptainClip's own content://app.clipbridge.files/... placeholder, or an image copied in Chrome
         assertFalse(ClipPolicy.shouldSend("content://app.clipbridge.files/offer/o1/report.pdf", sensitive = false, hasUri = true))
     }
 

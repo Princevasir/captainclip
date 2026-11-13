@@ -34,7 +34,7 @@ import app.clipbridge.files.Files
 import java.io.File
 import java.util.concurrent.Executors
 
-/** A shared file already copied into ClipBridge's cache by the Share screen. */
+/** A shared file already copied into CaptainClip's cache by the Share screen. */
 data class OutgoingFile(val file: File, val name: String, val mime: String, val purpose: String = "file")
 
 /** What happened to a send: it went to the Mac, it waits in [SendQueueHub] for the Mac, or nothing could be sent. */
@@ -164,7 +164,7 @@ class SyncService : Service() {
             return result
         }
 
-        /** ClipBridge itself put something on the clipboard: a code waiting to be cleared is no longer current. */
+        /** CaptainClip itself put something on the clipboard: a code waiting to be cleared is no longer current. */
         fun noteClipboardChanged() { instance?.clearGuard?.markChanged() }
 
         /** Held while a clip goes to the Mac, so a stale queued clip can't overtake a newer direct send. */
@@ -486,7 +486,7 @@ class SyncService : Service() {
         }
     }
 
-    /** "Save" (notification or main screen): fetch the offer and copy it into Downloads/ClipBridge. */
+    /** "Save" (notification or main screen): fetch the offer and copy it into Downloads/CaptainClip. */
     private fun saveOffer(id: String, onDone: ((Uri?, String?) -> Unit)? = null) {
         val offer = Files.cache(this).offer(id) ?: run {
             transferNotice("File offer expired", null)
@@ -506,7 +506,7 @@ class SyncService : Service() {
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, offer.name)
                     put(MediaStore.Downloads.MIME_TYPE, offer.mime)
-                    put(MediaStore.Downloads.RELATIVE_PATH, "Download/ClipBridge")
+                    put(MediaStore.Downloads.RELATIVE_PATH, "Download/CaptainClip")
                 }
                 val target = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)!!
                 contentResolver.openOutputStream(target)!!.use { out -> file.inputStream().use { it.copyTo(out) } }
@@ -516,7 +516,7 @@ class SyncService : Service() {
                 val open = PendingIntent.getActivity(this, 4,
                     Intent(Intent.ACTION_VIEW).setDataAndType(uri, offer.mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
                     PendingIntent.FLAG_IMMUTABLE)
-                transferNotice("Saved ${offer.name} to Downloads/ClipBridge", open)
+                transferNotice("Saved ${offer.name} to Downloads/CaptainClip", open)
                 getSystemService(NotificationManager::class.java).cancel(OFFER_NOTIFICATION_ID)
                 main.post { onDone?.invoke(uri, null) }
             }.onFailure {
@@ -584,7 +584,7 @@ class SyncService : Service() {
             getSystemService(NotificationManager::class.java).notify(TRANSFER_NOTIFICATION_ID,
                 Notification.Builder(this, FILES_CHANNEL)
                     .setSmallIcon(app.clipbridge.R.drawable.ic_stat_clipbridge)
-                    .setContentTitle("ClipBridge")
+                    .setContentTitle("CaptainClip")
                     .setContentText(text)
                     .setOngoing(ongoing)
                     .setAutoCancel(!ongoing)
@@ -602,7 +602,7 @@ class SyncService : Service() {
         main.post {
             val placed = !inc.putOnClipboard || runCatching {
                 OwnWrites.markNow()  // so copy detection ignores the system "Copied" overlay this causes
-                val clip = if (html != null) ClipData.newHtmlText("ClipBridge", inc.text, html) else ClipData.newPlainText("ClipBridge", inc.text)
+                val clip = if (html != null) ClipData.newHtmlText("CaptainClip", inc.text, html) else ClipData.newPlainText("CaptainClip", inc.text)
                 markFromMac(clip.description)
                 if (inc.sensitive) markSensitive(clip.description)
                 getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
@@ -629,7 +629,7 @@ class SyncService : Service() {
     private val clipListener = ClipboardManager.OnPrimaryClipChangedListener { if (!OwnWrites.isRecent()) clearGuard.markChanged() }
 
     /**
-     * A code ClipBridge wrote is cleared after 60 s unless something newer was copied or sent. A background
+     * A code CaptainClip wrote is cleared after 60 s unless something newer was copied or sent. A background
      * service can't read the clipboard on Android 10+, so staleness comes from change signals, not a read.
      */
     private fun scheduleClear(text: String) {
@@ -719,7 +719,7 @@ class SyncService : Service() {
             this, 2, GhostActivity.readIntent(this, announce = true), PendingIntent.FLAG_IMMUTABLE)
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(app.clipbridge.R.drawable.ic_stat_clipbridge)
-            .setContentTitle("ClipBridge")
+            .setContentTitle("CaptainClip")
             .setContentText(text)
             .setContentIntent(open)
             .setOngoing(true)

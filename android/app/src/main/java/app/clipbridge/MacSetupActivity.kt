@@ -9,7 +9,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 
-/** "Set up ClipBridge on your Mac": numbered steps, plus open/share the download link. */
+/** "Set up CaptainClip on your Mac": numbered steps, plus open/share the download link. */
 class MacSetupActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

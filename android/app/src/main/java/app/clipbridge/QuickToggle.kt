@@ -12,7 +12,7 @@ import app.clipbridge.sync.Prefs
 object QuickToggle {
     fun request(activity: Activity, onDone: (added: Boolean) -> Unit) = request(activity, onoff = false, onDone)
 
-    /** [onoff] true = the ClipBridge on/off switch instead of Send to Mac. */
+    /** [onoff] true = the CaptainClip on/off switch instead of Send to Mac. */
     fun request(activity: Activity, onoff: Boolean, onDone: (added: Boolean) -> Unit) {
         if (Build.VERSION.SDK_INT < 33) return onDone(false)
         val bar = activity.getSystemService(StatusBarManager::class.java) ?: return onDone(false)

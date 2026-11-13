@@ -134,6 +134,12 @@ class PairingInfoTest {
         assertEquals("ClipBridge-012345", info.serviceName)
     }
 
+    @Test fun protocolIdentifiersUnchanged() {
+        assertEquals("clipbridge", java.net.URI(macUri).scheme)
+        assertEquals("ClipBridge-012345", PairingInfo.parse(macUri)!!.serviceName)
+        assertEquals("_clipbridge._tcp.", app.clipbridge.sync.MacLocator.SERVICE_TYPE)
+    }
+
     @Test fun parsesBase64UrlKey() {
         val uri = "clipbridge://pair?v=1&id=0123456789abcdef&key=__________________________________________8&host=h&port=1"
         assertArrayEquals(ByteArray(32) { -1 }, PairingInfo.parse(uri)!!.key)

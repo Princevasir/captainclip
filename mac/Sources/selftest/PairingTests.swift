@@ -17,6 +17,8 @@ func pairingTests() throws {
     let shortKey = PairingInfo(macId: "0123456789abcdef", key: Data(count: 16), host: "h", port: 1).uri
     check(PairingInfo(uri: shortKey) == nil, "16-byte key rejected")
     check(PairingInfo(uri: "https://example.com") == nil, "foreign uri rejected")
+    check(Server.serviceType == "_clipbridge._tcp" && Server.serviceNamePrefix == "ClipBridge-" && uri.hasPrefix("clipbridge://"),
+          "protocol identifiers unchanged by the CaptainClip rename")
 }
 
 func loopGuardTests() {

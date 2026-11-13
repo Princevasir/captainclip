@@ -116,7 +116,7 @@ enum Trailer {
         let side = 220 * (0.8 + 0.2 * k)
         BrandIcon.app(side: side).draw(in: NSRect(x: (CGFloat(width) - side) / 2, y: 300 - (side - 220) / 2, width: side, height: side),
                                        from: .zero, operation: .sourceOver, fraction: k, respectFlipped: true, hints: nil)
-        centered("ClipBridge", NSFont.systemFont(ofSize: 120, weight: .heavy), NSColor(white: 1, alpha: ease(t, 0.4, 1.1)), y: 560)
+        centered("CaptainClip", NSFont.systemFont(ofSize: 120, weight: .heavy), NSColor(white: 1, alpha: ease(t, 0.4, 1.1)), y: 560)
         centered("Copy on your Mac. Paste on your phone.", NSFont.systemFont(ofSize: 52, weight: .medium),
                  NSColor(white: 1, alpha: 0.92 * ease(t, 0.9, 1.6)), y: 730)
     }
@@ -125,9 +125,9 @@ enum Trailer {
         let k = ease(t, 0.05, 0.6)
         BrandIcon.app(side: 180).draw(in: NSRect(x: (CGFloat(width) - 180) / 2, y: 230, width: 180, height: 180),
                                       from: .zero, operation: .sourceOver, fraction: k, respectFlipped: true, hints: nil)
-        centered("ClipBridge", NSFont.systemFont(ofSize: 110, weight: .heavy), NSColor(white: 1, alpha: k), y: 440)
+        centered("CaptainClip", NSFont.systemFont(ofSize: 110, weight: .heavy), NSColor(white: 1, alpha: k), y: 440)
         centered("Free on Google Play", NSFont.systemFont(ofSize: 56, weight: .semibold), NSColor(white: 1, alpha: ease(t, 0.5, 1.1)), y: 610)
-        centered("Mac app: github.com/Princevasir/clipbridge", NSFont.systemFont(ofSize: 40, weight: .medium),
+        centered("Mac app: github.com/Princevasir/captainclip", NSFont.systemFont(ofSize: 40, weight: .medium),
                  NSColor(white: 1, alpha: 0.85 * ease(t, 0.9, 1.5)), y: 700)
         centered("No account · No cloud · End-to-end encrypted", NSFont.systemFont(ofSize: 36, weight: .medium),
                  NSColor(white: 1, alpha: 0.75 * ease(t, 1.2, 1.8)), y: 790)
@@ -136,7 +136,7 @@ enum Trailer {
     private static func panel(_ p: StoreArt.Panel, phone: CGImage?, at t: Double, cg: CGContext) {
         // Brand row
         BrandIcon.app(side: 84).draw(in: NSRect(x: 140, y: 110, width: 84, height: 84))
-        StoreArt.text("ClipBridge", NSFont.systemFont(ofSize: 40, weight: .semibold), .white, at: NSPoint(x: 240, y: 126))
+        StoreArt.text("CaptainClip", NSFont.systemFont(ofSize: 40, weight: .semibold), .white, at: NSPoint(x: 240, y: 126))
         // Headline: line 1, then line 2 with the highlighted word popping in
         let big = NSFont.systemFont(ofSize: 112, weight: .heavy)
         let a1 = ease(t, 0.25, 0.75), a2 = ease(t, 0.5, 1.0), a3 = ease(t, 0.8, 1.3), a4 = ease(t, 1.1, 1.7)

@@ -9,7 +9,7 @@ func menuTextTests() {
           "Wi-Fi detail line")
     check(MenuText.detail(.connected(device: "x"), paused: false, bluetooth: true) == "Via Bluetooth · end-to-end encrypted",
           "Bluetooth detail line says Bluetooth")
-    check(MenuText.detail(.waiting, paused: false, bluetooth: false) == "Open ClipBridge on your phone — same Wi-Fi, or nearby with Bluetooth",
+    check(MenuText.detail(.waiting, paused: false, bluetooth: false) == "Open CaptainClip on your phone — same Wi-Fi, or nearby with Bluetooth",
           "waiting detail mentions both ways to connect")
     check(MenuText.detail(.connected(device: "x"), paused: true, bluetooth: true) == nil, "no detail while paused")
     check(MenuText.offer("report.pdf") == "Ready to paste on phone: report.pdf", "offer line")

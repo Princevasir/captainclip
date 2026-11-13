@@ -103,8 +103,8 @@ class UiTextTest {
         assertEquals("MacBook Air" to "Connected · Wi-Fi", UiText.connectionLine(paired = true, syncOn = true, connected = true, macName = "MacBook Air", bluetooth = false))
         assertEquals("MacBook Air" to "Connected · Bluetooth", UiText.connectionLine(paired = true, syncOn = true, connected = true, macName = "MacBook Air", bluetooth = true))
         assertEquals("Your Mac" to "Looking for your Mac…", UiText.connectionLine(paired = true, syncOn = true, connected = false, macName = null, bluetooth = false))
-        assertEquals("ClipBridge" to "Paused", UiText.connectionLine(paired = true, syncOn = false, connected = false, macName = "MacBook Air", bluetooth = false))
-        assertEquals("ClipBridge" to "Not paired", UiText.connectionLine(paired = false, syncOn = true, connected = false, macName = null, bluetooth = false))
+        assertEquals("CaptainClip" to "Paused", UiText.connectionLine(paired = true, syncOn = false, connected = false, macName = "MacBook Air", bluetooth = false))
+        assertEquals("CaptainClip" to "Not paired", UiText.connectionLine(paired = false, syncOn = true, connected = false, macName = null, bluetooth = false))
     }
 
     @Test fun sendResultWording() {
@@ -118,7 +118,7 @@ class UiTextTest {
     @Test fun panelSummarySaysWhichButtonsAreInThePanel() {
         assertEquals("Both added", UiText.panelSummary(sendAdded = true, switchAdded = true))
         assertEquals("Send to Mac added", UiText.panelSummary(sendAdded = true, switchAdded = false))
-        assertEquals("ClipBridge added", UiText.panelSummary(sendAdded = false, switchAdded = true))
+        assertEquals("CaptainClip added", UiText.panelSummary(sendAdded = false, switchAdded = true))
         assertEquals("Not added", UiText.panelSummary(sendAdded = false, switchAdded = false))
     }
 

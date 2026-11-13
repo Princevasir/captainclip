@@ -9,14 +9,14 @@ import android.widget.TextView
 import android.widget.Toast
 import app.clipbridge.sync.Prefs
 
-/** "Notification panel": the two ClipBridge buttons (Send to Mac, ClipBridge on/off), each with Add / Added, plus tips. */
+/** "Notification panel": the two CaptainClip buttons (Send to Mac, CaptainClip on/off), each with Add / Added, plus tips. */
 class QuickToggleActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_quick_toggle)
         bindButton(R.id.sendButton, R.drawable.ic_tile_send, "Send to Mac",
             "Sends what you just copied on your phone to your Mac.", onoff = false)
-        bindButton(R.id.switchButton, R.drawable.ic_devices, "ClipBridge",
+        bindButton(R.id.switchButton, R.drawable.ic_devices, "CaptainClip",
             "Turns syncing with your Mac on or off, like the Wi-Fi button.", onoff = true)
         val sdk = Build.VERSION.SDK_INT
         findViewById<TextView>(R.id.helpTitle).text = QuickToggleGuide.title(sdk)

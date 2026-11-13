@@ -41,7 +41,7 @@ class GhostActivity : Activity() {
         handler.postDelayed({ finishQuietly() }, SAFETY_TIMEOUT_MS)
         if (intent.action == ACTION_WRITE) {
             intent.getStringExtra(EXTRA_TEXT)?.let {
-                clipboard().setPrimaryClip(ClipData.newPlainText("ClipBridge", it))
+                clipboard().setPrimaryClip(ClipData.newPlainText("CaptainClip", it))
             }
             finishQuietly()
         }

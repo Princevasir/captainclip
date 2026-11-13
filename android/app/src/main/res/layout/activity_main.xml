@@ -415,7 +415,7 @@
                         style="@style/Body"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="What ClipBridge does"
+                        android:text="What CaptainClip does"
                         android:textSize="16sp" />
                     <TextView
                         style="@style/Secondary"

@@ -12,7 +12,7 @@ class QuickToggleGuideTest {
         val steps = QuickToggleGuide.steps(sdk = 33)
         assertEquals(2, steps.size)
         assertTrue("explains moving them up", steps[0].contains("Torch") && steps[0].contains("Samsung"))
-        assertTrue(steps[1].contains("Send to Mac") && steps[1].contains("ClipBridge"))
+        assertTrue(steps[1].contains("Send to Mac") && steps[1].contains("CaptainClip"))
         assertFalse("no Quick Settings jargon", steps.any { it.contains("Quick Settings") })
     }
 
@@ -21,6 +21,6 @@ class QuickToggleGuideTest {
         assertEquals("How to add them", QuickToggleGuide.title(31))
         val steps = QuickToggleGuide.steps(sdk = 31)
         assertEquals(3, steps.size)
-        assertTrue(steps[0].contains("Edit") && steps[0].contains("Send to Mac") && steps[0].contains("ClipBridge"))
+        assertTrue(steps[0].contains("Edit") && steps[0].contains("Send to Mac") && steps[0].contains("CaptainClip"))
     }
 }

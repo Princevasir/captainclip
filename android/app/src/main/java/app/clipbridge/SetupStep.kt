@@ -3,15 +3,15 @@ package app.clipbridge
 /** The next setup step the main screen shows, in order. Notifications are optional (sync works without them). */
 enum class SetupStep(val title: String, val help: String) {
     PAIR("Pair with your Mac",
-        "On your Mac, click the ClipBridge icon in the menu bar → Pair phone…, then scan the QR code."),
+        "On your Mac, click the CaptainClip icon in the menu bar → Pair phone…, then scan the QR code."),
     AUTO_COPY("Turn on automatic copy",
-        "Settings → Accessibility → Installed apps → ClipBridge automatic copy. " +
+        "Settings → Accessibility → Installed apps → CaptainClip automatic copy. " +
             "Greyed out? App info → ⋮ → Allow restricted settings first."),
     BLUETOOTH("Allow Bluetooth fallback",
-        "Keeps ClipBridge connected when your phone and Mac aren't on the same Wi-Fi. " +
-            "Android asks for \"Nearby devices\" — ClipBridge only uses it to find your own Mac."),
-    COMPANION("Keep ClipBridge connected",
-        "Link your Mac as a companion device, like a watch or earbuds: Android then lets ClipBridge stay connected " +
+        "Keeps CaptainClip connected when your phone and Mac aren't on the same Wi-Fi. " +
+            "Android asks for \"Nearby devices\" — CaptainClip only uses it to find your own Mac."),
+    COMPANION("Keep CaptainClip connected",
+        "Link your Mac as a companion device, like a watch or earbuds: Android then lets CaptainClip stay connected " +
             "and reconnect in the background, without battery restrictions."),
     QUICK_TOGGLE("Add Send to Mac to your notification panel",
         "A button next to Torch when you swipe down: copy on your phone, swipe down, tap Send to Mac."),

@@ -34,12 +34,12 @@ class ConnectionCheckTest {
     @Test fun macNotVisible() {
         val f = good.copy(macVisible = false, macReachable = false)
         assertEquals("Can't find your Mac on this Wi-Fi", ConnectionCheck.headline(f))
-        assertTrue(details(f).any { "Is ClipBridge open on your Mac, and is it on the same Wi-Fi?" in it })
+        assertTrue(details(f).any { "Is CaptainClip open on your Mac, and is it on the same Wi-Fi?" in it })
     }
 
     @Test fun rememberedAddressAnswers() {
         val f = good.copy(macVisible = false, macReachable = true)
-        assertEquals("Your Mac answered at its last address — ClipBridge will reconnect", ConnectionCheck.headline(f))
+        assertEquals("Your Mac answered at its last address — CaptainClip will reconnect", ConnectionCheck.headline(f))
         val mac = ConnectionCheck.lines(f).first { it.title == "Mac on this Wi-Fi" }
         assertEquals(Severity.WARN, mac.severity)
         assertEquals("Your Wi-Fi hides devices from each other, but your Mac's last address works.", mac.detail)
@@ -82,10 +82,10 @@ class ConnectionCheckTest {
     @Test fun reportNeverContainsAddresses() {
         val f = good.copy(macReachable = false)
         val events = listOf(ConnEvent(1, "connected-wifi"), ConnEvent(2, "lost"))
-        val text = ConnectionReport.text("ClipBridge 0.6.1", "Android 14", ConnectionCheck.lines(f), events, 10L) { "12:0$it" }
+        val text = ConnectionReport.text("CaptainClip 0.6.1", "Android 14", ConnectionCheck.lines(f), events, 10L) { "12:0$it" }
         assertFalse(Regex("""\b\d{1,3}(\.\d{1,3}){3}\b""").containsMatchIn(text))
-        assertTrue("ClipBridge 0.6.1" in text)
+        assertTrue("CaptainClip 0.6.1" in text)
         assertTrue("Android 14" in text)
-        assertTrue(text.startsWith("ClipBridge connection report"))
+        assertTrue(text.startsWith("CaptainClip connection report"))
     }
 }

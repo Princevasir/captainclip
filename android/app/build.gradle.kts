@@ -38,9 +38,9 @@ android {
 
     buildFeatures { buildConfig = true }
 
-    // standard ("ClipBridge"): no accessibility service and no location, so Play Protect allows browser
+    // standard ("CaptainClip"): no accessibility service and no location, so Play Protect allows browser
     // installs and it can go on Google Play (which only allows accessibility services for disability use).
-    // pro ("ClipBridge Pro"): adds automatic copy (accessibility service) and Bluetooth on Android 10-11 (location).
+    // pro ("CaptainClip Pro"): adds automatic copy (accessibility service) and Bluetooth on Android 10-11 (location).
     // Same package and signing key on GitHub: either installs over the other and keeps the pairing.
     flavorDimensions += "edition"
     productFlavors {

@@ -19,7 +19,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:paddingStart="4dp"
-            android:text="Set up ClipBridge on your Mac"
+            android:text="Set up CaptainClip on your Mac"
             android:textSize="24sp"
             android:fontFamily="sans-serif-medium" />
 

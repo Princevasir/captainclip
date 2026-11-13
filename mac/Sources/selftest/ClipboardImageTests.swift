@@ -74,7 +74,7 @@ func watcherImageTests() {
 
     watcher.writeImage(pngData(8, color: .red), type: .png)
     RunLoop.current.run(until: Date().addingTimeInterval(0.3))
-    check(images.all.count == 1, "an image ClipBridge itself writes is not reported back")
+    check(images.all.count == 1, "an image CaptainClip itself writes is not reported back")
     check(board.data(forType: .png) != nil, "writeImage puts the image under its own type")
 }
 

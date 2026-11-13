@@ -132,13 +132,13 @@ enum GuideArt {
     // MARK: the five pictures
 
     static func download(_ r: NSRect) {
-        let c = window(NSRect(x: 60, y: 40, width: 960, height: 560), title: "ClipBridge releases")
+        let c = window(NSRect(x: 60, y: 40, width: 960, height: 560), title: "CaptainClip releases")
         NSColor(white: 0.95, alpha: 1).setFill()
         NSBezierPath(roundedRect: NSRect(x: c.minX + 30, y: c.minY + 20, width: c.width - 60, height: 46), xRadius: 23, yRadius: 23).fill()
-        text("github.com/Princevasir/clipbridge/releases/latest", 21, grey, at: NSPoint(x: c.minX + 56, y: c.minY + 30))
-        text("ClipBridge 0.4.0", 34, weight: .bold, at: NSPoint(x: c.minX + 40, y: c.minY + 92))
+        text("github.com/Princevasir/captainclip/releases/latest", 21, grey, at: NSPoint(x: c.minX + 56, y: c.minY + 30))
+        text("CaptainClip 0.4.0", 34, weight: .bold, at: NSPoint(x: c.minX + 40, y: c.minY + 92))
         text("Assets", 22, grey, weight: .semibold, at: NSPoint(x: c.minX + 40, y: c.minY + 156))
-        let names = ["ClipBridge-android.apk", "ClipBridge-android-pro.apk", "ClipBridge-mac.zip", "SHA256SUMS.txt"]
+        let names = ["CaptainClip-android.apk", "CaptainClip-android-pro.apk", "CaptainClip-mac.zip", "SHA256SUMS.txt"]
         for (i, n) in names.enumerated() {
             let row = NSRect(x: c.minX + 40, y: c.minY + 196 + CGFloat(i) * 70, width: c.width - 80, height: 58)
             line.setFill(); NSRect(x: row.minX, y: row.maxY + 6, width: row.width, height: 1).fill()
@@ -152,15 +152,15 @@ enum GuideArt {
         let c = window(NSRect(x: 60, y: 60, width: 960, height: 520), title: "Downloads")
         let y = c.minY + 110
         zipIcon(NSRect(x: c.minX + 90, y: y, width: 110, height: 140))
-        text("ClipBridge-mac.zip", 20, at: NSPoint(x: c.minX + 60, y: y + 160))
+        text("CaptainClip-mac.zip", 20, at: NSPoint(x: c.minX + 60, y: y + 160))
         arrow(from: NSPoint(x: c.minX + 230, y: y + 70), to: NSPoint(x: c.minX + 320, y: y + 70))
         BrandIcon.app(side: 170).draw(in: NSRect(x: c.minX + 345, y: y - 15, width: 170, height: 170))
-        text("ClipBridge", 20, at: NSPoint(x: c.minX + 382, y: y + 160))
+        text("CaptainClip", 20, at: NSPoint(x: c.minX + 382, y: y + 160))
         arrow(from: NSPoint(x: c.minX + 545, y: y + 70), to: NSPoint(x: c.minX + 690, y: y + 70))
         folderIcon(NSRect(x: c.minX + 720, y: y, width: 160, height: 135))
         text("Applications", 20, at: NSPoint(x: c.minX + 742, y: y + 160))
         highlight(NSRect(x: c.minX + 705, y: y - 10, width: 190, height: 205))
-        text("Double-click the zip, then drag ClipBridge into Applications.", 22, grey, at: NSPoint(x: c.minX + 160, y: c.maxY - 70))
+        text("Double-click the zip, then drag CaptainClip into Applications.", 22, grey, at: NSPoint(x: c.minX + 160, y: c.maxY - 70))
     }
 
     static func openAnyway(_ r: NSRect) {
@@ -177,7 +177,7 @@ enum GuideArt {
         text("Allow applications from", 21, grey, at: NSPoint(x: x, y: c.minY + 100))
         text("App Store & Known Developers", 21, at: NSPoint(x: x, y: c.minY + 132))
         line.setFill(); NSRect(x: x, y: c.minY + 182, width: c.maxX - x - 40, height: 1).fill()
-        NSAttributedString(string: "“ClipBridge” was blocked to protect your Mac.", attributes: [.font: NSFont.systemFont(ofSize: 23), .foregroundColor: ink])
+        NSAttributedString(string: "“CaptainClip” was blocked to protect your Mac.", attributes: [.font: NSFont.systemFont(ofSize: 23), .foregroundColor: ink])
             .draw(with: NSRect(x: x, y: c.minY + 212, width: 400, height: 90), options: [.usesLineFragmentOrigin])
         let b = NSRect(x: c.maxX - 240, y: c.minY + 220, width: 190, height: 52)
         button("Open Anyway", b, primary: false)
@@ -188,7 +188,7 @@ enum GuideArt {
     static func allow(_ r: NSRect) {
         let icon = menuBar(r, iconHighlighted: false)
         highlight(icon.insetBy(dx: -6, dy: -4), radius: 8)
-        text("New: the ClipBridge icon in the menu bar", 22, ink, weight: .medium, at: NSPoint(x: icon.minX - 470, y: 70))
+        text("New: the CaptainClip icon in the menu bar", 22, ink, weight: .medium, at: NSPoint(x: icon.minX - 470, y: 70))
         arrow(from: NSPoint(x: icon.minX - 40, y: 82), to: NSPoint(x: icon.minX - 6, y: 58))
         // Permission alert
         let a = NSRect(x: 290, y: 150, width: 500, height: 440)
@@ -197,7 +197,7 @@ enum GuideArt {
         NSColor(white: 0.97, alpha: 1).setFill(); NSBezierPath(roundedRect: a, xRadius: 22, yRadius: 22).fill()
         NSGraphicsContext.restoreGraphicsState()
         BrandIcon.app(side: 110).draw(in: NSRect(x: a.midX - 55, y: a.minY + 30, width: 110, height: 110))
-        NSAttributedString(string: "“ClipBridge” would like to find and connect to devices on your local network.",
+        NSAttributedString(string: "“CaptainClip” would like to find and connect to devices on your local network.",
                            attributes: [.font: NSFont.systemFont(ofSize: 23, weight: .semibold), .foregroundColor: ink,
                                         .paragraphStyle: { let p = NSMutableParagraphStyle(); p.alignment = .center; return p }()])
             .draw(with: NSRect(x: a.minX + 40, y: a.minY + 160, width: a.width - 80, height: 120), options: [.usesLineFragmentOrigin])
@@ -223,7 +223,7 @@ enum GuideArt {
         blue.setFill(); NSBezierPath(roundedRect: sel, xRadius: 8, yRadius: 8).fill()
         text("Pair phone…", 21, .white, weight: .medium, at: NSPoint(x: sel.minX + 12, y: sel.minY + 9))
         text("⌘P", 21, .white, at: NSPoint(x: sel.maxX - 52, y: sel.minY + 9))
-        for (i, s) in ["Pause syncing", "Open Downloads", "Start ClipBridge at login"].enumerated() {
+        for (i, s) in ["Pause syncing", "Open Downloads", "Start CaptainClip at login"].enumerated() {
             text(s, 21, ink, at: NSPoint(x: m.minX + 22, y: m.minY + 166 + CGFloat(i) * 42))
         }
         highlight(sel, radius: 8)
@@ -232,7 +232,7 @@ enum GuideArt {
         let c = window(wnd, title: "Pair your phone")
         let q = NSRect(x: c.midX - 120, y: c.minY + 24, width: 240, height: 240)
         sampleQR(q)
-        text("Scan with ClipBridge on your phone", 19, grey, at: NSPoint(x: c.minX + 44, y: c.maxY - 64))
+        text("Scan with CaptainClip on your phone", 19, grey, at: NSPoint(x: c.minX + 44, y: c.maxY - 64))
         text("(sample code)", 16, grey, at: NSPoint(x: c.midX - 50, y: c.maxY - 36))
     }
 

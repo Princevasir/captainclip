@@ -10,7 +10,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 
-/** "What ClipBridge does": every feature in a line, and a box to try pasting what you copied on the Mac. */
+/** "What CaptainClip does": every feature in a line, and a box to try pasting what you copied on the Mac. */
 class FeaturesActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

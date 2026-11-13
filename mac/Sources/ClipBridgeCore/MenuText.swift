@@ -15,7 +15,7 @@ public enum MenuText {
         if paused { return nil }
         switch status {
         case .connected: return bluetooth ? "Via Bluetooth · end-to-end encrypted" : "Same Wi-Fi · end-to-end encrypted"
-        case .waiting: return "Open ClipBridge on your phone — same Wi-Fi, or nearby with Bluetooth"
+        case .waiting: return "Open CaptainClip on your phone — same Wi-Fi, or nearby with Bluetooth"
         }
     }
 

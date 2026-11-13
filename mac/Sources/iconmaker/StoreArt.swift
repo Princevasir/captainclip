@@ -38,7 +38,7 @@ enum StoreArt {
         NSGradient(starting: BrandIcon.teal, ending: BrandIcon.indigo)?.draw(in: rect, angle: 65)
         // Brand row
         BrandIcon.app(side: 132).draw(in: NSRect(x: 110, y: 120, width: 132, height: 132))
-        text("ClipBridge", NSFont.systemFont(ofSize: 54, weight: .semibold), .white, at: NSPoint(x: 252, y: 150))
+        text("CaptainClip", NSFont.systemFont(ofSize: 54, weight: .semibold), .white, at: NSPoint(x: 252, y: 150))
         // Headline
         let big = NSFont.systemFont(ofSize: 132, weight: .heavy)
         text(p.lead, big, .white, at: NSPoint(x: 120, y: 330))
@@ -120,7 +120,7 @@ enum StoreArt {
     static func header(in s: NSRect, pill: String = "Connected", title: String = "MacBook Air",
                        detail: String = "Same Wi-Fi · end-to-end encrypted", send: Bool = true, pause: Bool = true) -> CGFloat {
         BrandIcon.app(side: 92).draw(in: NSRect(x: s.minX + 44, y: s.minY + 110, width: 92, height: 92))
-        text("ClipBridge", NSFont.systemFont(ofSize: 46, weight: .semibold), ink, at: NSPoint(x: s.minX + 150, y: s.minY + 126))
+        text("CaptainClip", NSFont.systemFont(ofSize: 46, weight: .semibold), ink, at: NSPoint(x: s.minX + 150, y: s.minY + 126))
         let h: CGFloat = send ? (pause ? 560 : 470) : 330
         let hero = NSRect(x: s.minX + 40, y: s.minY + 240, width: s.width - 80, height: h)
         NSGradient(starting: BrandIcon.teal, ending: BrandIcon.indigo)?.draw(in: NSBezierPath(roundedRect: hero, xRadius: 56, yRadius: 56), angle: -35)

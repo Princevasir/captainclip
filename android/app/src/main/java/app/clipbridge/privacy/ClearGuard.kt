@@ -1,7 +1,7 @@
 package app.clipbridge.privacy
 
 /**
- * Decides whether a one-time code ClipBridge put on the clipboard should now be cleared: only once [delayMs]
+ * Decides whether a one-time code CaptainClip put on the clipboard should now be cleared: only once [delayMs]
  * have passed, only if no newer code was written and nothing newer was copied or sent since ([markChanged]),
  * and, when the clipboard text could be read, only if it still holds that text. A background service usually
  * cannot read the clipboard, so a null [shouldClear] text means "can't tell" and relies on [markChanged].

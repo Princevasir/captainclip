@@ -15,7 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let pauseItem = NSMenuItem(title: "Pause syncing", action: nil, keyEquivalent: "")
     private let resumeItem = NSMenuItem(title: "Resume now", action: #selector(resumeNow), keyEquivalent: "")
     private var pauseTimer: Timer?
-    private let loginItem = NSMenuItem(title: "Start ClipBridge at login", action: #selector(toggleLogin), keyEquivalent: "")
+    private let loginItem = NSMenuItem(title: "Start CaptainClip at login", action: #selector(toggleLogin), keyEquivalent: "")
     private var bridge: Bridge?
     private var server: Server?
     private var pairing: (macId: String, key: Data)!
@@ -45,7 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func buildMenu() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = BrandIcon.menuBar()
-        statusItem.button?.toolTip = "ClipBridge"
+        statusItem.button?.toolTip = "CaptainClip"
         let menu = NSMenu()
         menu.delegate = self
         [statusLine, detailLine, offerLine].forEach { $0.isEnabled = false }
@@ -75,8 +75,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(loginItem)
         menu.addItem(item("Reset pairing…", #selector(resetPairing)))
         menu.addItem(.separator())
-        menu.addItem(item("About ClipBridge", #selector(showAbout)))
-        menu.addItem(withTitle: "Quit ClipBridge", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(item("About CaptainClip", #selector(showAbout)))
+        menu.addItem(withTitle: "Quit CaptainClip", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
     }
 
@@ -215,7 +215,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         } catch {
             alert("Couldn't change the login setting",
-                  "Move ClipBridge.app to your Applications folder and try again.\n\n\(error.localizedDescription)")
+                  "Move CaptainClip.app to your Applications folder and try again.\n\n\(error.localizedDescription)")
         }
         loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
     }
@@ -224,7 +224,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.activate(ignoringOtherApps: true)
         let confirm = NSAlert()
         confirm.messageText = "Reset pairing?"
-        confirm.informativeText = "ClipBridge will make a new key. Your phone stops syncing until you scan the new QR code."
+        confirm.informativeText = "CaptainClip will make a new key. Your phone stops syncing until you scan the new QR code."
         confirm.addButton(withTitle: "Reset")
         confirm.addButton(withTitle: "Cancel")
         confirm.alertStyle = .warning

@@ -17,7 +17,7 @@ import java.io.File
 /**
  * "Share → Send to Mac": text goes to the Mac clipboard; files go to the Mac's Downloads + clipboard.
  * Android only lets this screen (not our background service) read shared files, so files are copied into
- * ClipBridge's private cache here first, then handed to the service in-process.
+ * CaptainClip's private cache here first, then handed to the service in-process.
  */
 class ShareReceiverActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
