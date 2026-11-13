@@ -24,7 +24,20 @@ class ClearGuardTest {
         val t = guard.wrote("482913")
         now += 60_000
         assertFalse(guard.shouldClear(t, "something else"))
+    }
+
+    @Test fun unreadableClipboardIsCleared() {
+        val t = guard.wrote("482913")
+        now += 60_000
+        assertTrue(guard.shouldClear(t, null))
+    }
+
+    @Test fun changeSignalPreventsClear() {
+        val t = guard.wrote("482913")
+        guard.markChanged()
+        now += 60_000
         assertFalse(guard.shouldClear(t, null))
+        assertFalse(guard.shouldClear(t, "482913"))
     }
 
     @Test fun newerWriteWins() {

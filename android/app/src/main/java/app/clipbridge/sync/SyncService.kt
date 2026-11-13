@@ -186,6 +186,7 @@ class SyncService : Service() {
                 SendQueueHub.queue.supersedeClip()  // newest wins: a waiting older clip must not follow this one
                 service.loop?.send(out.text, html, userInitiated, out.sensitive) ?: false
             }
+            if (sent) service.clearGuard.markChanged()  // a newer copy: a code waiting to be cleared is no longer current
             if (sent) { service.history().recordText(out.text, html, Direction.TO_MAC, out.sensitive); service.historyChanged() }  // it crossed
             return if (sent) SendResult.SENT else SendResult.FAILED
         }
@@ -600,7 +601,7 @@ class SyncService : Service() {
                 markFromMac(clip.description)
                 if (inc.sensitive) markSensitive(clip.description)
                 getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
-                if (inc.sensitive) scheduleClear(inc.text)
+                if (inc.sensitive) scheduleClear(inc.text) else clearGuard.markChanged()  // a newer clip replaced any waiting code
             }.isSuccess
             // On the phone's clipboard (or, with that off, just received): it crossed
             if (placed && inc.recordInHistory) { history().recordText(inc.text, html, Direction.FROM_MAC, inc.sensitive); historyChanged() }
@@ -615,19 +616,48 @@ class SyncService : Service() {
         description.extras = extras
     }
 
-    /** A code ClipBridge wrote is cleared after 60 s, but only if it is still what's on the clipboard. */
+    private var clearRunnable: Runnable? = null
+    private var clearToken = 0L
+    private var clearListening = false
+
+    /** Any clipboard change we didn't cause means the code is no longer what's on the clipboard. */
+    private val clipListener = ClipboardManager.OnPrimaryClipChangedListener { if (!OwnWrites.isRecent()) clearGuard.markChanged() }
+
+    /**
+     * A code ClipBridge wrote is cleared after 60 s unless something newer was copied or sent. A background
+     * service can't read the clipboard on Android 10+, so staleness comes from change signals, not a read.
+     */
     private fun scheduleClear(text: String) {
+        clearRunnable?.let { main.removeCallbacks(it) }
         val token = clearGuard.wrote(text)
-        main.postDelayed({
-            runCatching {
-                val cm = getSystemService(ClipboardManager::class.java)
-                val current = runCatching { cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString() }.getOrNull()
-                if (clearGuard.shouldClear(token, current)) {
-                    OwnWrites.markNow()
-                    cm.clearPrimaryClip()
-                }
-            }
-        }, CLEAR_DELAY_MS)
+        clearToken = token
+        if (!clearListening) {
+            clearListening = runCatching { getSystemService(ClipboardManager::class.java).addPrimaryClipChangedListener(clipListener) }.isSuccess
+        }
+        val run = Runnable { clearNow(token, waited = true) }
+        clearRunnable = run
+        main.postDelayed(run, CLEAR_DELAY_MS)
+    }
+
+    /** Clears the clipboard if [token] is still current; [waited] false (shutdown) skips the 60 s wait. */
+    private fun clearNow(token: Long, waited: Boolean) {
+        runCatching {
+            val cm = getSystemService(ClipboardManager::class.java)
+            // Readable only when we happen to have focus; if it is readable and differs, leave it alone.
+            val current = runCatching { cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString() }.getOrNull()
+            val go = if (waited) clearGuard.shouldClear(token, current) else clearGuard.isCurrent(token)
+            if (go) { OwnWrites.markNow(); cm.clearPrimaryClip() }
+        }
+        if (token == clearToken) stopClearWatch()
+    }
+
+    private fun stopClearWatch() {
+        clearRunnable?.let { main.removeCallbacks(it) }
+        clearRunnable = null
+        if (clearListening) {
+            runCatching { getSystemService(ClipboardManager::class.java).removePrimaryClipChangedListener(clipListener) }
+            clearListening = false
+        }
     }
 
     private fun describe(status: SyncLoop.Status) = when (status) {
@@ -650,6 +680,7 @@ class SyncService : Service() {
 
     private fun shutdown() {
         main.removeCallbacks(pauseTick)
+        if (clearRunnable != null) clearNow(clearToken, waited = false)  // a code must not outlive the service
         Files.cache(this).clear()
         runCatching { getSystemService(NotificationManager::class.java).cancel(OFFER_NOTIFICATION_ID) }
         instance = null
