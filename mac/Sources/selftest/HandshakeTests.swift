@@ -2,7 +2,7 @@ import ClipBridgeCore
 import Darwin
 import Foundation
 
-/// Plain blocking TCP peer for attacker-style tests (raw bytes, no ClipBridge logic).
+/// Plain blocking TCP peer for attacker-style tests (raw bytes, no CaptainClip logic).
 final class RawPeer {
     private let fd: Int32
 

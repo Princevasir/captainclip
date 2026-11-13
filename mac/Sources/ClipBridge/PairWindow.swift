@@ -12,7 +12,7 @@ final class PairWindow {
 
         let logo = NSImageView(image: BrandIcon.app(side: 128))
         let title = label("Pair your phone", size: 22, weight: .semibold)
-        let steps = label("1.  Open ClipBridge on your Android phone\n2.  Tap  Scan QR code\n3.  Point the camera at this code",
+        let steps = label("1.  Open CaptainClip on your Android phone\n2.  Tap  Scan QR code\n3.  Point the camera at this code",
                           size: 13, weight: .regular, color: .secondaryLabelColor, center: false)
 
         let qrBackground = NSView()

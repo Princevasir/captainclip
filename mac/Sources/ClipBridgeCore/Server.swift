@@ -10,6 +10,8 @@ public final class Server {
     }
 
     public static let serviceType = "_clipbridge._tcp"
+    /// Bonjour name prefix. Wire-visible: older phones look for it, so it stays "ClipBridge-" after the rename.
+    public static let serviceNamePrefix = "ClipBridge-"
     private let macName = Host.current().localizedName ?? "Mac"
 
     public var onClip: ((String) -> Void)?
@@ -52,7 +54,7 @@ public final class Server {
     private func startListener(port: NWEndpoint.Port) throws {
         let listener = try NWListener(using: .tcp, on: port)
         if advertise {
-            listener.service = NWListener.Service(name: "ClipBridge-\(macId.prefix(6))", type: Self.serviceType)
+            listener.service = NWListener.Service(name: "\(Self.serviceNamePrefix)\(macId.prefix(6))", type: Self.serviceType)
         }
         listener.stateUpdateHandler = { [weak self] state in
             guard let self else { return }

@@ -1,14 +1,14 @@
 #!/bin/bash
-# Builds build/ClipBridge.app (ad-hoc signed). Usage: ./build-app.sh
+# Builds build/CaptainClip.app (ad-hoc signed). Usage: ./build-app.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 # Universal binary: Apple silicon + Intel (built separately, joined with lipo — no Xcode needed)
 swift build -c release --product ClipBridge
 swift build -c release --product ClipBridge --triple x86_64-apple-macosx13.0
-APP=build/ClipBridge.app
+APP=build/CaptainClip.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
-lipo -create -output "$APP/Contents/MacOS/ClipBridge" \
+lipo -create -output "$APP/Contents/MacOS/CaptainClip" \
   "$(swift build -c release --show-bin-path)/ClipBridge" \
   "$(swift build -c release --triple x86_64-apple-macosx13.0 --show-bin-path)/ClipBridge"
 cp bundle/Info.plist "$APP/Contents/"

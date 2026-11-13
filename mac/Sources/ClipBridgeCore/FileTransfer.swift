@@ -126,7 +126,7 @@ public final class FileReceiver {
                 // Mark it as downloaded from elsewhere, so Gatekeeper checks it like any download.
                 var values = URLResourceValues()
                 values.quarantineProperties = ["LSQuarantineType": "LSQuarantineTypeOtherDownload",
-                                               "LSQuarantineAgentName": "ClipBridge"]
+                                               "LSQuarantineAgentName": "CaptainClip"]
                 try? final.setResourceValues(values)
                 return final
             default:

@@ -1,6 +1,6 @@
 import AppKit
 
-/// The ClipBridge logo (same geometry as the Android adaptive icon): a clipboard whose content is a bridge
+/// The CaptainClip logo (same geometry as the Android adaptive icon): a clipboard whose content is a bridge
 /// joining two devices, on a teal → indigo gradient. Drawn in code so it stays sharp at every size.
 public enum BrandIcon {
     public static let teal = NSColor(srgbRed: 0x0E / 255, green: 0xA5 / 255, blue: 0xA4 / 255, alpha: 1)
@@ -81,7 +81,7 @@ public enum BrandIcon {
             let title: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 92, weight: .bold), .foregroundColor: NSColor.white]
             let line: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 38, weight: .medium),
                                                        .foregroundColor: NSColor(white: 1, alpha: 0.92)]
-            ("ClipBridge" as NSString).draw(at: NSPoint(x: 430, y: 150), withAttributes: title)
+            ("CaptainClip" as NSString).draw(at: NSPoint(x: 430, y: 150), withAttributes: title)
             ("Copy on your Mac." as NSString).draw(at: NSPoint(x: 434, y: 268), withAttributes: line)
             ("Paste on your phone." as NSString).draw(at: NSPoint(x: 434, y: 316), withAttributes: line)
         }

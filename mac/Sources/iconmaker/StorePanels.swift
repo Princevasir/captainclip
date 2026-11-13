@@ -13,7 +13,7 @@ enum StorePanels {
                   sub: "Send to Mac sits right next to Copy, in any app. Then paste on your Mac.",
                   screen: .cards(selectionScreen)),
             .init(file: "store-3-one-tap.png", lead: "One tap.", plain: "From", highlight: "anywhere",
-                  sub: "Notification panel, home-screen widget, or long-press the ClipBridge icon.",
+                  sub: "Notification panel, home-screen widget, or long-press the CaptainClip icon.",
                   screen: .image(screenshots.appendingPathComponent("2-quick-toggle.png")),
                   spotlight: NSPoint(x: 797, y: 1630)),  // the Send to Mac toggle in that screenshot
             .init(file: "store-4-pictures.png", lead: "Screenshots too.", plain: "Paste on", highlight: "phone",
@@ -26,7 +26,7 @@ enum StorePanels {
                   sub: "Search what you sent from your phone. Tap to copy, or send it again.",
                   screen: .cards(historyScreen)),
             .init(file: "store-7-bluetooth.png", lead: "No Wi-Fi?", plain: "Still", highlight: "connected",
-                  sub: "Away from home? ClipBridge switches to Bluetooth by itself, and back to Wi-Fi.",
+                  sub: "Away from home? CaptainClip switches to Bluetooth by itself, and back to Wi-Fi.",
                   screen: .cards(bluetoothScreen)),
             .init(file: "store-8-private.png", lead: "Your clipboard.", plain: "Only", highlight: "yours",
                   sub: "Straight from your phone to your Mac, end-to-end encrypted. No account, no cloud.",
