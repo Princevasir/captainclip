@@ -5,11 +5,11 @@ import kotlin.math.roundToLong
 
 /** Small, user-facing wording helpers (unit-tested). */
 object UiText {
-    /** After a tap on Send to Mac: only blame the connection when it really is down. */
-    fun sendResult(sent: Boolean, connected: Boolean): String = when {
-        sent -> "Sent to Mac"
-        !connected -> "Not connected to your Mac"
-        else -> "Couldn't send — try again"
+    /** After a tap on Send to Mac: sent, kept until the Mac is back (away or paused), or refused. */
+    fun sendResultText(r: app.clipbridge.sync.SendResult): String = when (r) {
+        app.clipbridge.sync.SendResult.SENT -> "Sent to Mac"
+        app.clipbridge.sync.SendResult.QUEUED -> "Waiting — sends when your Mac is back"
+        app.clipbridge.sync.SendResult.FAILED -> "Couldn't send"
     }
 
     /** (title, subtitle) for the home-screen widget and the connection toggle. */

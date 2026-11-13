@@ -7,12 +7,13 @@ import android.util.Log
 import app.clipbridge.core.FileLimit
 import app.clipbridge.core.FileReceiver
 import app.clipbridge.sync.OutgoingFile
+import app.clipbridge.sync.SendResult
 import app.clipbridge.sync.SyncService
 import java.io.File
 
 /** Sends an image that's on the phone clipboard to the Mac clipboard (used by the ghost screen and the app). */
 object ClipImages {
-    /** Sends the clip's image to the Mac if it is one and we're connected. Call while the clip is readable. */
+    /** Sends the clip's image to the Mac if it is one (or queues it while away). Call while the clip is readable. */
     fun sendIfImage(context: Context, clip: ClipData?): ImageSend.Outcome {
         val uri = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri ?: return ImageSend.Outcome.NOT_AN_IMAGE
         val resolver = context.contentResolver
@@ -30,8 +31,7 @@ object ClipImages {
         }
         if (size < 0) size = runCatching { resolver.openAssetFileDescriptor(uri, "r")?.use { it.length } }.getOrNull() ?: -1
         val isImage = ClipImagePolicy.accepts(uri.scheme, uri.authority, mime, sensitive, if (size < 0) 1 else size)
-        val outcome = ImageSend.decide(isImage, SyncService.isConnected)
-        if (outcome != ImageSend.Outcome.SEND) return outcome  // checked before copying anything
+        if (!isImage) return ImageSend.Outcome.NOT_AN_IMAGE  // checked before copying anything
         val dir = File(context.cacheDir, "outgoing").apply { mkdirs() }
         val target = File(dir, "${System.nanoTime()}-${FileReceiver.safeName(name)}")
         return try {
@@ -48,8 +48,11 @@ object ClipImages {
                     }
                 }
             }
-            if (SyncService.sendClipboardImage(OutgoingFile(target, name, mime!!, purpose = "clipboard"), key = "$uri:$copied"))
-                ImageSend.Outcome.SEND else ImageSend.Outcome.NOT_CONNECTED
+            when (SyncService.sendClipboardImage(OutgoingFile(target, name, mime!!, purpose = "clipboard"), key = "$uri:$copied")) {
+                SendResult.SENT -> ImageSend.Outcome.SEND
+                SendResult.QUEUED -> ImageSend.Outcome.QUEUED
+                SendResult.FAILED -> ImageSend.Outcome.FAILED
+            }
         } catch (e: Exception) {
             Log.w("ClipBridgeFiles", "couldn't read clipboard image", e)
             target.delete()

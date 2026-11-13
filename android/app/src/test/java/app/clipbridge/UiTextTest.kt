@@ -1,5 +1,6 @@
 package app.clipbridge
 
+import app.clipbridge.sync.SendResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -92,10 +93,10 @@ class UiTextTest {
         assertEquals("ClipBridge" to "Not paired", UiText.connectionLine(paired = false, syncOn = true, connected = false, macName = null, bluetooth = false))
     }
 
-    @Test fun sendResultSaysWhatReallyHappened() {
-        assertEquals("Sent to Mac", UiText.sendResult(sent = true, connected = true))
-        assertEquals("Not connected to your Mac", UiText.sendResult(sent = false, connected = false))
-        assertEquals("Couldn't send — try again", UiText.sendResult(sent = false, connected = true))
+    @Test fun sendResultWording() {
+        assertEquals("Sent to Mac", UiText.sendResultText(SendResult.SENT))
+        assertEquals("Waiting — sends when your Mac is back", UiText.sendResultText(SendResult.QUEUED))
+        assertEquals("Couldn't send", UiText.sendResultText(SendResult.FAILED))
     }
 
     @Test fun panelSummarySaysWhichButtonsAreInThePanel() {

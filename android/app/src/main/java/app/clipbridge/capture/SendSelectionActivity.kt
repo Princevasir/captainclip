@@ -19,15 +19,16 @@ class SendSelectionActivity : Activity() {
         val selected: CharSequence? = intent?.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)
         val text = selected?.toString()
         val outcome = SelectedText.check(text)
-        var sent = false
+        var result: app.clipbridge.sync.SendResult? = null
         if (outcome == SelectedText.Outcome.SEND && text != null) {
             val html = (selected as? Spanned)
                 ?.takeIf { it.getSpans(0, it.length, CharacterStyle::class.java).isNotEmpty() }
                 ?.let { Html.toHtml(it, Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE) }
             if (!SyncService.isRunning) SyncService.start(this)
-            sent = SyncService.send(text, html, userInitiated = true)  // an explicit tap: send even a repeat
+            result = SyncService.send(text, html, userInitiated = true)  // an explicit tap: send even a repeat
         }
-        Toast.makeText(this, SelectedText.message(outcome, sent), Toast.LENGTH_SHORT).show()
+        val message = result?.let { app.clipbridge.UiText.sendResultText(it) } ?: SelectedText.message(outcome, sent = false)
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
         finish()
     }
 }

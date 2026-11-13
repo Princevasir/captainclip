@@ -27,8 +27,8 @@ class ShareReceiverActivity : Activity() {
             uris.isNotEmpty() -> sendFiles(uris)
             intent.action == Intent.ACTION_SEND -> {
                 intent.getStringExtra(Intent.EXTRA_TEXT)?.takeIf { it.isNotEmpty() }?.let {
-                    val sent = SyncService.send(it, intent.getStringExtra(Intent.EXTRA_HTML_TEXT), userInitiated = true)  // explicit share
-                    toast(app.clipbridge.UiText.sendResult(sent, SyncService.isConnected))
+                    val result = SyncService.send(it, intent.getStringExtra(Intent.EXTRA_HTML_TEXT), userInitiated = true)  // explicit share
+                    toast(app.clipbridge.UiText.sendResultText(result))
                 }
                 finish()
             }
@@ -37,13 +37,17 @@ class ShareReceiverActivity : Activity() {
     }
 
     private fun sendFiles(uris: List<Uri>) {
-        if (!SyncService.isRunning) { toast("Not connected to your Mac"); finish(); return }
-        toast(if (uris.size == 1) "Sending to Mac…" else "Sending ${uris.size} files to Mac…")
+        // While away or paused the copies wait for the Mac instead (said once they're queued).
+        if (SyncService.isConnected && !SyncService.isPaused(this))
+            toast(if (uris.size == 1) "Sending to Mac…" else "Sending ${uris.size} files to Mac…")
         Thread {
             val outbox = File(cacheDir, "outgoing").apply { mkdirs() }
             val copies = uris.mapNotNull { uri -> copyIn(uri, outbox) }
             runOnUiThread {
-                if (copies.isNotEmpty()) SyncService.sendLocalFiles(copies)
+                if (copies.isNotEmpty()) {
+                    val result = SyncService.sendLocalFiles(copies)
+                    if (result != app.clipbridge.sync.SendResult.SENT) toast(app.clipbridge.UiText.sendResultText(result))  // sent: the service says so when done
+                }
                 finish()
             }
         }.start()
