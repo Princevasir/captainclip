@@ -43,6 +43,9 @@ object Prefs {
     fun setHistoryMaxItems(ctx: Context, n: Int) = prefs(ctx).edit().putInt("historyMaxItems", n).apply()
     fun historyMaxDays(ctx: Context): Int = prefs(ctx).getInt("historyMaxDays", 7)
     fun setHistoryMaxDays(ctx: Context, n: Int) = prefs(ctx).edit().putInt("historyMaxDays", n).apply()
+    /** Epoch millis when a timed pause ends; 0 = no timed pause. */
+    fun pausedUntil(ctx: Context): Long = prefs(ctx).getLong("pausedUntil", 0L)
+    fun setPausedUntil(ctx: Context, until: Long) = prefs(ctx).edit().putLong("pausedUntil", until).apply()
 
     fun bluetoothAsked(ctx: Context): Boolean = prefs(ctx).getBoolean("bluetoothAsked", false)
 

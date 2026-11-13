@@ -1,6 +1,7 @@
 package app.clipbridge
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class UiTextTest {
@@ -126,4 +127,7 @@ class UiTextTest {
         for (auto in listOf(true, false)) for (bt in listOf(true, false))
             assertEquals(false, UiText.tip(auto, bt).contains("quick toggle", ignoreCase = true))
     }
+
+    @Test fun pausedLineNamesResumeTime() = assertEquals("Paused · resumes at 3:45", UiText.pausedLine(5_000, 2_000) { "3:45" })
+    @Test fun noPausedLineAfterDeadline() = assertNull(UiText.pausedLine(1_000, 2_000) { "3:45" })
 }

@@ -20,6 +20,10 @@ object UiText {
         else -> (macName ?: "Your Mac") to "Looking for your Mac…"
     }
 
+    /** Status line while a timed pause is running; null once it has ended. */
+    fun pausedLine(pausedUntil: Long, now: Long, time: (Long) -> String): String? =
+        if (pausedUntil > now) "Paused · resumes at ${time(pausedUntil)}" else null
+
     /** Android 13+ confirms every clipboard write itself ("Copied"); our own message would be a second pop-up. */
     fun showOwnCopiedMessage(sdk: Int): Boolean = sdk < 33
 
