@@ -58,7 +58,7 @@ public final class Client {
                     self.setState(.connected)
                     self.startPing()
                 }
-            case .clip(_, let text, _, let html):
+            case .clip(_, let text, _, let html, _):
                 self.onClip?(text)
                 self.onRichClip?(text, html)
             case .ping, .unknown:

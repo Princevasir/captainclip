@@ -16,7 +16,7 @@ public struct OfferItem: Equatable {
 /// Unknown types decode to `.unknown` and are ignored, so newer messages never break a connection.
 public enum Message: Equatable {
     case hello(device: String)
-    case clip(id: String, text: String, ts: Int64, html: String? = nil)
+    case clip(id: String, text: String, ts: Int64, html: String? = nil, sensitive: Bool = false)
     case ping
     // v2 files
     case offer(id: String, name: String, mime: String, size: Int64, ts: Int64)
@@ -34,9 +34,10 @@ public enum Message: Equatable {
         let object: [String: Any]
         switch self {
         case .hello(let device): object = ["t": "hello", "device": device]
-        case .clip(let id, let text, let ts, let html):
+        case .clip(let id, let text, let ts, let html, let sensitive):
             var o: [String: Any] = ["t": "clip", "id": id, "text": text, "ts": ts]
             if let html { o["html"] = html }
+            if sensitive { o["sensitive"] = true }
             object = o
         case .ping: object = ["t": "ping"]
         case .offer(let id, let name, let mime, let size, let ts):
@@ -73,7 +74,8 @@ public enum Message: Equatable {
         }
         switch type {
         case "hello": return .hello(device: try str("device"))
-        case "clip": return .clip(id: try str("id"), text: try str("text"), ts: try int("ts"), html: o["html"] as? String)
+        case "clip": return .clip(id: try str("id"), text: try str("text"), ts: try int("ts"), html: o["html"] as? String,
+                       sensitive: o["sensitive"] as? Bool ?? false)
         case "ping": return .ping
         case "offer":
             return .offer(id: try str("id"), name: try str("name"), mime: try str("mime"),

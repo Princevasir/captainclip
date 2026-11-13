@@ -179,7 +179,7 @@ public final class Server {
     private func handle(_ message: Message, from session: Session) {
         if active === session {
             switch message {
-            case .clip(_, let text, _, let html) where TextLimit.fits(text):
+            case .clip(_, let text, _, let html, _) where TextLimit.fits(text):
                 onClip?(text)
                 onRichClip?(text, RichText.fitting(text: text, html: html))
             case .ping: session.send(.ping)  // lets the phone know the Mac is alive

@@ -10,7 +10,7 @@ import java.util.Base64
  */
 sealed class Message {
     data class Hello(val device: String) : Message()
-    data class Clip(val id: String, val text: String, val ts: Long, val html: String? = null) : Message()
+    data class Clip(val id: String, val text: String, val ts: Long, val html: String? = null, val sensitive: Boolean = false) : Message()
     data object Ping : Message()
 
     // v2 files
@@ -40,7 +40,7 @@ sealed class Message {
     fun toJson(): String = when (this) {
         is Hello -> JSONObject().put("t", "hello").put("device", device)
         is Clip -> JSONObject().put("t", "clip").put("id", id).put("text", text).put("ts", ts)
-            .apply { html?.let { put("html", it) } }
+            .apply { html?.let { put("html", it) }; if (sensitive) put("sensitive", true) }
         Ping -> JSONObject().put("t", "ping")
         is Offer -> JSONObject().put("t", "offer").put("id", id).put("name", name).put("mime", mime)
             .put("size", size).put("ts", ts)
@@ -67,7 +67,8 @@ sealed class Message {
             return try {
                 when (val t = o.getString("t")) {
                     "hello" -> Hello(o.getString("device"))
-                    "clip" -> Clip(o.getString("id"), o.getString("text"), o.getLong("ts"), o.optString("html").takeIf { o.has("html") })
+                    "clip" -> Clip(o.getString("id"), o.getString("text"), o.getLong("ts"), o.optString("html").takeIf { o.has("html") },
+                        o.optBoolean("sensitive", false))
                     "ping" -> Ping
                     "offer" -> Offer(o.getString("id"), o.getString("name"), o.getString("mime"), o.getLong("size"), o.getLong("ts"))
                     "offers" -> {
