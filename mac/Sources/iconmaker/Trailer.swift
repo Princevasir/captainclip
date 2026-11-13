@@ -127,7 +127,7 @@ enum Trailer {
                                       from: .zero, operation: .sourceOver, fraction: k, respectFlipped: true, hints: nil)
         centered("CaptainClip", NSFont.systemFont(ofSize: 110, weight: .heavy), NSColor(white: 1, alpha: k), y: 440)
         centered("Free on Google Play", NSFont.systemFont(ofSize: 56, weight: .semibold), NSColor(white: 1, alpha: ease(t, 0.5, 1.1)), y: 610)
-        centered("Mac app: github.com/Princevasir/clipbridge", NSFont.systemFont(ofSize: 40, weight: .medium),
+        centered("Mac app: github.com/Princevasir/captainclip", NSFont.systemFont(ofSize: 40, weight: .medium),
                  NSColor(white: 1, alpha: 0.85 * ease(t, 0.9, 1.5)), y: 700)
         centered("No account · No cloud · End-to-end encrypted", NSFont.systemFont(ofSize: 36, weight: .medium),
                  NSColor(white: 1, alpha: 0.75 * ease(t, 1.2, 1.8)), y: 790)

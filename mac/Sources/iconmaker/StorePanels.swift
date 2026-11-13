@@ -141,7 +141,7 @@ enum StorePanels {
         StoreArt.text("RECENT CLIPS", label, StoreArt.grey, at: NSPoint(x: c.minX + 44, y: c.minY + 40))
         StoreArt.text("See all ›", NSFont.systemFont(ofSize: 30, weight: .semibold), BrandIcon.indigo, at: NSPoint(x: c.maxX - 170, y: c.minY + 38))
         let rows: [(StoreArt.Kind, String, String)] = [
-            (.toMac, "https://github.com/Princevasir/clipbridge", "now"),
+            (.toMac, "https://github.com/Princevasir/captainclip", "now"),
             (.toMac, "Flat 4B, Rose Court, MG Road", "5 min"),
             (.toMac, "Meeting moved to 4:30 — see you there", "1 h"),
         ]

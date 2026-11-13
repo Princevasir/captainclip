@@ -135,7 +135,7 @@ enum GuideArt {
         let c = window(NSRect(x: 60, y: 40, width: 960, height: 560), title: "CaptainClip releases")
         NSColor(white: 0.95, alpha: 1).setFill()
         NSBezierPath(roundedRect: NSRect(x: c.minX + 30, y: c.minY + 20, width: c.width - 60, height: 46), xRadius: 23, yRadius: 23).fill()
-        text("github.com/Princevasir/clipbridge/releases/latest", 21, grey, at: NSPoint(x: c.minX + 56, y: c.minY + 30))
+        text("github.com/Princevasir/captainclip/releases/latest", 21, grey, at: NSPoint(x: c.minX + 56, y: c.minY + 30))
         text("CaptainClip 0.4.0", 34, weight: .bold, at: NSPoint(x: c.minX + 40, y: c.minY + 92))
         text("Assets", 22, grey, weight: .semibold, at: NSPoint(x: c.minX + 40, y: c.minY + 156))
         let names = ["CaptainClip-android.apk", "CaptainClip-android-pro.apk", "CaptainClip-mac.zip", "SHA256SUMS.txt"]

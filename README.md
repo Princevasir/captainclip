@@ -1,6 +1,7 @@
 # CaptainClip
 
-CaptainClip was called ClipBridge before 0.8.
+CaptainClip was called ClipBridge before 0.8. Updating on the Mac: quit ClipBridge, delete it from Applications,
+install CaptainClip, and turn "Start CaptainClip at login" back on if you used it. Your pairing is kept.
 
 **Copy on your Mac, paste on your Android phone — and back.** Text and small files (PDFs, docs, images)
 move between a Mac and an Android phone on the same Wi-Fi — or over Bluetooth when there's no shared Wi-Fi —
