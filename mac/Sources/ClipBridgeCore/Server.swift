@@ -14,7 +14,7 @@ public final class Server {
 
     public var onClip: ((String) -> Void)?
     /// Like onClip, with the copy's HTML when it has one.
-    public var onRichClip: ((String, String?) -> Void)?
+    public var onRichClip: ((String, String?, Bool) -> Void)?  // text, html, sensitive
     public var onStatus: ((Status) -> Void)?
     /// File-related messages from the connected phone (fetch, file-start/chunk/end/error). Runs on the server queue.
     public var onMessage: ((Message) -> Void)?
@@ -179,9 +179,9 @@ public final class Server {
     private func handle(_ message: Message, from session: Session) {
         if active === session {
             switch message {
-            case .clip(_, let text, _, let html) where TextLimit.fits(text):
+            case .clip(_, let text, _, let html, let sensitive) where TextLimit.fits(text):
                 onClip?(text)
-                onRichClip?(text, RichText.fitting(text: text, html: html))
+                onRichClip?(text, RichText.fitting(text: text, html: html), sensitive)
             case .ping: session.send(.ping)  // lets the phone know the Mac is alive
             case .fetch, .fileStart, .fileChunk, .fileEnd, .fileError: onMessage?(message)
             default: break

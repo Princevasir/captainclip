@@ -147,4 +147,11 @@ class UiTextTest {
 
     @Test fun pausedLineNamesResumeTime() = assertEquals("Paused · resumes at 3:45", UiText.pausedLine(5_000, 2_000) { "3:45" })
     @Test fun noPausedLineAfterDeadline() = assertNull(UiText.pausedLine(1_000, 2_000) { "3:45" })
+
+    @Test fun privacySummary() {
+        assertEquals("Links cleaned · Mac copies go to the clipboard", UiText.privacySummary(cleanLinks = true, macToClipboard = true))
+        assertEquals("Links kept as copied · Mac copies go to the clipboard", UiText.privacySummary(cleanLinks = false, macToClipboard = true))
+        assertEquals("Links cleaned · Mac copies wait in history", UiText.privacySummary(cleanLinks = true, macToClipboard = false))
+        assertEquals("Links kept as copied · Mac copies wait in history", UiText.privacySummary(cleanLinks = false, macToClipboard = false))
+    }
 }

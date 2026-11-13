@@ -42,6 +42,28 @@ class HistoryStoreTest {
         assertTrue(s.entries().isEmpty())
     }
 
+    @Test fun macTextKeptWhenNotPutOnClipboard() {
+        val s = store(fromMac = false)
+        s.recordText("waiting for you", null, FROM_MAC, held = true)
+        assertEquals(listOf("waiting for you"), s.entries().map { it.text })
+        assertEquals(listOf("waiting for you"), store(fromMac = false).entries().map { it.text })
+    }
+
+    @Test fun heldMacTextSurvivesIncludeFromMacPurge() {
+        val s = store()
+        s.recordText("plain mac clip", null, FROM_MAC)
+        s.recordText("held mac clip", null, FROM_MAC, held = true)
+        s.setIncludeFromMac(false)
+        assertEquals(listOf("held mac clip"), s.entries().map { it.text })
+        assertEquals("and after a restart", listOf("held mac clip"), store(fromMac = false).entries().map { it.text })
+    }
+
+    @Test fun codeFromMacNeverRecordedEvenWhenHeld() {
+        val s = store(fromMac = false)
+        s.recordText("123456", null, FROM_MAC, sensitive = true, held = true)
+        assertTrue(s.entries().isEmpty())
+    }
+
     @Test fun withMacClipsOffPhoneSendsAndOpenedMacFilesAreStillKept() {
         val s = store(fromMac = false)
         s.recordText("sent from phone", null, TO_MAC)

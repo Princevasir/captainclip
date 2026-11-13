@@ -9,7 +9,7 @@ public final class Client {
     }
 
     public var onClip: ((String) -> Void)?
-    public var onRichClip: ((String, String?) -> Void)?
+    public var onRichClip: ((String, String?, Bool) -> Void)?
     public var onState: ((State) -> Void)?
     /// Every message other than hello/clip/ping (offers, file transfer messages…).
     public var onMessage: ((Message) -> Void)?
@@ -58,9 +58,9 @@ public final class Client {
                     self.setState(.connected)
                     self.startPing()
                 }
-            case .clip(_, let text, _, let html):
+            case .clip(_, let text, _, let html, let sensitive):
                 self.onClip?(text)
-                self.onRichClip?(text, html)
+                self.onRichClip?(text, html, sensitive)
             case .ping, .unknown:
                 break
             default:

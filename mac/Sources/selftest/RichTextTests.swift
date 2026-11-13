@@ -46,7 +46,7 @@ func bridgeRichTextTests() throws {
     _ = waitUntil { server.port != nil }
     let (phone, plainClips, _) = makeClient(server, key: key); defer { phone.stop() }
     let rich = Recorder<String?>()
-    phone.onRichClip = { _, html in rich.add(html) }
+    phone.onRichClip = { _, html, _ in rich.add(html) }
     _ = waitUntil { statuses.all.last == .connected(device: "probe") }
 
     b.clearContents(); b.setString("Formatted", forType: .string); b.setString("<b>Formatted</b>", forType: .html)

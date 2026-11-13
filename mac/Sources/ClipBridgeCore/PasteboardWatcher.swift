@@ -80,6 +80,28 @@ public final class PasteboardWatcher {
         lastChangeCount = pasteboard.changeCount
     }
 
+    /// Puts text (and HTML if given) on the pasteboard, marked concealed when `concealed`, without reporting it back.
+    /// Returns the change count right after the write.
+    @discardableResult
+    public func write(_ text: String, html: String?, concealed: Bool) -> Int {
+        if let html { RichText.write(text: text, html: html, to: pasteboard) }
+        else {
+            pasteboard.clearContents()
+            pasteboard.setString(text, forType: .string)
+        }
+        if concealed { pasteboard.setData(Data(), forType: NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")) }
+        lastChangeCount = pasteboard.changeCount
+        return lastChangeCount
+    }
+
+    public var changeCount: Int { pasteboard.changeCount }
+
+    /// Empties the pasteboard (not reported as a copy).
+    public func clear() {
+        pasteboard.clearContents()
+        lastChangeCount = pasteboard.changeCount
+    }
+
     /// The pasteboard's current plain text, or nil if empty, marked concealed/transient, or a file copy.
     public func currentText() -> String? {
         let types = (pasteboard.types ?? []).map(\.rawValue)

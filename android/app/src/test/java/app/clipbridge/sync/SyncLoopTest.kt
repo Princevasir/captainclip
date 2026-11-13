@@ -67,6 +67,13 @@ class SyncLoopTest {
         assertTrue(eventually { mac.received.any { it is app.clipbridge.core.Message.Clip && it.text == "from phone" } })
     }
 
+    @Test fun cleanedTextThePhoneWroteIsNotEchoedBack() {
+        loop.start()
+        assertTrue(eventually { statuses.lastOrNull() == SyncLoop.Status.CONNECTED })
+        loop.noteWritten("https://example.com/page")
+        assertFalse("the cleaned copy on the phone", loop.send("https://example.com/page"))
+    }
+
     @Test fun userInitiatedSendResendsTextJustReceivedFromMac() {
         loop.start()
         assertTrue(eventually { statuses.lastOrNull() == SyncLoop.Status.CONNECTED })

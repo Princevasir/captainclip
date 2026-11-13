@@ -74,9 +74,9 @@ class Connection(
     }
 
     /** Queues [text] for the Mac. False if not connected, too large, or the outbox is full. Never blocks. */
-    fun send(text: String, html: String? = null): Boolean {
+    fun send(text: String, html: String? = null, sensitive: Boolean = false): Boolean {
         if (!TextLimit.fits(text)) return false
-        return enqueue(Message.Clip(UUID.randomUUID().toString(), text, System.currentTimeMillis(), RichClip.fitting(text, html)))
+        return enqueue(Message.Clip(UUID.randomUUID().toString(), text, System.currentTimeMillis(), RichClip.fitting(text, html), sensitive))
     }
 
     /** Queues a file control message (fetch, file-start, file-end, file-error). Never blocks. */

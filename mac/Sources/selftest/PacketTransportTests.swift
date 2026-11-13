@@ -87,7 +87,7 @@ func sessionOverBluetoothTests() throws {
     let info = PairingInfo(macId: "0123456789abcdef", key: key, host: "ble", port: 1)
     let phone = Client(info: info, device: "ble-phone")
     let clips = Recorder<String?>()
-    phone.onRichClip = { _, html in clips.add(html) }
+    phone.onRichClip = { _, html, _ in clips.add(html) }
     phone.start(transport: pipe.phone)
     defer { phone.stop() }
     check(waitUntil(5) { statuses.all.last == .connected(device: "ble-phone") }, "handshake completes over 182-byte packets")
