@@ -34,4 +34,16 @@ class LinkCleanerTest {
     @Test fun keepsFragmentWhenQueryEmptied() = assertEquals("https://ex.com/a#top", LinkCleaner.clean("https://ex.com/a?fbclid=1#top"))
 
     @Test fun removesBareParamWithoutValue() = assertEquals("https://ex.com/a?id=7", LinkCleaner.clean("https://ex.com/a?fbclid&id=7"))
+
+    @Test fun keepsLookAlikeNames() = "https://ex.com/a?notfbclid=1&utmost=2&xutm_source=3".let { assertEquals(it, LinkCleaner.clean(it)) }
+
+    @Test fun ignoresQuestionMarkAfterHash() = "https://ex.com/a#x?utm_source=1".let { assertEquals(it, LinkCleaner.clean(it)) }
+
+    @Test fun untrimmedInputWithNothingToRemoveIsReturnedAsIs() = "  https://ex.com/a  ".let { assertEquals(it, LinkCleaner.clean(it)) }
+
+    @Test fun trailingAmpersandAfterTracker() = assertEquals("https://ex.com/a", LinkCleaner.clean("https://ex.com/a?utm_x=1&"))
+
+    @Test fun valuelessUtmParam() = assertEquals("https://ex.com/a?id=7", LinkCleaner.clean("https://ex.com/a?utm_source&id=7"))
+
+    @Test fun leadingEmptySegmentWithNothingToRemoveIsUntouched() = "https://ex.com/a?&id=7".let { assertEquals(it, LinkCleaner.clean(it)) }
 }
