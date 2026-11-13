@@ -100,6 +100,13 @@ class SyncService : Service() {
             command(ctx, ACTION_RECONNECT, foreground = true)
         }
 
+        /** Redraw the quick tiles and the home-screen widget (connection or pause changed). */
+        fun refreshSurfaces(ctx: Context) {
+            app.clipbridge.capture.SendTileService.refresh(ctx)
+            app.clipbridge.capture.ConnectionTileService.refresh(ctx)
+            app.clipbridge.SendWidget.refresh(ctx)
+        }
+
         /** True while a timed pause (15 minutes / 1 hour) is running. "Until I resume" stops sync instead. */
         fun isPaused(ctx: Context): Boolean = Pause.isTimedPause(Prefs.pausedUntil(ctx), System.currentTimeMillis())
 
@@ -119,6 +126,7 @@ class SyncService : Service() {
                 Prefs.setSyncEnabled(ctx, true)
                 checkPauseOrStart(ctx)
             }
+            refreshSurfaces(ctx)
         }
 
         /** Ends any pause: sync on, service up, and whatever waited is sent once connected. */
@@ -128,6 +136,7 @@ class SyncService : Service() {
             Prefs.setSyncEnabled(ctx, true)
             if (wasPaused) ConnectionLogHub.log.add("resumed")
             checkPauseOrStart(ctx)
+            refreshSurfaces(ctx)
         }
 
         /** A running service re-checks the pause (and drains); otherwise start it, which does the same. */
@@ -287,9 +296,7 @@ class SyncService : Service() {
                     logStatus(previous, status)
                     main.post { checkPause() }  // drains once connected and not paused
                     setStatus(describe(status))
-                    app.clipbridge.capture.SendTileService.refresh(this@SyncService)
-                    app.clipbridge.capture.ConnectionTileService.refresh(this@SyncService)
-                    app.clipbridge.SendWidget.refresh(this@SyncService)
+                    refreshSurfaces(this@SyncService)
                 }
                 override fun onClip(text: String) = writeClipboard(text, null)
                 override fun onClip(text: String, html: String?) = writeClipboard(text, html)
@@ -340,6 +347,7 @@ class SyncService : Service() {
             Prefs.setPausedUntil(this, 0)
             ConnectionLogHub.log.add("resumed")
             onStatusChanged?.invoke()
+            refreshSurfaces(this)
         }
         drainQueue()
     }

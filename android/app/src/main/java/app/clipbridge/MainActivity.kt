@@ -474,6 +474,14 @@ class MainActivity : Activity() {
     }
 
     /** Running: ask how long to pause. Paused (timed or stopped): resume right away. */
+    private var pauseDialog: android.app.AlertDialog? = null
+
+    override fun onDestroy() {
+        pauseDialog?.dismiss()
+        pauseDialog = null
+        super.onDestroy()
+    }
+
     private fun toggleSync() {
         if (!Prefs.syncEnabled(this) || SyncService.isPaused(this)) {
             SyncService.resume(this)
@@ -481,7 +489,7 @@ class MainActivity : Activity() {
             return
         }
         val choices = PauseChoice.values()
-        android.app.AlertDialog.Builder(this)
+        pauseDialog = android.app.AlertDialog.Builder(this)
             .setTitle("Pause syncing for")
             .setItems(choices.map { it.label }.toTypedArray()) { _, i ->
                 SyncService.pauseFor(this, choices[i])

@@ -55,8 +55,10 @@ class SendWidget : AppWidgetProvider() {
 /** Widget tap while paused: resume syncing, then redraw. */
 class ResumeReceiver : android.content.BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
-        SyncService.resume(ctx)
-        SendWidget.refresh(ctx)
-        app.clipbridge.capture.ConnectionTileService.refresh(ctx)
+        // Starting the service from the background can be refused (Android 12+): open the app instead.
+        if (runCatching { SyncService.resume(ctx) }.isFailure) {
+            ctx.startActivity(Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+        SyncService.refreshSurfaces(ctx)
     }
 }
