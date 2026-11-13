@@ -22,6 +22,10 @@ any of your data.**
 - Copies marked as sensitive (for example passwords from a password manager) are never sent.
 - Files from your Mac are kept on the phone only temporarily (at most 10 minutes, or until your next copy),
   unless you save or share them yourself. Files you send to the Mac are saved in its Downloads folder.
+- If you send something to your Mac while it isn't connected or syncing is paused, it waits on this phone only: the
+  latest copied text or picture, plus up to 20 shared files (200 MB). It is sent only to your paired Mac, when it's back.
+  It's deleted after 1 hour, when you tap **Cancel**, or when you pair a different Mac. Text waits in the app's memory;
+  pictures and files wait in the app's private storage, which other apps can't read.
 
 ## Clipboard history (Android)
 
