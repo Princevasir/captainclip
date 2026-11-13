@@ -47,6 +47,16 @@ object Prefs {
     fun pausedUntil(ctx: Context): Long = prefs(ctx).getLong("pausedUntil", 0L)
     fun setPausedUntil(ctx: Context, until: Long) = prefs(ctx).edit().putLong("pausedUntil", until).apply()
 
+    /** The Mac's last address that worked over Wi-Fi (null until one has). */
+    fun lastMacAddress(ctx: Context): Pair<String, Int>? {
+        val p = prefs(ctx)
+        val host = p.getString("lastHost", null) ?: return null
+        if (!p.contains("lastPort")) return null
+        return host to p.getInt("lastPort", 0)
+    }
+    fun setLastMacAddress(ctx: Context, host: String, port: Int) =
+        prefs(ctx).edit().putString("lastHost", host).putInt("lastPort", port).apply()
+
     fun bluetoothAsked(ctx: Context): Boolean = prefs(ctx).getBoolean("bluetoothAsked", false)
 
     fun setBluetoothAsked(ctx: Context) = prefs(ctx).edit().putBoolean("bluetoothAsked", true).apply()

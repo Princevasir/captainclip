@@ -42,6 +42,8 @@ class SyncLoop(
     private val wifiProbeIntervalMs: Long = 30_000,
     /** Wait after each Bluetooth scan that found nothing (battery): 1, 2, 5, then every 10 min; reset by [wake] or a connection. */
     private val bluetoothRetryDelaysMs: LongArray = longArrayOf(60_000, 120_000, 300_000, 600_000),
+    /** The Mac's last address that worked over Wi-Fi: tried when discovery finds nothing, before the QR address. */
+    private val lastAddress: () -> Pair<String, Int>? = { null },
 ) {
     enum class Path { WIFI, BLUETOOTH }
 
@@ -63,6 +65,8 @@ class SyncLoop(
         fun onOffer(offer: Message.Offer?) {}
         /** The Mac offered several files together. Defaults to offering the first. */
         fun onOffers(offers: List<Message.Offer>) = onOffer(offers.firstOrNull())
+        /** Connected over Wi-Fi via [host]:[port] (worth remembering as the Mac's address). */
+        fun onWifiConnected(host: String, port: Int) {}
     }
 
     private class PendingFetch(val id: String, val dir: File) {
@@ -263,6 +267,8 @@ class SyncLoop(
                 // Wi-Fi first; Bluetooth only after two Wi-Fi attempts that never connected.
                 val useBluetooth = bluetoothLink != null && wifiFailures >= WIFI_FAILURES_BEFORE_BLUETOOTH &&
                     System.currentTimeMillis() >= bluetoothNotBefore
+                var host = info.host
+                var port = info.port
                 val link: Link = if (useBluetooth) {
                     val found = try {
                         bluetoothLink!!.invoke(info)
@@ -282,8 +288,10 @@ class SyncLoop(
                         null
                     } ?: continue
                 } else {
-                    val (host, port) = locate(info) ?: (info.host to info.port)
-                    wifiLink(host, port)
+                    val (h, p) = locate(info) ?: lastAddress() ?: (info.host to info.port)
+                    host = h
+                    port = p
+                    wifiLink(h, p)
                 }
                 if (!alive(gen)) { link.close(); return }
 
@@ -300,6 +308,7 @@ class SyncLoop(
                         backoff.reset()
                         path = if (link.isBluetooth) Path.BLUETOOTH else Path.WIFI
                         status(gen, Status.CONNECTED)
+                        if (!link.isBluetooth && alive(gen)) callbacks.onWifiConnected(host, port)
                     }
                     override fun onClip(text: String) = onClip(text, null)
                     override fun onClip(text: String, html: String?) {
